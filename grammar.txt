@@ -1,0 +1,100 @@
+/*
+ *	Grammar
+ *
+ *	Abreviações:
+ *		- {something} significa lista de zero ou mais 'something'
+ *		- [something] siignifica que 'something' é opcional
+ */
+
+program
+	: [definition]
+
+definition
+	: function-definition
+	| monitor-definition
+
+function-definition
+	: 'function' ID '(' parameters ')' [type] block
+
+parameters
+	: [parameter {',' parameter}]
+
+parameter
+	: type ID
+
+type
+	: 'Char'
+	| 'Int'
+	| 'Float'
+
+block
+	: '{' {variable-definition} {command} '}'
+
+variable-definition
+	: type ID {',' ID}
+
+command
+	: IF expression '{' command '}'
+	| IF expression '{' command '}' ELSE command
+	| WHILE expression command
+	| variable '=' expression
+	| RETURN [expression]
+	| function-call
+	| block
+
+expression
+	: expression 'or' expression
+	| expression 'and' expression
+	| expression '==' expression
+	| expression '<=' expression
+	| expression '>=' expression
+	| expression '<' expression
+	| expression '>' expression
+	| expression '+' expression
+	| expression '-' expression
+	| expression '*' expression
+	| expression '/' expression
+	| '-' expression
+	| 'not' expression
+	| INT
+	| FLOAT
+	| STRING
+	| variable
+	| '(' expression ')'
+	| function-call
+	| 'new' type '[' expression ']'
+
+variable
+	: ID
+	| expression '[' expression ']'
+
+function-call
+	: ID '(' [expression {',' expression}] ')'
+
+monitor-definition
+	: 'Monitor' ID '{' monitor-block '}'
+
+monitor-block
+	: {monitor-block-definition}
+
+monitor-block-definition
+	: attribute-definition
+	| method-definition
+
+attribute-definition
+	: {attribute-qualifier} variable-definition
+
+attribute-qualifier
+	: 'immutable'
+
+method-definition
+	: 'function' ID '(' parameters ')' [type] monitor-method-block
+
+monitor-method-block
+	: '{' {variable-definition} {monitor-method-command} '}'
+
+monitor-method-command
+	: 'wait' '(' expression? ',' ID? ')'
+	: 'signal' ID?
+	: 'broadcast' ID?
+	| command
