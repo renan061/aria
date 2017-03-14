@@ -1,0 +1,46 @@
+/*
+ * O exemplo assume que:
+ *
+ * - Existem as funções 'append', 'length' e 'capacity' que operam sobre arrays.
+ * - Existe o tipo ("classe" / "struct") Queue.
+ *
+ */
+
+monitor Stack {
+
+	private Queue stackIsFullQueue, stackIsEmptyQueue
+
+	private function stackIsNotFull() Bool {
+		return lenght(values) == capacity(s.values)
+	}
+
+	private function stackIsNotEmpty() Bool {
+		return lenght(values) == 0
+	}
+
+	private Int current
+	private [Char] values
+
+	init(Int size) {
+		stackIsNotFullQueue = ConditionVariable()
+		stackIsEmptyQueue = ConditionVariable()
+		values = [Char](size)
+	}
+
+	function push(String id, String value) {
+		wait in stackIsFullQueue until stackIsNotFull
+		values = append(values, value)
+		signal stackIsEmptyQueue
+	}
+
+	function pop(String id) String {
+		wait in stackIsEmptyQueue until stackIsNotEmpty
+
+		Int index = length(values) - 1
+		String value = values[index]
+		values[index] = 0
+
+		signal stackIsNotFullQueue
+		return value
+	}
+}

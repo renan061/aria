@@ -2,99 +2,142 @@
  *	Grammar
  *
  *	Abreviações:
- *		- {something} significa lista de zero ou mais 'something'
+ *		- {something} significa sequência de zero ou mais 'something'
  *		- [something] siignifica que 'something' é opcional
  */
 
 program
-	: [definition]
+	: {definition}
 
 definition
 	: function-definition
 	| monitor-definition
 
 function-definition
-	: 'function' ID '(' parameters ')' [type] block
+	: 'function' ID parameters [type] block
 
 parameters
-	: [parameter {',' parameter}]
+	: '(' [parameter {',' parameter}] ')'
 
 parameter
-	: type ID
+	: variable-declaration
 
 type
+	: ID
+	| array-type
+	| base-type
+
+array-type
+	: '[' type ']'
+
+base-type
 	: 'Char'
 	| 'Int'
 	| 'Float'
 
 block
-	: '{' {variable-definition} {command} '}'
+	: '{' {block-content} '}'
 
-variable-definition
+block-content
+	: variable-declaration
+	| command
+
+variable-declaration
 	: type ID {',' ID}
 
 command
-	: IF expression '{' command '}'
-	| IF expression '{' command '}' ELSE command
-	| WHILE expression command
+	: 'if' expression '{' command '}'
+	| 'if' expression '{' command '}' 'else' command
+	| 'while' expression command
 	| variable '=' expression
-	| RETURN [expression]
+	| 'return' [expression]
 	| function-call
+	| 'spawn' block
 	| block
 
 expression
-	: expression 'or' expression
-	| expression 'and' expression
-	| expression '==' expression
-	| expression '<=' expression
-	| expression '>=' expression
-	| expression '<' expression
-	| expression '>' expression
-	| expression '+' expression
-	| expression '-' expression
-	| expression '*' expression
-	| expression '/' expression
-	| '-' expression
-	| 'not' expression
-	| INT
+	: expression-or
+
+expression-or
+	: expression-or 'or' expression-and
+	| expression-and
+
+expression-and
+	: expression-and 'and' expression-comparison
+	| expression-comparison
+
+expression-comparison
+	: expression-comparison '==' expression-addition
+	| expression-comparison '<=' expression-addition
+	| expression-comparison '>=' expression-addition
+	| expression-comparison '<' expression-addition
+	| expression-comparison '>' expression-addition
+	| expression-addition
+
+expression-addition
+	: expression-addition '+' expression-multiplication
+	| expression-addition '-' expression-multiplication
+	| expression-multiplication
+
+expression-multiplication
+	: expression-multiplication '*' expression-unary
+	| expression-multiplication '/' expression-unary
+	| expression-unary
+
+expression-unary
+	: '-' expression-primary
+	| 'not' expression-unary
+	| expression-primary
+
+expression-primary
+	: literal
+	| variable
+	| function-call
+	| array-type '(' expression ')' 	// new array
+	| type arguments					// constructor call
+	| '(' expression ')'
+
+literal
+	: INT
 	| FLOAT
 	| STRING
-	| variable
-	| '(' expression ')'
-	| function-call
-	| 'new' type '[' expression ']'
 
 variable
 	: ID
 	| expression '[' expression ']'
 
 function-call
-	: ID '(' [expression {',' expression}] ')'
+	: ID arguments
+	| expression-primary '.' ID arguments
+
+arguments
+	: '(' [expression {',' expression}] ')'
 
 monitor-definition
-	: 'Monitor' ID '{' monitor-block '}'
+	: 'monitor' ID {monitor-block}
 
 monitor-block
-	: {monitor-block-definition}
+	: '{' {monitor-block-content} '}'
 
-monitor-block-definition
-	: attribute-definition
+monitor-block-content
+	: attribute-declaration
+	| constructor-definition
 	| method-definition
 
-attribute-definition
-	: {attribute-qualifier} variable-definition
+attribute-declaration
+	: 'private' variable-declaration
 
-attribute-qualifier
-	: 'immutable'
+constructor-definition
+	: 'init' parameters block
 
 method-definition
-	: 'function' ID '(' parameters ')' [type] monitor-method-block
+	: ['private'] 'function' ID parameters [type] monitor-method-block
 
 monitor-method-block
-	: '{' {variable-definition} {monitor-method-command} '}'
+	: '{' {variable-declaration} {monitor-method-command} '}'
 
 monitor-method-command
-	: 'wait' '(' expression? ',' ID? ')'
-	: 'signal' ID?
-	: 'broadcast' ID?
+	: 'wait' 'in' variable? 'until' function-call?
+	| 'signal' variable?
+	| 'broadcast' variable?
 	| command

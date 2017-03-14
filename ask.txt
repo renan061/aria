@@ -1,0 +1,32 @@
+
+- (OK) Implementação de Queue usando um monitor?
+
+- (OK) Monitores são sempre passados por referência?
+
+- (OK) Implicação de wait, signal e broadcast como comandos?
+
+- Spawn dentro de um monitor?
+
+- É isso mesmo?
+function-call : ID arguments | expression-primary '.' ID arguments
+
+- Comando 'wait' function-call -> Não seria "function returning type"?
+monitor-function-command
+	: 'wait' 'in' variable 'until' function-call?
+	...
+
+- Comandos 'signal' e 'broadcast' é 'variable' ou 'expression' (permite funcs)
+monitor-function-command
+	...
+	| 'signal' variable
+	| 'broadcast' variable
+	...
+
+- O 'private' já não seria automático?
+attribute-declaration
+	: 'private' variable-declaration
+
+- O use de 'self' dentro de um monitor
+self.stackIsNotFull = ConditionVariable()
+self.stackIsNotEmpty = ConditionVariable()
+self.values = [Char](size)
