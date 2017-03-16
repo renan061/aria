@@ -6,41 +6,41 @@
  *
  */
 
-monitor Stack {
-
-	private Queue stackIsFullQueue, stackIsEmptyQueue
+monitor Stack
+{
+	private stackIsFullQueue, stackIsEmptyQueue Queue
 
 	private function stackIsNotFull() Bool {
-		return lenght(values) == capacity(s.values)
+		return lenght(values) < capacity(s.values)
 	}
 
 	private function stackIsNotEmpty() Bool {
-		return lenght(values) == 0
+		return lenght(values) > 0
 	}
 
-	private Int current
-	private [Char] values
+	private current Int
+	private values [Char]
 
-	init(Int size) {
-		stackIsNotFullQueue = ConditionVariable()
-		stackIsEmptyQueue = ConditionVariable()
+	init(size Int) {
+		stackIsFullQueue = Queue()
+		stackIsEmptyQueue = Queue()
 		values = [Char](size)
 	}
 
-	function push(String id, String value) {
+	function push(id, value Char) {
 		wait in stackIsFullQueue until stackIsNotFull
 		values = append(values, value)
 		signal stackIsEmptyQueue
 	}
 
-	function pop(String id) String {
+	function pop(id Char) Char {
 		wait in stackIsEmptyQueue until stackIsNotEmpty
 
-		Int index = length(values) - 1
-		String value = values[index]
+		index := length(values) - 1
+		value := values[index]
 		values[index] = 0
 
-		signal stackIsNotFullQueue
+		signal stackIsFullQueue
 		return value
 	}
 }

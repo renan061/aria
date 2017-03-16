@@ -30,3 +30,5 @@ attribute-declaration
 self.stackIsNotFull = ConditionVariable()
 self.stackIsNotEmpty = ConditionVariable()
 self.values = [Char](size)
+
+- As funções que são private não usam o lock

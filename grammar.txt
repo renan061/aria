@@ -22,6 +22,9 @@ parameters
 parameter
 	: variable-declaration
 
+variable-declaration
+	: ID {',' ID} type
+
 type
 	: ID
 	| array-type
@@ -31,27 +34,33 @@ array-type
 	: '[' type ']'
 
 base-type
-	: 'Char'
+	: 'Bool'
+	| 'Rune'
 	| 'Int'
 	| 'Float'
+	| 'String'
 
 block
 	: '{' {block-content} '}'
 
 block-content
 	: variable-declaration
-	| command
+	| statement
 
-variable-declaration
-	: type ID {',' ID}
+statement
+	: simple-statement
+	| compound-statement
 
-command
-	: 'if' expression '{' command '}'
-	| 'if' expression '{' command '}' 'else' command
-	| 'while' expression command
-	| variable '=' expression
-	| 'return' [expression]
+simple-statement
+	: variable '=' expression
+	| ID ':=' expression
 	| function-call
+	| 'return' [expression]
+
+compound-statement
+	: 'if' expression block
+	| 'if' expression block 'else' block
+	| 'while' expression block
 	| 'spawn' block
 	| block
 
@@ -86,25 +95,29 @@ expression-multiplication
 
 expression-unary
 	: '-' expression-primary
-	| 'not' expression-unary
+	| 'not' expression-primary
+	| 'not' 'not' expression-primary
 	| expression-primary
 
 expression-primary
 	: literal
 	| variable
 	| function-call
-	| array-type '(' expression ')' 	// new array
-	| type arguments					// constructor call
+	| array-type '(' expression ')' 	// new array (?)
+	| ID arguments						// constructor call
 	| '(' expression ')'
 
 literal
-	: INT
+	: 'true'
+	| 'false'
+	| RUNE?
+	| INT
 	| FLOAT
 	| STRING
 
 variable
 	: ID
-	| expression '[' expression ']'
+	| expression-primary '[' expression ']'
 
 function-call
 	: ID arguments
@@ -114,12 +127,12 @@ arguments
 	: '(' [expression {',' expression}] ')'
 
 monitor-definition
-	: 'monitor' ID {monitor-block}
+	: 'monitor' ID monitor-body
 
-monitor-block
-	: '{' {monitor-block-content} '}'
+monitor-body
+	: '{' {monitor-body-content} '}'
 
-monitor-block-content
+monitor-body-content
 	: attribute-declaration
 	| constructor-definition
 	| method-definition
@@ -131,13 +144,28 @@ constructor-definition
 	: 'init' parameters block
 
 method-definition
-	: ['private'] 'function' ID parameters [type] monitor-method-block
+	: ['private'] 'function' ID parameters [type] monitor-block
 
-monitor-method-block
-	: '{' {variable-declaration} {monitor-method-command} '}'
+monitor-block
+	: '{' {monitor-block-content} '}'
 
-monitor-method-command
+monitor-block-content
+	: variable-declaration
+	| monitor-statement
+
+monitor-statement
+	: monitor-simple-statement
+	| monitor-compound-statement
+
+monitor-simple-statement
 	: 'wait' 'in' variable? 'until' function-call?
 	| 'signal' variable?
 	| 'broadcast' variable?
-	| command
+	| simple-statement
+
+monitor-compound-statement
+	: 'if' expression monitor-block
+	| 'if' expression monitor-block 'else' monitor-block
+	| 'while' expression monitor-block
+	| 'spawn' block // ASK: Deveria poder criar novas threads?
+	| monitor-block
