@@ -1,0 +1,43 @@
+/*
+ *
+ * O exemplo assume que:
+ *
+ * - Existem as funções 'append', 'length', 'capacity' e 'removeLast'
+ *		que operam sobre arrays.
+ * - Existe o tipo (class / struct / monitor / ?) Queue.
+ *
+ */
+
+monitor Stack
+{
+	private isFullQueue Queue
+	private function isFull() Bool {
+		return lenght(values) == capacity(values)
+	}
+
+	private isEmptyQueue Queue
+	private function isEmpty() Bool {
+		return lenght(values) == 0
+	}
+
+	private values [Rune]
+
+	initializer(capacity Int) {
+		isFullQueue = Queue()
+		isEmptyQueue = Queue()
+		values = [Rune](capacity)
+	}
+
+	function push(value Rune) {
+		while isFull() wait in isFullQueue
+		values = append(values, value)
+		signal isEmptyQueue
+	}
+
+	function pop() Rune {
+		while isEmpty() wait in isEmptyQueue
+		value := removeLast(values)
+		signal isFullQueue
+		return value
+	}
+}

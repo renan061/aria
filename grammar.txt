@@ -3,7 +3,7 @@
  *
  *	Abreviações:
  *		- {something} significa sequência de zero ou mais 'something'
- *		- [something] siignifica que 'something' é opcional
+ *		- [something] significa que 'something' é opcional
  */
 
 program
@@ -34,11 +34,11 @@ array-type
 	: '[' type ']'
 
 base-type
-	: 'Bool'
-	| 'Rune'
-	| 'Int'
+	: 'Bool'	// int1
+	| 'Rune'	// Int
+	| 'Int'		// int32 | int64
 	| 'Float'
-	| 'String'
+	| 'String'	// [Rune]
 
 block
 	: '{' {block-content} '}'
@@ -52,7 +52,8 @@ statement
 	| compound-statement
 
 simple-statement
-	: variable '=' expression
+	: print '(' expression ')'
+	| variable '=' expression
 	| ID ':=' expression
 	| function-call
 	| 'return' [expression]
@@ -61,8 +62,13 @@ compound-statement
 	: 'if' expression block
 	| 'if' expression block 'else' block
 	| 'while' expression block
+	| 'for' [?] ';' expression ';' [?] block
 	| 'spawn' block
 	| block
+
+variable
+	: ID
+	| expression-primary '[' expression ']'
 
 expression
 	: expression-or
@@ -103,21 +109,16 @@ expression-primary
 	: literal
 	| variable
 	| function-call
-	| array-type '(' expression ')' 	// new array (?)
+	| array-type '(' expression ')' 	// new array
 	| ID arguments						// constructor call
 	| '(' expression ')'
 
 literal
 	: 'true'
 	| 'false'
-	| RUNE?
 	| INT
 	| FLOAT
 	| STRING
-
-variable
-	: ID
-	| expression-primary '[' expression ']'
 
 function-call
 	: ID arguments
@@ -141,7 +142,7 @@ attribute-declaration
 	: 'private' variable-declaration
 
 constructor-definition
-	: 'init' parameters block
+	: 'initializer' parameters block
 
 method-definition
 	: ['private'] 'function' ID parameters [type] monitor-block
@@ -158,14 +159,15 @@ monitor-statement
 	| monitor-compound-statement
 
 monitor-simple-statement
-	: 'wait' 'in' variable? 'until' function-call?
-	| 'signal' variable?
-	| 'broadcast' variable?
+	: 'while' expression 'wait' 'in' variable
+	| 'signal' variable
+	| 'broadcast' variable
 	| simple-statement
 
 monitor-compound-statement
 	: 'if' expression monitor-block
 	| 'if' expression monitor-block 'else' monitor-block
 	| 'while' expression monitor-block
-	| 'spawn' block // ASK: Deveria poder criar novas threads?
+	| 'for' [?] ';' expression ';' [?] monitor-block
+	| 'spawn' block
 	| monitor-block
