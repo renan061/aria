@@ -1,6 +1,0 @@
-
-closure : [arguments [type] 'in'] block
-
-return { lenght(values) > 0 }
-
-return (values) Bool in { lenght(values) > 0 }

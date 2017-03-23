@@ -14,7 +14,7 @@ definition
 	| monitor-definition
 
 function-definition
-	: 'function' ID parameters [type] block
+	: 'function' LOWER-ID parameters [':' type] block
 
 parameters
 	: '(' [parameter {',' parameter}] ')'
@@ -23,22 +23,11 @@ parameter
 	: variable-declaration
 
 variable-declaration
-	: ID {',' ID} type
+	: LOWER-ID {',' LOWER-ID} ':' type
 
 type
-	: ID
-	| array-type
-	| base-type
-
-array-type
-	: '[' type ']'
-
-base-type
-	: 'Bool'	// int1
-	| 'Rune'	// Int
-	| 'Int'		// int32 | int64
-	| 'Float'
-	| 'String'	// [Rune]
+	: UPPER-ID
+	| '[' type ']' // array type
 
 block
 	: '{' {block-content} '}'
@@ -52,11 +41,13 @@ statement
 	| compound-statement
 
 simple-statement
-	: print '(' expression ')'
-	| variable '=' expression
-	| ID ':=' expression
+	: variable '=' expression
+	| LOWER-ID ':=' expression
 	| function-call
 	| 'return' [expression]
+	| 'while' expression 'wait' 'in' variable
+	| 'signal' variable
+	| 'broadcast' variable
 
 compound-statement
 	: 'if' expression block
@@ -67,7 +58,7 @@ compound-statement
 	| block
 
 variable
-	: ID
+	: LOWER-ID
 	| expression-primary '[' expression ']'
 
 expression
@@ -82,11 +73,11 @@ expression-and
 	| expression-comparison
 
 expression-comparison
-	: expression-comparison '==' expression-addition
-	| expression-comparison '<=' expression-addition
-	| expression-comparison '>=' expression-addition
-	| expression-comparison '<' expression-addition
-	| expression-comparison '>' expression-addition
+	: expression-addition '==' expression-addition
+	| expression-addition '<=' expression-addition
+	| expression-addition '>=' expression-addition
+	| expression-addition '<' expression-addition
+	| expression-addition '>' expression-addition
 	| expression-addition
 
 expression-addition
@@ -100,17 +91,14 @@ expression-multiplication
 	| expression-unary
 
 expression-unary
-	: '-' expression-primary
-	| 'not' expression-primary
-	| 'not' 'not' expression-primary
+	: '-' expression-unary
+	| 'not' expression-unary
 	| expression-primary
 
 expression-primary
 	: literal
 	| variable
 	| function-call
-	| array-type '(' expression ')' 	// new array
-	| ID arguments						// constructor call
 	| '(' expression ')'
 
 literal
@@ -121,53 +109,23 @@ literal
 	| STRING
 
 function-call
-	: ID arguments
-	| expression-primary '.' ID arguments
+	: LOWER-ID arguments						// normal function
+	| type arguments							// constructor call
+	| expression-primary '.' LOWER-ID arguments	// monitor method
 
 arguments
 	: '(' [expression {',' expression}] ')'
 
 monitor-definition
-	: 'monitor' ID monitor-body
+	: 'monitor' UPPER-ID monitor-body
 
 monitor-body
 	: '{' {monitor-body-content} '}'
 
 monitor-body-content
-	: attribute-declaration
+	: variable-declaration
 	| constructor-definition
-	| method-definition
-
-attribute-declaration
-	: 'private' variable-declaration
+	| ['private'] function-definition
 
 constructor-definition
 	: 'initializer' parameters block
-
-method-definition
-	: ['private'] 'function' ID parameters [type] monitor-block
-
-monitor-block
-	: '{' {monitor-block-content} '}'
-
-monitor-block-content
-	: variable-declaration
-	| monitor-statement
-
-monitor-statement
-	: monitor-simple-statement
-	| monitor-compound-statement
-
-monitor-simple-statement
-	: 'while' expression 'wait' 'in' variable
-	| 'signal' variable
-	| 'broadcast' variable
-	| simple-statement
-
-monitor-compound-statement
-	: 'if' expression monitor-block
-	| 'if' expression monitor-block 'else' monitor-block
-	| 'while' expression monitor-block
-	| 'for' [?] ';' expression ';' [?] monitor-block
-	| 'spawn' block
-	| monitor-block

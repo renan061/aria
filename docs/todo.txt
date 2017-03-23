@@ -1,0 +1,29 @@
+
+// ==================================================
+//
+//	Ask
+//
+// ==================================================
+
+- Comandos 'signal' e 'broadcast': 'variable' ou 'expression' (permite functions calls)?
+
+- O use de 'self' dentro de um monitor
+self.values = [Char](size)
+
+- 'wait' statement
+while stackIsFull() wait in stackIsFullQueue
+wait in stackIsFullQueue until stackIsNotFull()
+
+- 'for' na gramática
+
+// ==================================================
+//
+//	Thinking
+//
+// ==================================================
+
+closure : [arguments [type] 'in'] block
+
+return { lenght(values) > 0 }
+
+return (values) Bool in { lenght(values) > 0 }
