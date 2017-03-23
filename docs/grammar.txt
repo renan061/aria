@@ -44,10 +44,10 @@ simple-statement
 	: variable '=' expression
 	| LOWER-ID ':=' expression
 	| function-call
-	| 'return' [expression]
 	| 'while' expression 'wait' 'in' variable
 	| 'signal' variable
 	| 'broadcast' variable
+	| 'return' [expression]
 
 compound-statement
 	: 'if' expression block
