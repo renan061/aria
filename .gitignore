@@ -1,0 +1,4 @@
+lex.yy.c
+
+obj/*.o
+bin/*

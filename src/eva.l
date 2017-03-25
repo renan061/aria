@@ -1,45 +1,75 @@
-%x IN_COMMENT
+/*
+ * Since the scanner does not utilize the 'yyunput'
+ * and 'input' functions, it's necessary to provide
+ * these options so no "defined but not used" warnings
+ * are issued.
+ */
 %option nounput
+%option noinput
 
-/* C #defines and declarations */
+/*
+ * Since the compiler is only reading from one file,
+ * there is no need to call (or define) the yywrap()
+ * function. Therefore, the scanner assumes there are
+ * no more files to scan when it reaches an end-of-file.
+ */
+%option noyywrap
+
+/*
+ * Exclusive start conditions (only rules qualified
+ * with the start condition will be active).
+ */
+%x COMMENTARY
+
+/*
+ * C #include statements, #define statements and
+ * variable/function declarations ONLY.
+ */
 %{
-	#define YY_NO_INPUT
+#include "scanner.h" // TODO: Remove later
 
-	#define ERR_COMMENT			"open commentary"
-	#define ERR_STRING_ESCAPE	"invalid escape"			// TODO: Unused
-	#define ERR_STRING_OPEN		"open string"
-	#define ERR_STRING_LINE		"multiline string"			// TODO: Unused
-	#define ERR_INTERNAL		"scanner internal error"	// TODO: Unused
+// TODO: Move to errors file
+#define ERR_COMMENT			"open commentary"
+#define ERR_STRING_ESCAPE	"invalid escape"			// TODO: Unused
+#define ERR_STRING_OPEN		"open string"
+#define ERR_STRING_LINE		"multiline string"			// TODO: Unused
+#define ERR_INTERNAL		"scanner internal error"	// TODO: Unused
 
-	// Current line number
-	static unsigned int line = 1;
+static unsigned int line = 1; // current line number
 
-	static void error(char* err);
+// TODO: Remove
+static void error(char* err);
+
 %}
 
 /* Definitions */
 space		[ \t]
 newline		\n
-wild-id		[A-Za-z_0-9]*
-lower-id 	[a-z_]wild-id
-upper-id 	[A-Z]wild-id
+
+lower-id 	[a-z][_a-zA-Z0-9]*
+upper-id 	[A-Z][_a-zA-Z0-9]*
+
 integer		[0-9]+
 float 		[0-9]+"."[0-9]+
 string 		"\""(\\.|[^\\"])*"\""
 
 %%
 
-"/*"						BEGIN(IN_COMMENT);
-<IN_COMMENT>"*/"			BEGIN(INITIAL);
-<IN_COMMENT>{newline}		line++;
-<IN_COMMENT><<EOF>>			error(ERR_COMMENT);
-<IN_COMMENT>.				; /* empty */
+"/*"						BEGIN(COMMENTARY);
+<COMMENTARY>"*/"			BEGIN(INITIAL);
+<COMMENTARY>{newline}		line++;
+<COMMENTARY><<EOF>>			error(ERR_COMMENT);
+<COMMENTARY>.				; /* empty */
 
-{space} 	; /* empty */
+{space} 		; /* empty */
+{newline}		line++;
 
-{newline}	line++;
-
-"function"		{ return TK_FUNCTION;		}
+"function"		{ 
+					// TODO: Remove {} and write
+					// return yylval.ival = line, TK_FUNCTION;
+					// return (yylval.ival = line, TK_FUNCTION);
+					return TK_FUNCTION;
+				}
 ":="			{ return TK_TODO;			}
 "while"			{ return TK_WHILE;			}
 "wait"			{ return TK_WAIT;			}
@@ -63,31 +93,36 @@ string 		"\""(\\.|[^\\"])*"\""
 "private"		{ return TK_PRIVATE;		}
 "initializer"	{ return TK_INITIALIZER;	}
 
-{lower-id}	{
-				return TK_LOWER_ID;
-			}
+{lower-id}		{
+					return TK_LOWER_ID;
+				}
 
-{upper-id}	{
-				return TK_UPPER_ID;
-			}
+{upper-id}		{
+					return TK_UPPER_ID;
+				}
 
-{integer}	{
-				return TK_INTEGER;
-			}
+{integer}		{
+					return TK_INTEGER;
+				}
 
-{float}		{
-				return TK_FLOAT;
-			}
+{float}			{
+					return TK_FLOAT;
+				}
 
-{string}	{
-				return TK_STRING;
-			}
+{string}		{
+					return TK_STRING;
+				}
 
-"\""		{
-				error(ERR_STRING_OPEN);
-			}
+"\""			{
+					error(ERR_STRING_OPEN);
+				}
 
-. 			{
-				return yytext[0];
-			}
+. 				{
+					return yytext[0];
+				}
 %%
+
+static void error(char* err) {
+	// TODO: Remove this function and call external
+	// "errors.h" function directly
+}
