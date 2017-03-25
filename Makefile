@@ -9,13 +9,16 @@ main: objs
 objs: scanner
 
 scanner:
-	flex src/eva.l
-	$(CC) $(CFLAGS) -c lex.yy.c -o obj/scanner.o -Isrc/
+	@- flex src/eva.l
+	@- $(CC) $(CFLAGS) -c lex.yy.c -o obj/scanner.o -Isrc/
 
 scanner_test: scanner
-	$(CC) $(CFLAGS) -o bin/scannertest obj/scanner.o src/scanner_test.c
-	sh tests/test.sh scanner
-	# ./bin/scannertest test.eva
+	@- $(CC) $(CFLAGS) -o bin/scannertest obj/scanner.o src/scanner_test.c
+	@- sh tests/test.sh scanner
+
+test: clean scanner_test
 
 clean:
-	$(RM) lex.yy.c
+	@- $(RM) lex.yy.c
+	@- $(RM) obj/*.o
+	@- $(RM) bin/*

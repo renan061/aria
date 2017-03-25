@@ -1,43 +1,42 @@
 #!/bin/sh
 
-# Tests specifier
-if [ "$1" = "" ]
+# Test type identifier
+if [ $1 = "" ]
 then
 	echo "test script error: missing argument"
 	exit 1
 fi
 
-cd tests/"$1"
+cd tests/$1
 
-# Removing old diff test reports
-DIFF_DIR="diff/"
-if [ $(ls -1 $DIFF_DIR | wc -l) != 0 ]
-then
-	for DIFF_FILE in $DIFF_DIR"*.txt"
-	do
-		rm $DIFF_FILE
-	done
-fi
+# Removing old diff and output test reports
+rm -f ./diff/*.txt
+rm -f ./output/*.out
 
 # Testing
-for INPUT_FILE in input/*.eva
+OK=0
+for INPUT in input/*.eva
 do
-	echo $INPUT_FILE
-	# ANSWER_FILE="answers/test_"$i".asw"
-	# OUTPUT_FILE="test_"$i".out"
+	NAME=${INPUT##*/}
+	NAME=${NAME%%.eva}
+	ANSWER="answer/"$NAME".asw"
+	OUTPUT=$NAME".out"
+	DIFF="diff.txt"
 
-	# ../../bin/"$1""test" < $INPUT_FILE > $OUTPUT_FILE 2>&1
+	../../bin/"$1""test" $INPUT > $OUTPUT 2>&1
 
-	# diff -W 200 -a --suppress-common-lines -y $ANSWER_FILE $OUTPUT_FILE > "diff.txt"
-	# if [ -s "diff.txt" ]
-	# then
-	# 	echo "FAIL $1 test "$i
-	# 	mv "diff.txt" "diff/test_diff_"$i".txt"
-	# else
-	#     echo "OK $1 test "$i
-	#     rm "diff.txt"
-	# fi
+	diff -W 200 -a --suppress-common-lines $ANSWER $OUTPUT > $DIFF
+	if [ -s $DIFF ]
+	then
+		echo "FAIL $1 test <"$NAME">"
+		mv $DIFF "diff/"$NAME".txt"
+		OK=$(($OK+1))
+	else
+	    echo "OK $1 test <"$NAME">"
+	    rm $DIFF
+	fi
 
-	# # Cleaning up
-	# mv $OUTPUT_FILE "output/"$OUTPUT_FILE
+	mv $OUTPUT "output/"$OUTPUT
 done
+
+exit $OK
