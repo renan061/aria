@@ -12,12 +12,14 @@ int main(int argc, char* argv[]) {
     	return 1;
     }
 
+	scanner_setup();
+
 	int token;
 	do {
 		token = yylex();
 		switch (token) {
 		case TK_FUNCTION:		printf("TK_FUNCTION");		break;
-		case TK_TODO:			printf("TK_TODO");			break;
+		case TK_SHORT_ASG:		printf("TK_SHORT_ASG");		break;
 		case TK_WHILE:			printf("TK_WHILE");			break;
 		case TK_WAIT:			printf("TK_WAIT");			break;
 		case TK_IN:				printf("TK_IN");			break;
@@ -39,19 +41,31 @@ int main(int argc, char* argv[]) {
 		case TK_MONITOR:		printf("TK_MONITOR");		break;
 		case TK_PRIVATE:		printf("TK_PRIVATE");		break;
 		case TK_INITIALIZER:	printf("TK_INITIALIZER");	break;
-		case TK_LOWER_ID:		printf("TK_LOWER_ID");		break;
-		case TK_UPPER_ID:		printf("TK_UPPER_ID");		break;
-		case TK_INTEGER:		printf("TK_INTEGER");		break;
-		case TK_FLOAT:			printf("TK_FLOAT");			break;
-		case TK_STRING:			printf("TK_STRING");		break;
+		case TK_LOWER_ID:
+			printf("TK_LOWER_ID - %s", yylval.u.strval);
+			break;
+		case TK_UPPER_ID:
+			printf("TK_UPPER_ID - %s", yylval.u.strval);
+			break;
+		case TK_INTEGER:
+			printf("TK_INTEGER - %d", yylval.u.ival);
+			break;
+		case TK_FLOAT:
+			printf("TK_FLOAT - %f", yylval.u.fval);
+			break;
+		case TK_STRING:
+			printf("TK_STRING - %s", yylval.u.strval);
+			break;
 		case 0:
-			return 0;
+			goto WHILE_END;
 		default:
 			printf("%c", token);
 		}
 		printf("\n");
+	WHILE_END:
+		;
 	} while(token != 0);
 
-	// scanner_clean();
+	scanner_clean();
     return 0;
 }

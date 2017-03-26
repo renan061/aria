@@ -1,3 +1,6 @@
+/*
+ * Keywords
+ */
 function
 while wait in signal broadcast
 return
@@ -8,3 +11,9 @@ or and not
 true false
 monitor
 private initializer
+
+/*
+ * Others
+ */
+:=
+== <= >=

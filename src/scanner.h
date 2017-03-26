@@ -12,14 +12,30 @@ extern FILE* yyin;
  */
 extern int yylex(void);
 
-// extern void scanner_setup(void);
-// extern void scanner_clean(void);
-// extern unsigned int scanner_line(void);
+/*
+ * Setup and Clean should be called before starting
+ * to use the scanner and after finishing doing so,
+ * respectively.
+ */
+extern void scanner_setup(void);
+extern void scanner_clean(void);
+
+// TODO: Temporary
+typedef struct SemInfo {
+	unsigned int line;
+	union {
+		int ival;
+		double fval;
+		const char* strval; // TODO: Really constant?
+	} u;
+} SemInfo;
+
+SemInfo yylval;
 
 // TODO: Temporary
 typedef enum Token {
 	TK_FUNCTION = 1,
-	TK_TODO,
+	TK_SHORT_ASG,
 	TK_WHILE,
 	TK_WAIT,
 	TK_IN,

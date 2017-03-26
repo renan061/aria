@@ -1,0 +1,15 @@
+TK_UPPER_ID - Id
+TK_UPPER_ID - AnotherId
+TK_UPPER_ID - Underscore_id
+TK_UPPER_ID - IdWithNum3er5
+TK_UPPER_ID - WithNums19_AndUndersc0r3
+TK_LOWER_ID - id
+TK_LOWER_ID - anotherId
+TK_LOWER_ID - underscore_id
+TK_LOWER_ID - idWithNum3er5
+TK_LOWER_ID - withNums19_AndUndersc0r3
+TK_STRING - a string
+TK_STRING - another string
+TK_STRING - a string with 	two 	tabs
+TK_STRING - a string with 
+ newline
