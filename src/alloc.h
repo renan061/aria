@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include "errs.h"
 
-#define ERROR internal_error(ERROR_INSUFFICIENT_MEMORY)
+#define ERROR_MEMORY "not enough memory"
+
+#define ERROR internal_error(ERROR_MEMORY) // TODO: Is this internal?
 
 #define MALLOC(x, t)				\
 	x = (t*)malloc(sizeof(t));		\

@@ -3,17 +3,11 @@
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-    	printf("todo error shell\n");
+    	printf("error: missing arguments to main\n");
     	return 1;
     }
-
-    if (!(yyin = fopen(argv[1], "r"))) {
-    	printf("todo error input file\n");   
-    	return 1;
-    }
-
-	scanner_setup();
-
+	scanner_setup(argv[1]);
+	
 	int token;
 	do {
 		token = yylex();

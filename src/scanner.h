@@ -2,12 +2,6 @@
 #define scanner_h
 
 /*
- * Set yyin to change the scanner's input. If let
- * untouched, stdin will be used instead.
- */
-extern FILE* yyin;
-
-/*
  * Used by the parser to get the next token.
  */
 extern int yylex(void);
@@ -17,7 +11,7 @@ extern int yylex(void);
  * to use the scanner and after finishing doing so,
  * respectively.
  */
-extern void scanner_setup(void);
+extern void scanner_setup(char* file);
 extern void scanner_clean(void);
 
 // TODO: Temporary

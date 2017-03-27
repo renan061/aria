@@ -40,9 +40,18 @@
 #include "vector.h"
 #include "scanner.h" // TODO: Remove
 
+// scanner errors
+#define ERR_FILE			"could not open file"
+#define ERR_COMMENTARY_OPEN	"open commentary"
+#define ERR_STRING_ESCAPE	"invalid escape"
+#define ERR_STRING_OPEN		"open string"
+#define ERR_STRING_LINE		"multiline string"
+
+// auxiliary variables
 static Vector* strs;
 static unsigned int line = 1; // current line number
 
+// auxiliary functions
 static void idaction();
 static const char* checkunique(const char* str);
 static const char* copystr(const char* str, size_t len);
@@ -69,7 +78,7 @@ string 		"\""(\\.|[^\\"])*"\""
 "/*"						BEGIN(COMMENTARY);
 <COMMENTARY>"*/"			BEGIN(INITIAL);
 <COMMENTARY>{newline}		line++;
-<COMMENTARY><<EOF>>			scanner_error(ERR_COMMENT);
+<COMMENTARY><<EOF>>			scanner_error(line, ERR_COMMENTARY_OPEN);
 <COMMENTARY>.				; /* empty */
 
 {space} 		; /* empty */
@@ -127,20 +136,25 @@ string 		"\""(\\.|[^\\"])*"\""
 					return TK_STRING;
 				}
 
-"\""			scanner_error(ERR_STRING_OPEN);
+"\""			scanner_error(line, ERR_STRING_OPEN);
 
 . 				return yylval.line = line, yytext[0];
 
 %%
 
-// initializes strs vector
-void scanner_setup(void) {
+// initializes strs vector and sets yyin
+void scanner_setup(char* file) {
+	if (!(yyin = fopen(file, "r"))) {
+    	scanner_error(line, ERR_FILE);
+    }
+
 	strs = vector_new();
 }
 
-// frees strs vector
+// frees strs vector and closes yyin
 void scanner_clean(void) {
 	vector_destroy(strs);
+	fclose(yyin);
 }
 
 // ==================================================
@@ -201,7 +215,7 @@ static const char* convertescapes(const char* str, size_t len) {
 	for (int i = 1; i < yyleng - 1; i++) {
 		switch (yytext[i]) {
 		case '\n':
-			scanner_error(ERR_STRING_LINE);
+			scanner_error(line, ERR_STRING_LINE);
 			break; /* unnecessary */
 		case '\\':
 			switch (yytext[++i]) {
@@ -209,7 +223,7 @@ static const char* convertescapes(const char* str, size_t len) {
 				case 't':	newstr[k++] = '\t';	break;
 				case 'n':	newstr[k++] = '\n';	break;
 				case '\\':	newstr[k++] = '\\';	break;
-				default: scanner_error(ERR_STRING_ESCAPE);
+				default: scanner_error(line, ERR_STRING_ESCAPE);
 			}
 			break;
 		default:
