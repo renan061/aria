@@ -1,5 +1,5 @@
 #
-# EVA language compiler
+# ARIA language compiler
 #
 
 CC := gcc-5 -std=c99 -Wall
@@ -15,7 +15,7 @@ vector: errs
 	@- $(CC) $(CFLAGS) -c src/vector.c -o obj/vector.o
 
 scanner: errs vector
-	@- flex src/eva.l
+	@- flex src/aria.l
 	@- $(CC) $(CFLAGS) -c lex.yy.c -o obj/scanner.o -Isrc/
 
 vector_test: vector

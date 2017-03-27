@@ -15,10 +15,10 @@ rm -f ./output/*.out
 
 # Testing
 OK=0
-for INPUT in input/*.eva
+for INPUT in input/*.aria
 do
 	NAME=${INPUT##*/}
-	NAME=${NAME%%.eva}
+	NAME=${NAME%%.aria}
 	ANSWER="answer/"$NAME".asw"
 	OUTPUT=$NAME".out"
 	DIFF="diff.txt"
