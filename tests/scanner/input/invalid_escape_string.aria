@@ -1,0 +1,4 @@
+/*
+ * \x is not a valid string escape
+ */
+"a string with \x is invalid"

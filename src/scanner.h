@@ -29,7 +29,7 @@ SemInfo yylval;
 // TODO: Temporary
 typedef enum Token {
 	TK_FUNCTION = 1,
-	TK_SHORT_ASG,
+	TK_ASSIGN,
 	TK_WHILE,
 	TK_WAIT,
 	TK_IN,
