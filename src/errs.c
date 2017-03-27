@@ -3,7 +3,7 @@
 
 #include "errs.h"
 
-void eva_scanner_error(ScannerError err) {
+void scanner_error(ScannerError err) {
 	switch (err) {
 	case ERR_COMMENT:
 		printf("open commentary");
@@ -18,4 +18,8 @@ void eva_scanner_error(ScannerError err) {
 	}
 	printf("\n");
 	exit(1);
+}
+
+void internal_error(AriaError err) {
+	// TODO
 }

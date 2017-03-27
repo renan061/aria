@@ -1,7 +1,8 @@
 /*
  * TODO:
  *	- Name := TK_SHORT_ASG
- *	- Definitions [0-9] digit etc...
+ *	- Using a vector to deal with ids and strings is very inefficient.
+ *		Therefore, another data strcture should be used instead.
  */
 
 /*
@@ -32,14 +33,14 @@
  * variable/function declarations ONLY.
  */
 %{
+#include <assert.h>
+
 #include "errs.h"
-#include "arraylist.h"
-#include "assert.h"		// TODO: Remove?
+#include "alloc.h"
+#include "vector.h"
+#include "scanner.h" // TODO: Remove
 
-#include "macros.h"		// TODO: Remove
-#include "scanner.h" 	// TODO: Remove
-
-static ArrayList* strs; // TODO: Remove
+static Vector* strs;
 static unsigned int line = 1; // current line number
 
 static void idaction();
@@ -50,14 +51,17 @@ static const char* convertescapes(const char* str, size_t len);
 %}
 
 /* Definitions */
+digit		[0-9]
+lower		[a-z]
+upper		[A-Z]
+wild		[_a-zA-Z0-9]
+
 space		[ \t]
 newline		\n
-
-lower-id 	[a-z][_a-zA-Z0-9]*
-upper-id 	[A-Z][_a-zA-Z0-9]*
-
-integer		[0-9]+
-float 		[0-9]+"."[0-9]+
+lower-id 	{lower}{wild}*
+upper-id 	{upper}{wild}*
+integer		{digit}+
+float 		{digit}+"."{digit}+
 string 		"\""(\\.|[^\\"])*"\""
 
 %%
@@ -65,7 +69,7 @@ string 		"\""(\\.|[^\\"])*"\""
 "/*"						BEGIN(COMMENTARY);
 <COMMENTARY>"*/"			BEGIN(INITIAL);
 <COMMENTARY>{newline}		line++;
-<COMMENTARY><<EOF>>			eva_scanner_error(ERR_COMMENT);
+<COMMENTARY><<EOF>>			scanner_error(ERR_COMMENT);
 <COMMENTARY>.				; /* empty */
 
 {space} 		; /* empty */
@@ -115,7 +119,7 @@ string 		"\""(\\.|[^\\"])*"\""
 					yylval.u.strval = checkunique(temp);
 				    if (!yylval.u.strval) {
 				    	yylval.u.strval = temp;
-				    	al_append(strs, (void*)temp);
+				    	vector_append(strs, (void*)temp);
 				    } else {
 				    	free((char*)temp);
 				    }
@@ -123,20 +127,20 @@ string 		"\""(\\.|[^\\"])*"\""
 					return TK_STRING;
 				}
 
-"\""			eva_scanner_error(ERR_STRING_OPEN);
+"\""			scanner_error(ERR_STRING_OPEN);
 
 . 				return yylval.line = line, yytext[0];
 
 %%
 
-// initializes strs array list
+// initializes strs vector
 void scanner_setup(void) {
-	strs = al_new();
+	strs = vector_new();
 }
 
-// frees strs array list
+// frees strs vector
 void scanner_clean(void) {
-	al_free(strs);
+	vector_destroy(strs);
 }
 
 // ==================================================
@@ -156,10 +160,10 @@ static void idaction() {
 
 // returns NULL if unique
 static const char* checkunique(const char* str) {
-	size_t size = al_size(strs);
+	size_t size = vector_size(strs);
 	for (int i = 0; i < size; i++) {
-		char* s = al_get(strs, i);
-		if (strcmp(str, s) == 0) {
+		char* s = vector_get(strs, i);
+		if (!strcmp(str, s)) {
 			return s;
 		}
 	}
@@ -174,7 +178,7 @@ static const char* copystr(const char* str, size_t len) {
     	newstr[i] = str[i];
     }
     newstr[len] = '\0';
-    al_append(strs, newstr);
+    vector_append(strs, newstr);
     return newstr;
 }
 
@@ -197,7 +201,7 @@ static const char* convertescapes(const char* str, size_t len) {
 	for (int i = 1; i < yyleng - 1; i++) {
 		switch (yytext[i]) {
 		case '\n':
-			eva_scanner_error(ERR_STRING_LINE);
+			scanner_error(ERR_STRING_LINE);
 			break; /* unnecessary */
 		case '\\':
 			switch (yytext[++i]) {
@@ -205,7 +209,7 @@ static const char* convertescapes(const char* str, size_t len) {
 				case 't':	newstr[k++] = '\t';	break;
 				case 'n':	newstr[k++] = '\n';	break;
 				case '\\':	newstr[k++] = '\\';	break;
-				default: eva_scanner_error(ERR_STRING_ESCAPE);
+				default: scanner_error(ERR_STRING_ESCAPE);
 			}
 			break;
 		default:
