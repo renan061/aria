@@ -1,7 +1,7 @@
 #include <stddef.h>
 
-#include "vector.h"
 #include "alloc.h"
+#include "vector.h"
 
 #define DEFAULT_CAPACITY 16;
 

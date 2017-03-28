@@ -1,4 +1,6 @@
 #include <stdio.h>
+
+#include "parser.h"
 #include "scanner.h"
 
 int main(int argc, char* argv[]) {
@@ -36,19 +38,19 @@ int main(int argc, char* argv[]) {
 		case TK_PRIVATE:		printf("TK_PRIVATE");		break;
 		case TK_INITIALIZER:	printf("TK_INITIALIZER");	break;
 		case TK_LOWER_ID:
-			printf("TK_LOWER_ID - %s", yylval.u.strval);
+			printf("TK_LOWER_ID - %s", yylval.strval);
 			break;
 		case TK_UPPER_ID:
-			printf("TK_UPPER_ID - %s", yylval.u.strval);
+			printf("TK_UPPER_ID - %s", yylval.strval);
 			break;
 		case TK_INTEGER:
-			printf("TK_INTEGER - %d", yylval.u.ival);
+			printf("TK_INTEGER - %d", yylval.ival);
 			break;
 		case TK_FLOAT:
-			printf("TK_FLOAT - %f", yylval.u.fval);
+			printf("TK_FLOAT - %f", yylval.dval);
 			break;
 		case TK_STRING:
-			printf("TK_STRING - %s", yylval.u.strval);
+			printf("TK_STRING - %s", yylval.strval);
 			break;
 		case 0:
 			goto WHILE_END;

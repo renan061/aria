@@ -1,4 +1,7 @@
 lex.yy.c
+src/yacc.c
+src/yacc.h
+aria.output
 
 obj/*.o
 bin/*

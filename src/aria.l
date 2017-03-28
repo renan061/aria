@@ -1,6 +1,6 @@
 /*
  * TODO:
- *	- Name := TK_SHORT_ASG
+ *	- Change float to double?
  *	- Using a vector to deal with ids and strings is very inefficient.
  *		Therefore, another data strcture should be used instead.
  */
@@ -35,10 +35,11 @@
 %{
 #include <assert.h>
 
-#include "errs.h"
 #include "alloc.h"
+#include "errs.h"
+#include "parser.h"
+#include "scanner.h"
 #include "vector.h"
-#include "scanner.h" // TODO: Remove
 
 // scanner errors
 #define ERR_FILE			"could not open file"
@@ -59,7 +60,9 @@ static const char* convertescapes(const char* str, size_t len);
 
 %}
 
-/* Definitions */
+/*
+ * Definitions
+ */
 digit		[0-9]
 lower		[a-z]
 upper		[A-Z]
@@ -84,61 +87,58 @@ string 		"\""(\\.|[^\\"])*"\""
 {space} 		; /* empty */
 {newline}		line++;
 
-"function"		return yylval.line = line, TK_FUNCTION;
-":="			return yylval.line = line, TK_ASSIGN;
-"while"			return yylval.line = line, TK_WHILE;
-"wait"			return yylval.line = line, TK_WAIT;
-"in"			return yylval.line = line, TK_IN;
-"signal"		return yylval.line = line, TK_SIGNAL;
-"broadcast"		return yylval.line = line, TK_BROADCAST;
-"return"		return yylval.line = line, TK_RETURN;
-"if"			return yylval.line = line, TK_IF;
-"else"			return yylval.line = line, TK_ELSE;
-"for"			return yylval.line = line, TK_FOR;
-"spawn"			return yylval.line = line, TK_SPAWN;
-"or"			return yylval.line = line, TK_OR;
-"and"			return yylval.line = line, TK_AND;
-"=="			return yylval.line = line, TK_EQUAL;
-"<="			return yylval.line = line, TK_LEQUAL;
-">="			return yylval.line = line, TK_GEQUAL;
-"not"			return yylval.line = line, TK_NOT;
-"true"			return yylval.line = line, TK_TRUE;
-"false"			return yylval.line = line, TK_FALSE;
-"monitor"		return yylval.line = line, TK_MONITOR;
-"private"		return yylval.line = line, TK_PRIVATE;
-"initializer"	return yylval.line = line, TK_INITIALIZER;
+"function"		return yylval.ival = line, TK_FUNCTION;
+":="			return yylval.ival = line, TK_ASSIGN;
+"while"			return yylval.ival = line, TK_WHILE;
+"wait"			return yylval.ival = line, TK_WAIT;
+"in"			return yylval.ival = line, TK_IN;
+"signal"		return yylval.ival = line, TK_SIGNAL;
+"broadcast"		return yylval.ival = line, TK_BROADCAST;
+"return"		return yylval.ival = line, TK_RETURN;
+"if"			return yylval.ival = line, TK_IF;
+"else"			return yylval.ival = line, TK_ELSE;
+"for"			return yylval.ival = line, TK_FOR;
+"spawn"			return yylval.ival = line, TK_SPAWN;
+"or"			return yylval.ival = line, TK_OR;
+"and"			return yylval.ival = line, TK_AND;
+"=="			return yylval.ival = line, TK_EQUAL;
+"<="			return yylval.ival = line, TK_LEQUAL;
+">="			return yylval.ival = line, TK_GEQUAL;
+"not"			return yylval.ival = line, TK_NOT;
+"true"			return yylval.ival = line, TK_TRUE;
+"false"			return yylval.ival = line, TK_FALSE;
+"monitor"		return yylval.ival = line, TK_MONITOR;
+"private"		return yylval.ival = line, TK_PRIVATE;
+"initializer"	return yylval.ival = line, TK_INITIALIZER;
 
 {lower-id}		return idaction(), TK_LOWER_ID;
 {upper-id}		return idaction(), TK_UPPER_ID;
 
 {integer}		{
-					yylval.u.ival = strtoul(yytext, NULL, 10);
-					yylval.line = line;
+					yylval.ival = strtoul(yytext, NULL, 10);
 					return TK_INTEGER;
 				}
 
 {float}			{
-					yylval.u.fval = strtod(yytext, NULL);
-					yylval.line = line;
+					yylval.dval = strtod(yytext, NULL);
 					return TK_FLOAT;
 				}
 
 {string}		{
 					const char* temp = convertescapes(yytext, yyleng);
-					yylval.u.strval = checkunique(temp);
-				    if (!yylval.u.strval) {
-				    	yylval.u.strval = temp;
+					yylval.strval = checkunique(temp);
+				    if (!yylval.strval) {
+				    	yylval.strval = temp;
 				    	vector_append(strs, (void*)temp);
 				    } else {
 				    	free((char*)temp);
 				    }
-					yylval.line = line;
 					return TK_STRING;
 				}
 
 "\""			scanner_error(line, ERR_STRING_OPEN);
 
-. 				return yylval.line = line, yytext[0];
+. 				return yylval.ival = line, yytext[0];
 
 %%
 
@@ -165,11 +165,10 @@ void scanner_clean(void) {
 
 // used by lower-id and upper-id
 static void idaction() {
-	yylval.u.strval = checkunique(yytext);
-    if (!yylval.u.strval) {
-		yylval.u.strval = copystr(yytext, yyleng);
+	yylval.strval = checkunique(yytext);
+    if (!yylval.strval) {
+		yylval.strval = copystr(yytext, yyleng);
     }
-    yylval.line = line;
 }
 
 // returns NULL if unique

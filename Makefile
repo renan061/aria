@@ -14,9 +14,18 @@ errs:
 vector: errs
 	@- $(CC) $(CFLAGS) -c src/vector.c -o obj/vector.o
 
-scanner: errs vector
+scanner: errs vector parser
 	@- flex src/aria.l
-	@- $(CC) $(CFLAGS) -c lex.yy.c -o obj/scanner.o -Isrc/
+	@- mv lex.yy.c src/lex.c
+	@- $(CC) $(CFLAGS) -c src/lex.c -o obj/scanner.o -Isrc/
+
+parser: errs
+	@- bison -v -d src/aria.y
+	@- mv aria.tab.c src/bison.c
+	@- mv aria.tab.h src/bison.h
+	@- mkdir -p temp
+	@- mv aria.output temp/bison.output
+	@- $(CC) $(CFLAGS) -c src/bison.c -o obj/parser.o
 
 vector_test: vector
 	@- $(CC) $(CFLAGS) -o bin/vectortest	\
@@ -26,15 +35,25 @@ vector_test: vector
 	@- ./bin/vectortest
 
 scanner_test: scanner
-	@- $(CC) $(CFLAGS) -o bin/scannertest	\
-	obj/errs.o obj/vector.o obj/scanner.o	\
+	@- $(CC) $(CFLAGS) -o bin/scannertest				\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o	\
 	src/scanner_test.c
 
 	@- sh tests/test.sh scanner
 
-test: clean vector_test scanner_test
+parser_test: parser
+	@- $(CC) $(CFLAGS) -o bin/parsertest				\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o	\
+	src/parser_test.c
+
+	@- sh tests/test.sh parser
+
+test: clean vector_test scanner_test parser_test
 
 clean:
-	@- $(RM) lex.yy.c
-	@- $(RM) obj/*.o
-	@- $(RM) bin/*
+	@- rm -f src/lex.c
+	@- rm -f src/bison.c
+	@- rm -f src/bison.h
+	@- rm -rf temp
+	@- rm -f obj/*.o
+	@- rm -f bin/*
