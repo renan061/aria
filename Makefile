@@ -8,6 +8,12 @@ main: objs
 
 objs: errs vector scanner
 
+# ==================================================
+# 
+#	Modules
+# 
+# ==================================================
+
 errs:
 	@- $(CC) $(CFLAGS) -c src/errs.c -o obj/errs.o
 
@@ -27,6 +33,12 @@ parser: errs
 	@- mv aria.output temp/bison.output
 	@- $(CC) $(CFLAGS) -c src/bison.c -o obj/parser.o
 
+# ==================================================
+# 
+#	Tests
+# 
+# ==================================================
+
 vector_test: vector
 	@- $(CC) $(CFLAGS) -o bin/vectortest	\
 	obj/errs.o obj/vector.o					\
@@ -41,7 +53,7 @@ scanner_test: scanner
 
 	@- sh tests/test.sh scanner
 
-parser_test: parser
+parser_test: scanner parser
 	@- $(CC) $(CFLAGS) -o bin/parsertest				\
 	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o	\
 	src/parser_test.c
@@ -49,6 +61,12 @@ parser_test: parser
 	@- sh tests/test.sh parser
 
 test: clean vector_test scanner_test parser_test
+
+# ==================================================
+# 
+#	Misc
+# 
+# ==================================================
 
 clean:
 	@- rm -f src/lex.c

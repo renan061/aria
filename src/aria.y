@@ -1,11 +1,11 @@
 /*
  * TODO:
  *	- Use yyltype for lines and position? Makes it slower...
+ *	- Devo repassar o token NEWLINE pra controlar? Coisas como
+ *		a, b: Integer c: String estão funcionando.
  */
 
 %{
-	#include <stdio.h> // TODO: Remove
-
 	#include "errs.h"
 	#include "scanner.h"
 
@@ -18,395 +18,175 @@
 	const char* strval; // TODO: Really constant?
 }
 
-%start exp
-	
+%start program
+
+// Operators
+%left		<ival> TK_OR
+%left		<ival> TK_AND
+%nonassoc	<ival> TK_EQUAL TK_NEQUAL
+%nonassoc	<ival> '<' '>' TK_LEQUAL TK_GEQUAL
+%left		<ival> '+' '-'
+%left		<ival> '*' '/'
+%left		<ival> TK_NOT // precedence for unary minus
+
 %token <ival>
-	'-' '!' '*' '/' '+' '<' '>' '{' '[' ']' '(' ')' '=' ';'
+	'{' '}' '[' ']' '(' ')' '=' ';'
 	TK_FUNCTION TK_ASSIGN TK_WHILE TK_WAIT TK_IN TK_SIGNAL TK_BROADCAST
-	TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_OR TK_AND TK_EQUAL TK_LEQUAL
-	TK_GEQUAL TK_NOT TK_TRUE TK_FALSE TK_MONITOR TK_PRIVATE TK_INITIALIZER
-	TK_INTEGER
+	TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE TK_FALSE TK_MONITOR
+	TK_PRIVATE TK_INITIALIZER
 
-%token <dval>
-	TK_FLOAT
-
-%token <strvalue>
-	TK_STRING TK_LOWER_ID TK_UPPER_ID
+%token <ival> TK_INTEGER
+%token <dval> TK_FLOAT
+%token <strvalue> TK_STRING TK_LOWER_ID TK_UPPER_ID
 
 %%
 
-exp		: TK_INTEGER '+' TK_INTEGER
-			{
-				printf("Plus %d, %d\n", $1, $2);
-				return $1 + $2
-			}
-		| /* empty */
-			{
-				printf("Empty\n");
-			}
-		;
+program
+	: definitions
+	;
 
-// program			: definition_list
-// 					{
-// 						ast_program($1);
-// 					}
-// 				;
+definitions
+	: /* empty */
+	| definitions definition
+	;
 
-// definition_list	: /* empty */
-// 					{
-// 						$$ = NULL;
-// 					}
-// 				| definition_list definition
-// 					{
-// 						APPEND_TO_LIST(DefNode, $$, $1, $2);
-// 					}
-// 				;
+definition
+	: function_definition
+	| monitor_definition
+	;
 
-// definition 		: definition_var
-// 					{
-// 						$$ = $1;
-// 					}
-// 				| definition_func
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+function_definition
+	: TK_FUNCTION TK_LOWER_ID parameters ':' type block
+	| TK_FUNCTION TK_LOWER_ID parameters block
+	;
 
-// definition_var	: type name_list ';'
-// 					{
-// 						$$ = $2;
-// 						DefNode* aux = $2;
-// 						while (aux != NULL) {
-// 							aux->u.var.type = $1;
-// 							aux = aux->next;
-// 						}
-// 					}
-// 				;
+parameters
+	: '(' ')'
+	| '(' parameter_list ')'
+	;
 
-// name_list		: TK_ID
-// 					{
-// 						$$ = ast_def_var(NULL, ast_id(ID_ARGS($1)));
-// 					}
-// 				| name_list ',' TK_ID
-// 					{
-// 						APPEND_TO_LIST(DefNode, $$, $1,
-// 							ast_def_var(NULL, ast_id(ID_ARGS($3))));
-// 					}
-// 				;
+parameter_list
+	: parameter
+	| parameter_list ',' parameter
+	;
 
-// type			: base_type
-// 					{
-// 						$$ = $1;
-// 					}
-// 				| type '[' ']'
-// 					{
-// 						$$ = ast_type_indexed($1);
-// 					}
-// 				;
+parameter
+	: variable_declaration
 
-// base_type		: TK_KEY_INT
-// 					{
-// 						$$ = ast_type(TYPE_INT);
-// 					}
-// 				| TK_KEY_FLOAT
-// 					{
-// 						$$ = ast_type(TYPE_FLOAT);
-// 					}
-// 				| TK_KEY_CHAR
-// 					{
-// 						$$ = ast_type(TYPE_CHAR);
-// 					}
-// 				;
+variable_declaration
+	: lower_id_list ':' type
+	;
 
-// definition_func	: type TK_ID '(' func_param_list ')' block
-// 					{
-// 						$$ = ast_def_func($1, ast_id(ID_ARGS($2)), $4, $6);
-// 					}
-// 				| TK_KEY_VOID TK_ID '(' func_param_list ')' block
-// 					{
-// 						$$ = ast_def_func(ast_type(TYPE_VOID),
-// 							ast_id(ID_ARGS($2)), $4, $6);
-// 					}
-// 				;
+lower_id_list
+	: TK_LOWER_ID
+	| lower_id_list ',' TK_LOWER_ID
+	;
 
-// func_param_list	: param_list
-// 					{
-// 						$$ = $1;
-// 					}
-// 				| /* empty */
-// 					{
-// 						$$ = NULL;
-// 					}
-// 				;
+type
+	: TK_UPPER_ID
+	| '[' type ']'
+	;
 
-// param_list 		: param
-// 					{
-// 						$$ = $1;
-// 					}
-// 				| param_list ',' param
-// 					{
-// 						APPEND_TO_LIST(DefNode, $$, $1, $3);
-// 					}
-// 				;
+block
+	: '{' block_content_list '}'
+	;
 
-// param 			: type TK_ID
-// 					{
-// 						$$ = ast_def_var($1, ast_id(ID_ARGS($2)));
-// 					}
-// 				;
+block_content_list
+	: /* empty */
+	| block_content_list block_content
+	;
 
-// block			: '{' defvar_list command_list '}'
-// 					{
-// 						$$ = ast_cmd_block($1, $2, $3);
-// 					}
-// 				;
+/* TODO: Newline after variable_declaration? */
+block_content
+	: variable_declaration
+	| statement
+	;
 
-// defvar_list		: defvar_list definition_var
-// 					{
-// 						APPEND_TO_LIST(DefNode, $$, $1, $2);
-// 					}
-// 				| /* empty */
-// 					{
-// 						$$ = NULL;
-// 					}
-// 				;
+/* TODO: Newline after simple_statement? */
+/* TODO: Removing ';' causes a _lot_ of conflicts */
+statement
+	: simple_statement ';'
+	| compound_statement
+	;
 
-// command_list	: command_list command
-// 					{
-// 						APPEND_TO_LIST(CmdNode, $$, $1, $2);
-// 					}
-// 				| /* empty */
-// 					{
-// 						$$ = NULL;
-// 					}
-// 				;
+simple_statement
+	: variable '=' expression
+	| TK_LOWER_ID TK_ASSIGN expression
+	| function_call
+	| TK_WHILE expression TK_WAIT TK_IN variable
+	| TK_SIGNAL variable
+	| TK_BROADCAST variable
+	| TK_RETURN
+	| TK_RETURN expression
+	;
 
-// command			: TK_KEY_IF '(' exp ')' command
-// 					{
-// 						$$ = ast_cmd_if($2, $3, $5);
-// 					}
-// 				| TK_KEY_IF '(' exp ')' command_amb TK_KEY_ELSE command
-// 					{
-// 						$$ = ast_cmd_if_else($2, $3, $5, $7);
-// 					}
-// 				| TK_KEY_WHILE '(' exp ')' command
-// 					{
-// 						$$ = ast_cmd_while($2, $3, $5);
-// 					}
-// 				| command_basic
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+compound_statement
+	: TK_IF expression block
+	| TK_IF expression block TK_ELSE block
+	| TK_WHILE expression block
+	/* | TK_FOR [?] ';' expression ';' [?] block */
+	| TK_SPAWN block
+	| block
+	;
 
-// // For ambiguities
-// command_amb		: TK_KEY_IF '(' exp ')' command_amb TK_KEY_ELSE command_amb
-// 					{
-// 						$$ = ast_cmd_if_else($2, $3, $5, $7);
-// 					}
-// 				| TK_KEY_WHILE '(' exp ')' command_amb
-// 					{
-// 						$$ = ast_cmd_while($2, $3, $5);
-// 					}
-// 				| command_basic
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+variable
+	: TK_LOWER_ID
+	| primary_expression '[' expression ']'
+	;
 
-// command_basic	: '@' exp ';'
-// 					{
-// 						$$ = ast_cmd_print($1, $2);
-// 					}
-// 				| var '=' exp ';'
-// 					{
-// 						$$ = ast_cmd_asg($2, $1, $3);
-// 					}
-// 				| command_return ';'
-// 					{
-// 						$$ = $1;
-// 					}
-// 				| func_call ';'
-// 					{
-// 						$$ = ast_cmd_call($2, $1);
-// 					}
-// 				| block
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+expression
+	: expression TK_OR expression
+	| expression TK_AND expression
+	| expression TK_EQUAL expression
+	| expression TK_LEQUAL expression
+	| expression TK_GEQUAL expression
+	| expression '<' expression
+	| expression '>' expression
+	| expression '+' expression
+	| expression '-' expression
+	| expression '*' expression
+	| expression '/' expression
+	| '-' expression %prec TK_NOT
+	| TK_NOT expression
+	| primary_expression
+	;
 
-// command_return	: TK_KEY_RETURN
-// 					{
-// 						$$ = ast_cmd_return($1, NULL);
-// 					}
-// 				| TK_KEY_RETURN exp
-// 					{
-// 						$$ = ast_cmd_return($1, $2);
-// 					}
-// 				;
+primary_expression
+	: literal
+	| variable
+	| function_call
+	| '(' expression ')'
+	;
 
-// var 			: TK_ID
-// 					{
-// 						$$ = ast_var(ast_id(ID_ARGS($1)));
-// 					}
-// 				| exp_simple '[' exp ']'
-// 					{
-// 						$$ = ast_var_indexed($2, $1, $3);
-// 					}
-// 				;
+literal
+	: TK_TRUE
+	| TK_FALSE
+	| TK_INTEGER
+	| TK_FLOAT
+	| TK_STRING
+	;
 
-// /*
-//  *	EXP SECTION
-//  */
+function_call
+	: TK_LOWER_ID arguments
+	| type arguments
+	| primary_expression '.' TK_LOWER_ID arguments
+	;
 
-// exp				: exp_or
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+arguments
+	: '(' ')'
+	| '(' expression_list ')'
+	;
 
-// exp_or			: exp_or TK_OR exp_and
-// 					{
-// 						$$ = ast_exp_binary($2, TK_OR, $1, $3);
-// 					}
-// 				| exp_and
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+expression_list
+	: expression
+	| expression_list ',' expression
+	;
 
-// exp_and			: exp_and TK_AND exp_comp
-// 					{
-// 						$$ = ast_exp_binary($2, TK_AND, $1, $3);
-// 					}
-// 				| exp_comp
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
+/* TODO */
+monitor_definition
+	: TK_MONITOR
+	;
 
-// exp_comp		: exp_comp TK_EQUAL exp_add
-// 					{
-// 						$$ = ast_exp_binary($2, TK_EQUAL, $1, $3);
-// 					}
-// 				| exp_comp TK_LEQUAL exp_add
-// 					{
-// 						$$ = ast_exp_binary($2, TK_LEQUAL, $1, $3);
-// 					}
-// 				| exp_comp TK_GEQUAL exp_add
-// 					{
-// 						$$ = ast_exp_binary($2, TK_GEQUAL, $1, $3);
-// 					}
-// 				| exp_comp '<' exp_add
-// 					{
-// 						$$ = ast_exp_binary($2, '<', $1, $3);
-// 					}
-// 				| exp_comp '>' exp_add
-// 					{
-// 						$$ = ast_exp_binary($2, '>', $1, $3);
-// 					}
-// 				| exp_add
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
-
-// exp_add			: exp_add '+' exp_mul
-// 					{
-// 						$$ = ast_exp_binary($2, '+', $1, $3);
-// 					}
-// 				| exp_add '-' exp_mul
-// 					{
-// 						$$ = ast_exp_binary($2, '-', $1, $3);
-// 					}
-// 				| exp_mul
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
-
-// exp_mul			: exp_mul '*' exp_unary
-// 					{
-// 						$$ = ast_exp_binary($2, '*', $1, $3);
-// 					}
-// 				| exp_mul '/' exp_unary
-// 					{
-// 						$$ = ast_exp_binary($2, '/', $1, $3);
-// 					}
-// 				| exp_unary
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
-
-// exp_unary		: '-' exp_simple
-// 					{
-// 						$$ = ast_exp_unary($1, '-', $2);
-// 					}
-// 				| '!' exp_unary
-// 					{
-// 						$$ = ast_exp_unary($1, '!', $2);
-// 					}
-// 				| exp_simple
-// 					{
-// 						$$ = $1;
-// 					}
-// 				;
-
-// exp_simple		: TK_INT
-// 					{
-// 						$$ = ast_exp_int($1);
-// 					}
-// 				| TK_FLOAT
-// 					{
-// 						$$ = ast_exp_float($1);
-// 					}
-// 				| TK_STR
-// 					{
-// 						$$ = ast_exp_str($1);
-// 					}
-// 				| var
-// 					{
-// 						$$ = ast_exp_var($1);
-// 					}
-// 				| '(' exp ')'
-// 					{
-// 						$$ = $2;
-// 					}
-// 				| func_call
-// 					{
-// 						$$ = ast_exp_call($1);
-// 					}
-// 				| TK_KEY_NEW type '[' exp ']'
-// 					{
-// 						$$ = ast_exp_new($1, $2, $4);
-// 					}
-// 				;
-
-// /*
-//  *	END EXP SECTION
-//  */
-
-// func_call		: TK_ID '(' ')'
-// 					{
-// 						$$ = ast_call(ast_id(ID_ARGS($1)), NULL);
-// 					}
-// 				| TK_ID '(' exp_list ')'
-// 					{
-// 						$$ = ast_call(ast_id(ID_ARGS($1)), $3);
-// 					}
-// 				;
-
-// exp_list		: exp
-// 					{
-// 						$$ = $1;
-// 					}
-// 				| exp_list ',' exp
-// 					{
-// 						APPEND_TO_LIST(ExpNode, $$, $1, $3);
-// 					}
-// 				;
 %%
 
 void yyerror(const char* err) {

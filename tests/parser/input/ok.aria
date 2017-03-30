@@ -1,0 +1,47 @@
+/*
+ * Function definition
+ */
+
+/* Without parameters & without return */
+function f1() {}
+
+/* With parameters & without return */
+function f2(a: Integer, b: String) {}
+
+/* Without parameters & with return */
+function f3(): Integer {}
+
+/* With parameters & with return */
+function f4(x: Byte): Integer {}
+
+/* List of parameters ids */
+function f5(a, b, c: Type): Type {
+	/* Multiple variable declarations */
+	x: String
+	y, z: Boolean
+	i: [Byte] /* Array type */
+	j, k, l, m, n, o: [[[Integer]]] /* Nested array type */
+
+	/* Simple statement */
+	x = 1;
+	var := 1.5;
+	f1();
+	while y and z wait in a;
+	signal a;
+	broadcast b;
+	return;
+	return c;
+
+	/* Compound statement */
+	if 2 * 2 == 4 {}
+	if 1 > 2 {} else {}
+	while i == 10 {}
+	/* for ?; expression; ? {} */
+	spawn {}
+	{}
+}
+
+/*
+ * Monitor definition
+ */
+monitor

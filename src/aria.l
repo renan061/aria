@@ -3,6 +3,7 @@
  *	- Change float to double?
  *	- Using a vector to deal with ids and strings is very inefficient.
  *		Therefore, another data strcture should be used instead.
+ *	- Comentário usando //
  */
 
 /*
