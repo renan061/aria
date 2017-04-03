@@ -1,6 +1,4 @@
-/*
- * Strings can't have non-escaped newline characters
- */
- "a string
- with a newline"
+// Strings can't have non-escaped newline characters
+"a string
+with a newline"
  

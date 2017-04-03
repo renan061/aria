@@ -21,16 +21,16 @@ vector: errs
 	@- $(CC) $(CFLAGS) -c src/vector.c -o obj/vector.o
 
 scanner: errs vector parser
-	@- flex src/aria.l
+	@- flex src/scanner.l
 	@- mv lex.yy.c src/lex.c
 	@- $(CC) $(CFLAGS) -c src/lex.c -o obj/scanner.o -Isrc/
 
 parser: errs
-	@- bison -v -d src/aria.y
-	@- mv aria.tab.c src/bison.c
-	@- mv aria.tab.h src/bison.h
+	@- bison -v -d src/parser.y
+	@- mv parser.tab.c src/bison.c
+	@- mv parser.tab.h src/bison.h
 	@- mkdir -p temp
-	@- mv aria.output temp/bison.output
+	@- mv parser.output temp/bison.output
 	@- $(CC) $(CFLAGS) -c src/bison.c -o obj/parser.o
 
 # ==================================================

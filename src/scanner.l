@@ -3,7 +3,6 @@
  *	- Change float to double?
  *	- Using a vector to deal with ids and strings is very inefficient.
  *		Therefore, another data strcture should be used instead.
- *	- Comentário usando //
  */
 
 /*
@@ -27,7 +26,7 @@
  * Exclusive start conditions (only rules qualified
  * with the start condition will be active).
  */
-%x COMMENTARY
+%x LINE_COMMENTARY BLOCK_COMMENTARY
 
 /*
  * C #include statements, #define statements and
@@ -79,11 +78,15 @@ string 		"\""(\\.|[^\\"])*"\""
 
 %%
 
-"/*"						BEGIN(COMMENTARY);
-<COMMENTARY>"*/"			BEGIN(INITIAL);
-<COMMENTARY>{newline}		line++;
-<COMMENTARY><<EOF>>			scanner_error(line, ERR_COMMENTARY_OPEN);
-<COMMENTARY>.				; /* empty */
+"//"							BEGIN(LINE_COMMENTARY);
+<LINE_COMMENTARY>{newline}		line++, BEGIN(INITIAL);
+<LINE_COMMENTARY>.				; /* empty */
+
+"/*"							BEGIN(BLOCK_COMMENTARY);
+<BLOCK_COMMENTARY>"*/"			BEGIN(INITIAL);
+<BLOCK_COMMENTARY>{newline}		line++;
+<BLOCK_COMMENTARY><<EOF>>		scanner_error(line, ERR_COMMENTARY_OPEN);
+<BLOCK_COMMENTARY>.				; /* empty */
 
 {space} 		; /* empty */
 {newline}		line++;
@@ -148,7 +151,6 @@ void scanner_setup(char* file) {
 	if (!(yyin = fopen(file, "r"))) {
     	scanner_error(line, ERR_FILE);
     }
-
 	strs = vector_new();
 }
 

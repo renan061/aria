@@ -1,8 +1,9 @@
 /*
  * TODO:
+ *	- TK_NEQUAL
  *	- Use yyltype for lines and position? Makes it slower...
- *	- Devo repassar o token NEWLINE pra controlar? Coisas como
- *		a, b: Integer c: String estão funcionando.
+ *	- Devo repassar o token NEWLINE pra controlar? (nope, see golang)
+ *		Coisas como a, b: Integer c: String estão funcionando.
  */
 
 %{
@@ -12,15 +13,20 @@
 	void yyerror(const char* err);
 %}
 
+// Semantic information
 %union {
+	// Tokens
 	int ival;
 	double dval;
 	const char* strval; // TODO: Really constant?
+
+	// Nonterminals
+	// TODO
 }
 
 %start program
 
-// Operators
+// Operators precedence and associativity
 %left		<ival> TK_OR
 %left		<ival> TK_AND
 %nonassoc	<ival> TK_EQUAL TK_NEQUAL
@@ -65,6 +71,7 @@ parameters
 	| '(' parameter_list ')'
 	;
 
+/* TODO: Not a list */
 parameter_list
 	: parameter
 	| parameter_list ',' parameter
@@ -77,6 +84,7 @@ variable_declaration
 	: lower_id_list ':' type
 	;
 
+/* TODO: Not a list */
 lower_id_list
 	: TK_LOWER_ID
 	| lower_id_list ',' TK_LOWER_ID
@@ -96,14 +104,13 @@ block_content_list
 	| block_content_list block_content
 	;
 
-/* TODO: Newline after variable_declaration? */
+/* TODO: Remove ';' occasionally */
 block_content
-	: variable_declaration
+	: variable_declaration ';'
 	| statement
 	;
 
-/* TODO: Newline after simple_statement? */
-/* TODO: Removing ';' causes a _lot_ of conflicts */
+/* TODO: Remove ';' occasionally */
 statement
 	: simple_statement ';'
 	| compound_statement
@@ -120,6 +127,7 @@ simple_statement
 	| TK_RETURN expression
 	;
 
+/* TODO: Won't work for ElseIfs... */
 compound_statement
 	: TK_IF expression block
 	| TK_IF expression block TK_ELSE block
@@ -182,9 +190,34 @@ expression_list
 	| expression_list ',' expression
 	;
 
-/* TODO */
 monitor_definition
-	: TK_MONITOR
+	: TK_MONITOR TK_UPPER_ID class_body
+	;
+
+class_body
+	: '{' class_content_list '}'
+	;
+
+/* TODO: Can a class be empty? */
+class_content_list
+	: /* empty */
+	| class_content_list class_content
+	;
+
+/* TODO: Remove ';' occasionally */
+class_content
+	: variable_declaration ';'
+	| constructor_definition
+	| method_definition
+	;
+
+method_definition
+	: TK_PRIVATE function_definition
+	| function_definition
+	;
+
+constructor_definition
+	: TK_INITIALIZER parameters block
 	;
 
 %%

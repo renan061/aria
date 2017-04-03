@@ -1,0 +1,16 @@
+monitor SomeMonitor {
+
+	counter: Integer;
+	
+	initializer(number: Integer) {
+		variable = number;
+	}
+
+	function foo() {
+		counter = bar();
+	}
+	
+	private function bar(): Integer {
+		return 10;
+	}
+}

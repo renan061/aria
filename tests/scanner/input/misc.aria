@@ -1,18 +1,12 @@
-/*
- * Miscellaneous strings
- */
+// Miscellaneous strings
 "ácëntôs âñà"
 "astring with\tweird\nthings and another""string\"besides it"
 /*asdawe123123"string inside commentary"asdasd*/
 
-/*
- * Mixed keywords
- */
+// Mixed keywords
 ifelsewhilereturn
 
-/*
- * Valid and invalid ids
- */
+// Valid and invalid ids
 A98hwedsfs
 Nasdk123
 Zs9d801
@@ -29,9 +23,7 @@ Az123_as!asd12_@3fl
 7_aojh
 #sodf
 
-/*
- * Miscellaneous numbers
- */
+// Miscellaneous numbers
 00000000000
 10101010
 020201039
@@ -70,3 +62,6 @@ a94812)746
 /*/*/**/
 /* This is a nice comment in C*/
 /*/t/t/asdp12837askldjasd/zxckHïkhc"(*9e['0	194*/
+// Nothing
+// More line commentary
+a: Integer; // Line commentary with other tokens

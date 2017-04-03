@@ -50,8 +50,7 @@ simple-statement
 	| 'return' [expression]
 
 compound-statement
-	: 'if' expression block
-	| 'if' expression block 'else' block
+	: 'if' expression block {'else' 'if' expression block} ['else' block]
 	| 'while' expression block
 	| 'for' [?] ';' expression ';' [?] block
 	| 'spawn' block
