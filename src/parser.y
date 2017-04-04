@@ -38,7 +38,7 @@
 
 %token <ival>
 	'{' '}' '[' ']' '(' ')' '=' ';'
-	TK_FUNCTION TK_ASSIGN TK_WHILE TK_WAIT TK_IN TK_SIGNAL TK_BROADCAST
+	TK_FUNCTION TK_DEFINE TK_WHILE TK_WAIT TK_IN TK_SIGNAL TK_BROADCAST
 	TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE TK_FALSE TK_MONITOR
 	TK_PRIVATE TK_INITIALIZER
 
@@ -119,7 +119,7 @@ statement
 
 simple_statement
 	: variable '=' expression
-	| TK_LOWER_ID TK_ASSIGN expression
+	| TK_LOWER_ID TK_DEFINE expression
 	| function_call
 	| TK_WHILE expression TK_WAIT TK_IN variable
 	| TK_SIGNAL variable

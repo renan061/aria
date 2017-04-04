@@ -92,7 +92,7 @@ string 		"\""(\\.|[^\\"])*"\""
 {newline}		line++;
 
 "function"		return yylval.ival = line, TK_FUNCTION;
-":="			return yylval.ival = line, TK_ASSIGN;
+":="			return yylval.ival = line, TK_DEFINE;
 "while"			return yylval.ival = line, TK_WHILE;
 "wait"			return yylval.ival = line, TK_WAIT;
 "in"			return yylval.ival = line, TK_IN;

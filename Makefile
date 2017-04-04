@@ -2,7 +2,7 @@
 # ARIA language compiler
 #
 
-CC := gcc-5 -std=c99 -Wall
+CC := gcc-5 -std=c11 -Wall
 
 main: objs
 

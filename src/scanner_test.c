@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 		token = yylex();
 		switch (token) {
 		case TK_FUNCTION:		printf("TK_FUNCTION");		break;
-		case TK_ASSIGN:			printf("TK_ASSIGN");		break;
+		case TK_DEFINE:			printf("TK_DEFINE");		break;
 		case TK_WHILE:			printf("TK_WHILE");			break;
 		case TK_WAIT:			printf("TK_WAIT");			break;
 		case TK_IN:				printf("TK_IN");			break;
