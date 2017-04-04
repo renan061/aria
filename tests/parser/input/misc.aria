@@ -118,14 +118,14 @@ function f13() {
 	// If
 	if true {}
 
-	// // If-ElseIf
-	// if true {} else if false {}
+	// If-ElseIf
+	if true {} else if false {}
 
 	// If-Else
 	if true {} else {}
 
-	// // If-ElseIf-Else
-	// if true {} else if false {} else {}
+	// If-ElseIf-Else
+	if true {} else if false {} else {}
 
 	// While 
 	while true {}

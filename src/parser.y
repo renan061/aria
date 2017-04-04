@@ -19,6 +19,7 @@
 	int ival;
 	double dval;
 	const char* strval; // TODO: Really constant?
+	// TODO: IDs line number
 
 	// Nonterminals
 	// TODO
@@ -127,14 +128,26 @@ simple_statement
 	| TK_RETURN expression
 	;
 
-/* TODO: Won't work for ElseIfs... */
 compound_statement
-	: TK_IF expression block
-	| TK_IF expression block TK_ELSE block
+	: if_statement else_if_statement_list
+	| if_statement else_if_statement_list TK_ELSE block
 	| TK_WHILE expression block
 	/* | TK_FOR [?] ';' expression ';' [?] block */
 	| TK_SPAWN block
 	| block
+	;
+
+if_statement
+	: TK_IF expression block
+	;
+
+else_if_statement
+	: TK_ELSE TK_IF expression block
+	;
+
+else_if_statement_list
+	: /* empty */
+	| else_if_statement_list else_if_statement
 	;
 
 variable
