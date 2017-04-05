@@ -10,6 +10,7 @@
 	#include "errs.h"
 	#include "scanner.h"
 
+	// TODO: Should this be static? Test.
 	void yyerror(const char* err);
 %}
 
@@ -129,25 +130,29 @@ simple_statement
 	;
 
 compound_statement
-	: if_statement else_if_statement_list
-	| if_statement else_if_statement_list TK_ELSE block
+	: if_else_if_statement
+	| if_else_if_statement TK_ELSE block
 	| TK_WHILE expression block
 	/* | TK_FOR [?] ';' expression ';' [?] block */
 	| TK_SPAWN block
 	| block
 	;
 
-if_statement
-	: TK_IF expression block
+if_else_if_statement
+	: if_statement else_if_statement_list
 	;
 
-else_if_statement
-	: TK_ELSE TK_IF expression block
+if_statement
+	: TK_IF expression block
 	;
 
 else_if_statement_list
 	: /* empty */
 	| else_if_statement_list else_if_statement
+	;
+
+else_if_statement
+	: TK_ELSE TK_IF expression block
 	;
 
 variable

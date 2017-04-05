@@ -22,13 +22,13 @@ monitor Stack
 
 	private values: [Byte]
 
-	initializer(capacity: Int) {
+	initializer(capacity: Integer) {
 		isFullQueue = Queue()
 		isEmptyQueue = Queue()
 		values = [Byte](capacity)
 	}
 
-	function push(value: Rune) {
+	function push(value: Byte) {
 		while isFull() wait in isFullQueue
 		values = append(values, value)
 		signal isEmptyQueue

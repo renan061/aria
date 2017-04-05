@@ -103,7 +103,7 @@ expression-primary
 literal
 	: 'true'
 	| 'false'
-	| INT
+	| INTEGER
 	| FLOAT
 	| STRING
 

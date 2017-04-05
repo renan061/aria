@@ -1,6 +1,15 @@
 #if !defined(ast_h)
 #define ast_h
 
+/*
+ * TODO: Can I group up variable declarations and statements
+ * together? Are variable declarations statements? (no)
+ * Should I use some intermediary, like "content"?
+ */
+
+
+#include <stdbool.h>
+
 // ==================================================
 //
 //	Tags
@@ -14,11 +23,10 @@ typedef enum DefinitionTag {
 
 typedef enum TypeTag {
 	TYPE_ID,
-	TYPE_INDEXED,
+	TYPE_ARRAY,
 } TypeTag;
 
 typedef enum StatementTag {
-	// simple
 	STATEMENT_ASSIGNMENT,
 	STATEMENT_DEFINITION,
 	STATEMENT_FUNCTION_CALL,
@@ -26,7 +34,6 @@ typedef enum StatementTag {
 	STATEMENT_SIGNAL,
 	STATEMENT_BROADCAST,
 	STATEMENT_RETURN,
-	// compound
 	STATEMENT_IF,
 	STATEMENT_IF_ELSE,
 	STATEMENT_WHILE,
@@ -40,18 +47,15 @@ typedef enum VariableTag {
 } VariableTag;
 
 typedef enum ExpressionTag {
-	EXPRESSION_BINARY,
-	EXPRESSION_UNARY,
-	// primary
 	EXPRESSION_LITERAL_BOOLEAN,
 	EXPRESSION_LITERAL_INTEGER,
 	EXPRESSION_LITERAL_FLOAT,
 	EXPRESSION_LITERAL_STRING,
 	EXPRESSION_VARIABLE,
-	EXPRESSION_FUNCTION_CALL
+	EXPRESSION_FUNCTION_CALL,
+	EXPRESSION_UNARY,
+	EXPRESSION_BINARY
 } ExpressionTag;
-
-// TODO: Monitor
 
 // ==================================================
 //
@@ -59,213 +63,194 @@ typedef enum ExpressionTag {
 //
 // ==================================================
 
-typedef struct ProgramNode		ProgramNode;
-typedef struct DefinitionNode	DefinitionNode;
-typedef struct TypeNode			TypeNode;
-typedef struct IdNode			IdNode;
-typedef struct StatementNode	StatementNode;
-typedef struct VariableNode		VariableNode;
-typedef struct ExpressionNode	ExpressionNode;
-typedef struct FunctionCallNode	FunctionCallNode;
+typedef struct ProgramNode				ProgramNode;
+typedef struct DefinitionNode			DefinitionNode;
+typedef struct DeclarationNode			DeclarationNode;
+typedef struct FunctionDefinitionNode	FunctionDefinitionNode;
+typedef struct ClassDefinitionNode		ClassDefinitionNode;
+typedef struct TypeNode					TypeNode;
+typedef struct IdNode					IdNode;
+typedef struct StatementNode			StatementNode;
+typedef struct VariableNode				VariableNode;
+typedef struct ExpressionNode			ExpressionNode;
+typedef struct FunctionCallNode			FunctionCallNode;
 
 struct ProgramNode {
-	DefinitionNode* defs;
+	DefinitionNode* definitions;
 };
 
 struct DefinitionNode {
 	DefinitionTag tag;
-	DefinitionNode* next;
 	
 	union {
 		// DefinitionFunction
-		struct {
-			TypeNode* type;
-			IdNode* id;
-			bool global;
-			unsigned int temp;
-		} function;
+		FunctionDefinitionNode* function;
 		// DefinitionMonitor
-		struct {
-			// TODO
-		} monitor;
+		ClassDefinitionNode* monitor;
 	};
 };
 
+struct DeclarationNode {
+	IdNode* id;
+	TypeNode* type;
+};
+
+struct FunctionDefinitionNode {
+	IdNode* id;
+	DeclarationNode* parameters;
+	TypeNode* type;
+	StatementNode* block;
+};
+
+struct ClassDefinitionNode {
+	IdNode* id;
+	ClassBodyContentNode* contents; // TODO: Declarations?	
+}
+
+struct ClassBodyContentNode {
+	ClassBodyContentTag tag;
+
+	union {
+		// method
+		// initializer
+		// attribute
+	};
+}
+
 struct TypeNode {
-	TypeE tag;
+	TypeTag tag;
+
 	union {
 		// TypeID
 		IdNode* id;
-		// TypeIndexed
-		TypeNode* indexed;
+		// TypeArray
+		TypeNode* array;
 	};
 };
 
 struct IdNode {
-	int line;
+	IdTag tag;
+
 	union {
 		// String
 		const char* string;
 		// Declaration
-		// TODO (DefinitionNode* definition;)
+		DeclarationNode* declaration;
 	};
 };
 
 struct StatementNode {
 	StatementTag tag;
-	StatementNode* next;
-
-	int line;
 
 	union {
 		// StatementAssignment
-
-		// StatementDefinition
 		struct {
 			VariableNode* variable;
 			ExpressionNode* expression;
-		};
+		} assignment;
+		// StatementDefinition
+		struct {
+			DeclarationNode* declaration;
+			ExpressionNode* expression;
+		} definition;
 		// StatementFunctionCall
-		STATEMENT_FUNCTION_CALL,
+		FunctionCallNode* function_call;
 		// StatementWhileWait
-		STATEMENT_WHILE_WAIT,
-		// StatementSignal, StatementBroadcast
-		STATEMENT_SIGNAL,
-		STATEMENT_BROADCAST,
+		struct {
+			ExpressionNode* expression;
+			VariableNode* variable;
+		} while_wait;
+		// StatementSignal
+		VariableNode* signal;
+		// StatementBroadcast
+		VariableNode* broadcast;
 		// StatementReturn
-		STATEMENT_RETURN,
+		ExpressionNode* return;
 		// StatementIf
-		STATEMENT_IF,
+		struct {
+			ExpressionNode* expression;
+			StatementNode* block;
+		} if;
 		// StatementIfElse
-		STATEMENT_IF_ELSE,
+		struct {
+			ExpressionNode* expression;
+			StatementNode* if_block;
+			StatementNode* else_block;
+		} if_else;
 		// StatementWhile
-		STATEMENT_WHILE,
+		struct {
+			ExpressionNode* expression;
+			StatementNode* block;
+		} while;
 		// StatementSpawn
-		STATEMENT_SPAWN,
+		StatementNode* spawn;
 		// StatementBlock
-		STATEMENT_BLOCK
+		StatementBlock* block;
 	};
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-struct StatementNode {
-	CmdE tag;
-	int line;
-	StatementNode* next;
-
-	union {
-		// CmdBlock
-		struct {
-			DefinitionNode* defs;
-			StatementNode* cmds;
-		} block;
-		// CmdIf and CmdWhile
-		struct {
-			ExpressionNode* exp;
-			StatementNode* cmd;
-		} ifwhile;
-		// CmdIfElse
-		struct {
-			ExpressionNode* exp;
-			StatementNode *ifcmd, *elsecmd;
-		} ifelse;
-		// CmdPrint
-		ExpressionNode* print;
-		// CmdAsg
-		struct {
-			VariableNode* var;
-			ExpressionNode* exp;
-		} asg;
-		// CmdReturn
-		ExpressionNode* ret;
-		// CmdCall
-		FunctionCallNode* call;
-	} u;
 };
 
 struct VariableNode {
-	VarE tag;
-	int line;
-	unsigned int temp;
-	TypeNode* type;
+	VariableTag tag;
 
 	union {
 		// VarId
 		IdNode* id;
 		// VarIndexed
 		struct {
-			ExpressionNode *array, *index;
+			ExpressionNode* array;
+			ExpressionNode* index;
 		} indexed;
-	} u;
+	};
 };
 
 struct ExpressionNode {
-	ExpE tag;
-	int line; // Initialized as "-1" for ExpInt, ExpFloat and ExpStr
-	unsigned int temp;
-	TypeNode* type;
-	ExpressionNode* next;
+	ExpressionTag tag;
 	
 	union {
-		// ExpKInt
-		int intvalue;
-		// ExpKFloat
-		double floatvalue;
-		// ExpKStr
-		const char* strvalue;
-		// ExpVar
-		VariableNode* var;
-		// ExpCall
-		FunctionCallNode* call;
-		// ExpNew
+		// ExpressionLiteralBoolean
+		bool literal_boolean;
+		// ExpressionLiteralInteger
+		int literal_integer;
+		// ExpressionLiteralFloat
+		double literal_float;
+		// ExpressionLiteralString
+		const char* literal_string;
+		// ExpressionVariable
+		VariableNode* variable;
+		// ExpressionFunctionCall
+		FunctionCallNode* function_call;
+		// ExpressionUnary
 		struct {
-			TypeNode* type;
-			ExpressionNode* size;
-		} new;
-		// ExpCast
-		ExpressionNode* cast;
-		// ExpUnary
-		struct {
-			ScannerSymbol symbol;
-			ExpressionNode* exp;
+			char token; // TODO: Type
+			ExpressionNode* expression;
 		} unary;
-		// ExpMul, ExpAdd, ExpComp, ExpAnd and ExpOr
+		// ExpressionBinary
 		struct {
-			ScannerSymbol symbol;
-			ExpressionNode *exp1, *exp2;
+			char token; // TODO: Type
+			ExpressionNode* left_expression;
+			ExpressionNode* right_expression;
 		} binary;
-	} u;
+	};
 };
 
 struct FunctionCallNode {
-	IdNode* id;
-	ExpressionNode* args;
+	FunctionCallTag* tag;
+	ExpressionNode* arguments;
+
+	union {
+		// FunctionCallBasic
+		IdNode* basic;
+		// TODO1: When not array type can I call initializer?
+		// That way would be a method call like m.initializer(...)
+		// TODO2: What does Swift array implies? Ex.: [Integer] -> Array<Integer> 
+		// FunctionCallConstructor
+		TypeNode* constructor;
+		// FunctionCallMethod
+		struct {
+			ExpressionNode* object;
+			IdNode* name;
+		} method;
+	};
 };
 
 #endif
