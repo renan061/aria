@@ -1,0 +1,11 @@
+- Program
+	- Declaration
+	- Definition
+		- Id
+		- Type
+		- Block
+		- Body
+			- Statement
+				- Variable
+				- Expression
+				- FunctionCall

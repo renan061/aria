@@ -1,14 +1,9 @@
 #if !defined(ast_h)
 #define ast_h
 
-/*
- * TODO: Can I group up variable declarations and statements
- * together? Are variable declarations statements? (no)
- * Should I use some intermediary, like "content"?
- */
-
-
 #include <stdbool.h>
+
+#include "scanner.h"
 
 // ==================================================
 //
@@ -18,6 +13,8 @@
 
 typedef enum DefinitionTag {
 	DEFINITION_FUNCTION,
+	DEFINITION_METHOD,
+	DEFINITION_CONSTRUCTOR,
 	DEFINITION_MONITOR,
 } DefinitionTag;
 
@@ -25,6 +22,16 @@ typedef enum TypeTag {
 	TYPE_ID,
 	TYPE_ARRAY,
 } TypeTag;
+
+typedef enum BlockTag {
+	BLOCK_DECLARATION,
+	BLOCK_STATEMENT
+} BlockTag;
+
+typedef enum BodyTag {
+	BODY_DECLARATION,
+	BODY_DEFINITION
+} BodyTag;
 
 typedef enum StatementTag {
 	STATEMENT_ASSIGNMENT,
@@ -57,154 +64,177 @@ typedef enum ExpressionTag {
 	EXPRESSION_BINARY
 } ExpressionTag;
 
+typedef enum FunctionCallTag {
+	FUNCTION_CALL_BASIC,
+	FUNCTION_CALL_METHOD,
+	FUNCTION_CALL_CONSTRUCTOR
+} FunctionCallTag;
+
 // ==================================================
 //
 //	Nodes
 //
 // ==================================================
 
-typedef struct ProgramNode				ProgramNode;
-typedef struct DefinitionNode			DefinitionNode;
-typedef struct DeclarationNode			DeclarationNode;
-typedef struct FunctionDefinitionNode	FunctionDefinitionNode;
-typedef struct ClassDefinitionNode		ClassDefinitionNode;
-typedef struct TypeNode					TypeNode;
-typedef struct IdNode					IdNode;
-typedef struct StatementNode			StatementNode;
-typedef struct VariableNode				VariableNode;
-typedef struct ExpressionNode			ExpressionNode;
-typedef struct FunctionCallNode			FunctionCallNode;
+typedef struct Program Program;
+typedef struct Declaration Declaration;
+typedef struct Definition Definition;
+typedef struct Id Id;
+typedef struct Type Type;
+typedef struct Block Block;
+typedef struct Body Body;
+typedef struct Statement Statement;
+typedef struct Variable Variable;
+typedef struct Expression Expression;
+typedef struct FunctionCall FunctionCall;
 
-struct ProgramNode {
-	DefinitionNode* definitions;
+struct Program {
+	Body* body;
 };
 
-struct DefinitionNode {
+struct Declaration {
+	Declaration* next;
+
+	Id* id;
+	Type* type;
+};
+
+struct Definition {
 	DefinitionTag tag;
 	
 	union {
 		// DefinitionFunction
-		FunctionDefinitionNode* function;
+		struct {
+			Id* id;
+			Declaration* parameters;
+			Type* type;
+			Block* block;
+		} function;
+		// DefinitionMethod
+		struct {
+			bool private;
+			Definition* function;
+		} method;
+		// DefinitionConstructor
+		struct {
+			Declaration* parameters;
+			Block* block;
+		} constructor;
 		// DefinitionMonitor
-		ClassDefinitionNode* monitor;
+		struct {
+			Id* id;
+			Body* body;
+		} monitor;
 	};
 };
 
-struct DeclarationNode {
-	IdNode* id;
-	TypeNode* type;
-};
-
-struct FunctionDefinitionNode {
-	IdNode* id;
-	DeclarationNode* parameters;
-	TypeNode* type;
-	StatementNode* block;
-};
-
-struct ClassDefinitionNode {
-	IdNode* id;
-	ClassBodyContentNode* contents; // TODO: Declarations?	
-}
-
-struct ClassBodyContentNode {
-	ClassBodyContentTag tag;
-
+struct Id {
 	union {
-		// method
-		// initializer
-		// attribute
+		// Name
+		const char* name;
+		// Declaration
+		Declaration* declaration;
 	};
-}
+};
 
-struct TypeNode {
+struct Type {
 	TypeTag tag;
 
 	union {
 		// TypeID
-		IdNode* id;
+		Id* id;
 		// TypeArray
-		TypeNode* array;
+		Type* array;
 	};
 };
 
-struct IdNode {
-	IdTag tag;
+struct Block {
+	BlockTag tag;
+	Block* next;
 
 	union {
-		// String
-		const char* string;
-		// Declaration
-		DeclarationNode* declaration;
+		Declaration* declaration;
+		Statement* statement;
 	};
 };
 
-struct StatementNode {
+struct Body {
+	BodyTag tag;
+	Body* next;
+
+	union {
+		Declaration* declaration;
+		Definition* definition;
+	};
+};
+
+struct Statement {
 	StatementTag tag;
 
 	union {
 		// StatementAssignment
 		struct {
-			VariableNode* variable;
-			ExpressionNode* expression;
+			Variable* variable;
+			Expression* expression;
 		} assignment;
 		// StatementDefinition
 		struct {
-			DeclarationNode* declaration;
-			ExpressionNode* expression;
+			Declaration* declaration;
+			Expression* expression;
 		} definition;
 		// StatementFunctionCall
-		FunctionCallNode* function_call;
+		FunctionCall* function_call;
 		// StatementWhileWait
 		struct {
-			ExpressionNode* expression;
-			VariableNode* variable;
+			Expression* expression;
+			Variable* variable;
 		} while_wait;
 		// StatementSignal
-		VariableNode* signal;
+		Variable* signal;
 		// StatementBroadcast
-		VariableNode* broadcast;
+		Variable* broadcast;
 		// StatementReturn
-		ExpressionNode* return;
+		Expression* return_;
 		// StatementIf
 		struct {
-			ExpressionNode* expression;
-			StatementNode* block;
-		} if;
+			Expression* expression;
+			Block* block;
+		} if_;
 		// StatementIfElse
 		struct {
-			ExpressionNode* expression;
-			StatementNode* if_block;
-			StatementNode* else_block;
+			Expression* expression;
+			Block* if_block;
+			Block* else_block;
 		} if_else;
 		// StatementWhile
 		struct {
-			ExpressionNode* expression;
-			StatementNode* block;
-		} while;
+			Expression* expression;
+			Block* block;
+		} while_;
 		// StatementSpawn
-		StatementNode* spawn;
+		Block* spawn;
 		// StatementBlock
-		StatementBlock* block;
+		Block* block;
 	};
 };
 
-struct VariableNode {
+struct Variable {
 	VariableTag tag;
 
 	union {
 		// VarId
-		IdNode* id;
+		Id* id;
 		// VarIndexed
 		struct {
-			ExpressionNode* array;
-			ExpressionNode* index;
+			Expression* array;
+			Expression* index;
 		} indexed;
 	};
 };
 
-struct ExpressionNode {
+struct Expression {
 	ExpressionTag tag;
+	Expression* next;
 	
 	union {
 		// ExpressionLiteralBoolean
@@ -216,41 +246,94 @@ struct ExpressionNode {
 		// ExpressionLiteralString
 		const char* literal_string;
 		// ExpressionVariable
-		VariableNode* variable;
+		Variable* variable;
 		// ExpressionFunctionCall
-		FunctionCallNode* function_call;
+		FunctionCall* function_call;
 		// ExpressionUnary
 		struct {
-			char token; // TODO: Type
-			ExpressionNode* expression;
+			Token token;
+			Expression* expression;
 		} unary;
 		// ExpressionBinary
 		struct {
-			char token; // TODO: Type
-			ExpressionNode* left_expression;
-			ExpressionNode* right_expression;
+			Token token;
+			Expression* left_expression;
+			Expression* right_expression;
 		} binary;
 	};
 };
 
-struct FunctionCallNode {
-	FunctionCallTag* tag;
-	ExpressionNode* arguments;
+struct FunctionCall {
+	FunctionCallTag tag;
+	Expression* arguments;
 
 	union {
 		// FunctionCallBasic
-		IdNode* basic;
-		// TODO1: When not array type can I call initializer?
-		// That way would be a method call like m.initializer(...)
-		// TODO2: What does Swift array implies? Ex.: [Integer] -> Array<Integer> 
-		// FunctionCallConstructor
-		TypeNode* constructor;
+		Id* basic;
 		// FunctionCallMethod
 		struct {
-			ExpressionNode* object;
-			IdNode* name;
+			Expression* object;
+			Id* name;
 		} method;
+		// FunctionCallConstructor
+		Type* constructor;
 	};
 };
+
+// ==================================================
+//
+//	Functions
+//
+// ==================================================
+
+extern Program* program;
+extern Program* ast_program(Body*);
+
+extern Declaration* ast_declaration_variable(Id*, Type*);
+
+extern Definition* ast_definition_function(Id*, Declaration*, Type*, Block*);
+extern Definition* ast_definition_method(bool, Definition*);
+extern Definition* ast_definition_constructor(Declaration*, Block*);
+extern Definition* ast_definition_monitor(Id*, Body*);
+
+extern Id* ast_id(const char*);
+
+extern Type* ast_type_id(Id*);
+extern Type* ast_type_array(Type*);
+
+extern Block* ast_block_declaration(Declaration*);
+extern Block* ast_block_statement(Statement*);
+
+extern Body* ast_body_declaration(Declaration*);
+extern Body* ast_body_definition(Definition*);
+
+extern Statement* ast_statement_assignment(Variable*, Expression*);
+extern Statement* ast_statement_definition(Id*, Expression*);
+extern Statement* ast_statement_function_call(FunctionCall*);
+extern Statement* ast_statement_while_wait(Expression*, Variable*);
+extern Statement* ast_statement_signal(Variable*);
+extern Statement* ast_statement_broadcast(Variable*);
+extern Statement* ast_statement_return(Expression*);
+extern Statement* ast_statement_if(Expression*, Block*);
+extern Statement* ast_statement_if_else(Expression*, Block*, Block*);
+extern Statement* ast_statement_while(Expression*, Block*);
+extern Statement* ast_statement_spawn(Block*);
+extern Statement* ast_statement_block(Block*);
+
+extern Variable* ast_variable_id(Id*);
+extern Variable* ast_variable_indexed(Expression*, Expression*);
+
+extern Expression* ast_expression_literal_boolean(bool);
+extern Expression* ast_expression_literal_integer(int);
+extern Expression* ast_expression_literal_float(double);
+extern Expression* ast_expression_literal_string(const char*);
+extern Expression* ast_expression_variable(Variable*);
+extern Expression* ast_expression_function_call(FunctionCall*);
+extern Expression* ast_expression_unary(Token, Expression*);
+extern Expression* ast_expression_binary(Token, Expression*, Expression*);
+
+extern FunctionCall* ast_function_call_basic(Id*, Expression*);
+extern FunctionCall* ast_function_call_method(Expression*, Id*, Expression*);
+extern FunctionCall* ast_function_call_constructor(Type*, Expression*);
 
 #endif

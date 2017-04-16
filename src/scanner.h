@@ -2,6 +2,11 @@
 #define scanner_h
 
 /*
+ * TODO: Doc
+ */
+typedef unsigned int Token;
+
+/*
  * Used by the parser to get the next token.
  */
 extern int yylex(void);

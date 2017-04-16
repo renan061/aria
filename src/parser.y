@@ -4,11 +4,31 @@
  *	- Use yyltype for lines and position? Makes it slower...
  *	- Devo repassar o token NEWLINE pra controlar? (nope, see golang)
  *		Coisas como a, b: Integer c: String estão funcionando.
+ *	- Remove ';' occasionally
  */
 
 %{
+	#include <stdlib.h>
+
 	#include "errs.h"
 	#include "scanner.h"
+	#include "ast.h"
+
+	// TODO: Doc
+	// Auxiliary macro to create ids
+	#define ID(string) ast_id(string)
+
+	// TODO: Doc
+	// Auxiliary macro to use with node lists
+	#define APPEND(type, assignable, list, elem);	\
+		if (!list) {								\
+			assignable = elem;						\
+		} else {									\
+			type* e;								\
+			for (e = list; e->next; e = e->next);	\
+			e->next = elem;							\
+			assignable = list;						\
+		}											\
 
 	// TODO: Should this be static? Test.
 	void yyerror(const char* err);
@@ -23,7 +43,15 @@
 	// TODO: IDs line number
 
 	// Nonterminals
-	// TODO
+	Declaration* declaration;
+	Definition* definition;
+	Type* type;
+	Block* block;
+	Body* body;
+	Statement* statement;
+	Variable* variable;
+	Expression* expression;
+	FunctionCall* function_call;
 }
 
 %start program
@@ -37,6 +65,7 @@
 %left		<ival> '*' '/'
 %left		<ival> TK_NOT // precedence for unary minus
 
+// Tokens
 %token <ival>
 	'{' '}' '[' ']' '(' ')' '=' ';'
 	TK_FUNCTION TK_DEFINE TK_WHILE TK_WAIT TK_IN TK_SIGNAL TK_BROADCAST
@@ -45,197 +74,455 @@
 
 %token <ival> TK_INTEGER
 %token <dval> TK_FLOAT
-%token <strvalue> TK_STRING TK_LOWER_ID TK_UPPER_ID
+%token <strval> TK_STRING TK_LOWER_ID TK_UPPER_ID
+
+// Nonterminals
+%type <declaration>
+	parameters parameter_list parameter variable_declaration lower_id_list
+%type <definition>
+	function_definition method_definition constructor_definition monitor_definition
+%type <type>
+	type
+%type <block>
+	block block_content_list block_content else
+%type <body>
+	body_list body class_body class_content_list class_content
+%type <statement>
+	statement simple_statement compound_statement
+%type <variable>
+	variable
+%type <expression>
+	expression primary_expression literal arguments expression_list
+%type <function_call>
+	function_call
 
 %%
 
 program
-	: definitions
+	: body_list
+		{
+			program = ast_program($1);
+		}
 	;
 
-definitions
+body_list
 	: /* empty */
-	| definitions definition
+		{
+			$$ = NULL;
+		}
+	| body_list body
+		{
+			APPEND(Body, $$, $1, $2);
+		}
 	;
 
-definition
+body
 	: function_definition
+		{
+			$$ = ast_body_definition($1);
+		}
 	| monitor_definition
+		{
+			$$ = ast_body_definition($1);
+		}
 	;
 
 function_definition
 	: TK_FUNCTION TK_LOWER_ID parameters ':' type block
+		{
+			$$ = ast_definition_function(ID($2), $3, $5, $6);
+		}
 	| TK_FUNCTION TK_LOWER_ID parameters block
+		{
+			$$ = ast_definition_function(ID($2), $3, NULL, $4);
+		}
 	;
 
 parameters
 	: '(' ')'
+		{
+			$$ = NULL;
+		}
 	| '(' parameter_list ')'
+		{
+			$$ = $2;
+		}
 	;
 
 /* TODO: Not a list */
 parameter_list
 	: parameter
+		{
+			$$ = $1;
+		}
 	| parameter_list ',' parameter
+		{
+			APPEND(Declaration, $$, $1, $3);
+		}
 	;
 
 parameter
 	: variable_declaration
+		{
+			$$ = $1;
+		}
+	;
 
 variable_declaration
 	: lower_id_list ':' type
+		{
+			for ($$ = $1; $1; $1 = $1->next) {
+				$1->type = $3;
+			}
+		}
 	;
 
 /* TODO: Not a list */
 lower_id_list
 	: TK_LOWER_ID
+		{
+			$$ = ast_declaration_variable(ID($1), NULL);
+		}
 	| lower_id_list ',' TK_LOWER_ID
+		{
+			APPEND(Declaration, $$, $1, ast_declaration_variable(ID($3), NULL));
+		}
 	;
 
 type
 	: TK_UPPER_ID
+		{
+			$$ = ast_type_id(ID($1));
+		}
 	| '[' type ']'
+		{
+			$$ = ast_type_array($2);
+		}
 	;
 
 block
 	: '{' block_content_list '}'
+		{
+			$$ = $2;
+		}
 	;
 
 block_content_list
 	: /* empty */
+		{
+			$$ = NULL;
+		}
 	| block_content_list block_content
+		{
+			APPEND(Block, $$, $1, $2);
+		}
 	;
 
-/* TODO: Remove ';' occasionally */
 block_content
 	: variable_declaration ';'
+		{
+			$$ = ast_block_declaration($1);
+		}
 	| statement
+		{
+			$$ = ast_block_statement($1);
+		}
 	;
 
-/* TODO: Remove ';' occasionally */
 statement
 	: simple_statement ';'
+		{
+			$$ = $1;
+		}
 	| compound_statement
+		{
+			$$ = $1;
+		}
 	;
 
 simple_statement
 	: variable '=' expression
+		{
+			$$ = ast_statement_assignment($1, $3);
+		}
 	| TK_LOWER_ID TK_DEFINE expression
+		{
+			$$ = ast_statement_definition(ID($1), $3);
+		}
 	| function_call
+		{
+			$$ = ast_statement_function_call($1);
+		}
 	| TK_WHILE expression TK_WAIT TK_IN variable
+		{
+			$$ = ast_statement_while_wait($2, $5);
+		}
 	| TK_SIGNAL variable
+		{
+			$$ = ast_statement_signal($2);
+		}
 	| TK_BROADCAST variable
+		{
+			$$ = ast_statement_broadcast($2);
+		}
 	| TK_RETURN
+		{
+			$$ = ast_statement_return(NULL);
+		}
 	| TK_RETURN expression
+		{
+			$$ = ast_statement_return($2);
+		}
 	;
 
 compound_statement
-	: if_else_if_statement
-	| if_else_if_statement TK_ELSE block
+	: TK_IF expression block else
+		{
+			$$ = ($4)
+				? ast_statement_if_else($2, $3, $4)
+				: ast_statement_if($2, $3)
+				;
+		}
 	| TK_WHILE expression block
+		{
+			$$ = ast_statement_while($2, $3);
+		}
 	/* | TK_FOR [?] ';' expression ';' [?] block */
 	| TK_SPAWN block
+		{
+			$$ = ast_statement_spawn($2);
+		}
 	| block
+		{
+			$$ = ast_statement_block($1);
+		}
 	;
 
-if_else_if_statement
-	: if_statement else_if_statement_list
-	;
-
-if_statement
-	: TK_IF expression block
-	;
-
-else_if_statement_list
+else
 	: /* empty */
-	| else_if_statement_list else_if_statement
-	;
-
-else_if_statement
-	: TK_ELSE TK_IF expression block
+		{
+			$$ = NULL;
+		}
+	| TK_ELSE TK_IF expression block else
+		{
+			Statement* statement = ($5)
+				? ast_statement_if_else($3, $4, $5)
+				: ast_statement_if($3, $4)
+				;
+			$$ = ast_block_statement(statement);
+		}
+	| TK_ELSE block
+		{
+			$$ = $2;
+		}
 	;
 
 variable
 	: TK_LOWER_ID
+		{
+			$$ = ast_variable_id(ID($1));
+		}
 	| primary_expression '[' expression ']'
+		{
+			$$ = ast_variable_indexed($1, $3);
+		}
 	;
 
 expression
 	: expression TK_OR expression
+		{
+			$$ = ast_expression_binary(TK_OR, $1, $3);
+		}
 	| expression TK_AND expression
+		{
+			$$ = ast_expression_binary(TK_AND, $1, $3);
+		}
 	| expression TK_EQUAL expression
+		{
+			$$ = ast_expression_binary(TK_EQUAL, $1, $3);
+		}
 	| expression TK_LEQUAL expression
+		{
+			$$ = ast_expression_binary(TK_LEQUAL, $1, $3);
+		}
 	| expression TK_GEQUAL expression
+		{
+			$$ = ast_expression_binary(TK_GEQUAL, $1, $3);
+		}
 	| expression '<' expression
+		{
+			$$ = ast_expression_binary('<', $1, $3);
+		}
 	| expression '>' expression
+		{
+			$$ = ast_expression_binary('>', $1, $3);
+		}
 	| expression '+' expression
+		{
+			$$ = ast_expression_binary('+', $1, $3);
+		}
 	| expression '-' expression
+		{
+			$$ = ast_expression_binary('-', $1, $3);
+		}
 	| expression '*' expression
+		{
+			$$ = ast_expression_binary('*', $1, $3);
+		}
 	| expression '/' expression
+		{
+			$$ = ast_expression_binary('/', $1, $3);
+		}
 	| '-' expression %prec TK_NOT
+		{
+			$$ = ast_expression_unary('-', $2);
+		}
 	| TK_NOT expression
+		{
+			$$ = ast_expression_unary(TK_NOT, $2);
+		}
 	| primary_expression
+		{
+			$$ = $1;
+		}
 	;
 
 primary_expression
 	: literal
+		{
+			$$ = $1;
+		}
 	| variable
+		{
+			$$ = ast_expression_variable($1);
+		}
 	| function_call
+		{
+			$$ = ast_expression_function_call($1);
+		}
 	| '(' expression ')'
+		{
+			$$ = $2;
+		}
 	;
 
 literal
 	: TK_TRUE
+		{
+			$$ = ast_expression_literal_boolean(true);
+		}
 	| TK_FALSE
+		{
+			$$ = ast_expression_literal_boolean(false);
+		}
 	| TK_INTEGER
+		{
+			$$ = ast_expression_literal_integer($1);
+		}
 	| TK_FLOAT
+		{
+			$$ = ast_expression_literal_float($1);
+		}
 	| TK_STRING
+		{
+			$$ = ast_expression_literal_string($1);
+		}
 	;
 
 function_call
 	: TK_LOWER_ID arguments
-	| type arguments
+		{
+			$$ = ast_function_call_basic(ID($1), $2);
+		}
 	| primary_expression '.' TK_LOWER_ID arguments
+		{
+			$$ = ast_function_call_method($1, ID($3), $4);
+		}
+	| type arguments
+		{
+			$$ = ast_function_call_constructor($1, $2);
+		}
 	;
 
 arguments
 	: '(' ')'
+		{
+			$$ = NULL;
+		}
 	| '(' expression_list ')'
+		{
+			$$ = $2;
+		}
 	;
 
+/* TODO: Not a list */
 expression_list
 	: expression
+		{
+			$$ = $1;
+		}
 	| expression_list ',' expression
+		{
+			APPEND(Expression, $$, $1, $3);
+		}
 	;
 
 monitor_definition
 	: TK_MONITOR TK_UPPER_ID class_body
+		{
+			$$ = ast_definition_monitor(ID($2), $3);
+		}
 	;
 
 class_body
 	: '{' class_content_list '}'
+		{
+			$$ = $2;
+		}
 	;
 
-/* TODO: Can a class be empty? */
 class_content_list
 	: /* empty */
+		{
+			$$ = NULL;
+		}
 	| class_content_list class_content
+		{
+			APPEND(Body, $$, $1, $2);
+		}
 	;
 
-/* TODO: Remove ';' occasionally */
 class_content
 	: variable_declaration ';'
+		{
+			$$ = ast_body_declaration($1);
+		}
 	| constructor_definition
+		{
+			$$ = ast_body_definition($1);
+		}
 	| method_definition
+		{
+			$$ = ast_body_definition($1);
+		}
 	;
 
 method_definition
 	: TK_PRIVATE function_definition
+		{
+			$$ = ast_definition_method(true, $2);
+		}
 	| function_definition
+		{
+			$$ = ast_definition_method(false, $1);
+		}
 	;
 
 constructor_definition
 	: TK_INITIALIZER parameters block
+		{
+			$$ = ast_definition_constructor($2, $3);
+		}
 	;
 
 %%

@@ -6,7 +6,7 @@ CC := gcc-5 -std=c11 -Wall
 
 main: objs
 
-objs: errs vector scanner
+objs: errs vector scanner parser ast
 
 # ==================================================
 # 
@@ -25,13 +25,15 @@ scanner: errs vector parser
 	@- mv lex.yy.c src/lex.c
 	@- $(CC) $(CFLAGS) -c src/lex.c -o obj/scanner.o -Isrc/
 
-parser: errs
-	@- bison -v -d src/parser.y
+parser: errs ast
+	@- bison -v --defines=src/bison.h src/parser.y
 	@- mv parser.tab.c src/bison.c
-	@- mv parser.tab.h src/bison.h
 	@- mkdir -p temp
 	@- mv parser.output temp/bison.output
 	@- $(CC) $(CFLAGS) -c src/bison.c -o obj/parser.o
+
+ast:
+	@- $(CC) $(CFLAGS) -c src/ast.c -o obj/ast.o
 
 # ==================================================
 # 
@@ -47,15 +49,15 @@ vector_test: vector
 	@- ./bin/vectortest
 
 scanner_test: scanner
-	@- $(CC) $(CFLAGS) -o bin/scannertest				\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o	\
+	@- $(CC) $(CFLAGS) -o bin/scannertest							\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
 	src/scanner_test.c
 
 	@- sh tests/test.sh scanner
 
-parser_test: scanner parser
-	@- $(CC) $(CFLAGS) -o bin/parsertest				\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o	\
+parser_test: scanner parser ast
+	@- $(CC) $(CFLAGS) -o bin/parsertest							\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
 	src/parser_test.c
 
 	@- sh tests/test.sh parser
