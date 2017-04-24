@@ -1,11 +1,11 @@
 - Program
-	- Declaration
-	- Definition
-		- Id
-		- Type
-		- Block
-		- Body
-			- Statement
-				- Variable
-				- Expression
-				- FunctionCall
+	- Body
+		- Declaration
+		- Definition
+			- Id
+			- Type
+			- Block
+				- Statement
+					- Variable
+					- Expression
+					- FunctionCall

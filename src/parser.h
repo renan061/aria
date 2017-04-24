@@ -1,13 +1,8 @@
 #if !defined(parser_h)
 #define parser_h
 
-// Necessary because of nonterminal types inside bison.h
-#include "ast.h"
-
-/*
- * TODO: tokens and yylval.
- */
-#include "bison.h"
+#include "ast.h"	// Necessary because of nonterminal types inside bison.h
+#include "bison.h"	// Necessary because of yylval and tokens inside scanner.l
 
 /*
  * Runs the parser.

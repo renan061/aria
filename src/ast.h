@@ -11,6 +11,11 @@
 //
 // ==================================================
 
+typedef enum BodyTag {
+	BODY_DECLARATION,
+	BODY_DEFINITION
+} BodyTag;
+
 typedef enum DefinitionTag {
 	DEFINITION_FUNCTION,
 	DEFINITION_METHOD,
@@ -27,11 +32,6 @@ typedef enum BlockTag {
 	BLOCK_DECLARATION,
 	BLOCK_STATEMENT
 } BlockTag;
-
-typedef enum BodyTag {
-	BODY_DECLARATION,
-	BODY_DEFINITION
-} BodyTag;
 
 typedef enum StatementTag {
 	STATEMENT_ASSIGNMENT,
@@ -77,12 +77,12 @@ typedef enum FunctionCallTag {
 // ==================================================
 
 typedef struct Program Program;
+typedef struct Body Body;
 typedef struct Declaration Declaration;
 typedef struct Definition Definition;
 typedef struct Id Id;
 typedef struct Type Type;
 typedef struct Block Block;
-typedef struct Body Body;
 typedef struct Statement Statement;
 typedef struct Variable Variable;
 typedef struct Expression Expression;
@@ -90,6 +90,16 @@ typedef struct FunctionCall FunctionCall;
 
 struct Program {
 	Body* body;
+};
+
+struct Body {
+	BodyTag tag;
+	Body* next;
+
+	union {
+		Declaration* declaration;
+		Definition* definition;
+	};
 };
 
 struct Declaration {
@@ -129,6 +139,8 @@ struct Definition {
 };
 
 struct Id {
+	unsigned int line;
+
 	union {
 		// Name
 		const char* name;
@@ -155,16 +167,6 @@ struct Block {
 	union {
 		Declaration* declaration;
 		Statement* statement;
-	};
-};
-
-struct Body {
-	BodyTag tag;
-	Body* next;
-
-	union {
-		Declaration* declaration;
-		Definition* definition;
 	};
 };
 
@@ -289,6 +291,9 @@ struct FunctionCall {
 extern Program* program;
 extern Program* ast_program(Body*);
 
+extern Body* ast_body_declaration(Declaration*);
+extern Body* ast_body_definition(Definition*);
+
 extern Declaration* ast_declaration_variable(Id*, Type*);
 
 extern Definition* ast_definition_function(Id*, Declaration*, Type*, Block*);
@@ -296,16 +301,13 @@ extern Definition* ast_definition_method(bool, Definition*);
 extern Definition* ast_definition_constructor(Declaration*, Block*);
 extern Definition* ast_definition_monitor(Id*, Body*);
 
-extern Id* ast_id(const char*);
+extern Id* ast_id(unsigned int, const char*);
 
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
 
 extern Block* ast_block_declaration(Declaration*);
 extern Block* ast_block_statement(Statement*);
-
-extern Body* ast_body_declaration(Declaration*);
-extern Body* ast_body_definition(Definition*);
 
 extern Statement* ast_statement_assignment(Variable*, Expression*);
 extern Statement* ast_statement_definition(Id*, Expression*);

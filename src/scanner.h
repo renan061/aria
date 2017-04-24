@@ -2,7 +2,7 @@
 #define scanner_h
 
 /*
- * TODO: Doc
+ * The token type to be used in other modules.
  */
 typedef unsigned int Token;
 

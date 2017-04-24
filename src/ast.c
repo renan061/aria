@@ -18,6 +18,30 @@ Program* ast_program(Body* body) {
 
 // ==================================================
 //
+//	Body
+//
+// ==================================================
+
+Body* ast_body_declaration(Declaration* declaration) {
+	Body* body;
+	MALLOC(body, Body);
+	body->tag = BODY_DECLARATION;
+	body->next = NULL;
+	body->declaration = declaration;
+	return body;
+}
+
+Body* ast_body_definition(Definition* definition) {
+	Body* body;
+	MALLOC(body, Body);
+	body->tag = BODY_DEFINITION;
+	body->next = NULL;
+	body->definition = definition;
+	return body;
+}
+
+// ==================================================
+//
 //	Declaration
 //
 // ==================================================
@@ -81,9 +105,10 @@ Definition* ast_definition_monitor(Id* id, Body* body) {
 //
 // ==================================================
 
-Id* ast_id(const char* name) {
+Id* ast_id(unsigned int line, const char* name) {
 	Id* id;
 	MALLOC(id, Id);
+	id->line = line;
 	id->name = name;
 	return id;
 }
@@ -132,30 +157,6 @@ Block* ast_block_statement(Statement* statement) {
 	block->next = NULL;
 	block->statement = statement;
 	return block;
-}
-
-// ==================================================
-//
-//	Body
-//
-// ==================================================
-
-Body* ast_body_declaration(Declaration* declaration) {
-	Body* body;
-	MALLOC(body, Body);
-	body->tag = BODY_DECLARATION;
-	body->next = NULL;
-	body->declaration = declaration;
-	return body;
-}
-
-Body* ast_body_definition(Definition* definition) {
-	Body* body;
-	MALLOC(body, Body);
-	body->tag = BODY_DEFINITION;
-	body->next = NULL;
-	body->definition = definition;
-	return body;
 }
 
 // ==================================================

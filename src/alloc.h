@@ -6,7 +6,7 @@
 
 #define ERROR_MEMORY "not enough memory"
 
-#define ERROR internal_error(ERROR_MEMORY) // TODO: Is this internal?
+#define ERROR memory_error(ERROR_MEMORY)
 
 #define MALLOC(x, t)				\
 	x = (t*)malloc(sizeof(t));		\

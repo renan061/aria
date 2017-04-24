@@ -2,24 +2,17 @@
  * TODO:
  *	- TK_NEQUAL
  *	- Use yyltype for lines and position? Makes it slower...
- *	- Devo repassar o token NEWLINE pra controlar? (nope, see golang)
- *		Coisas como a, b: Integer c: String estão funcionando.
  *	- Remove ';' occasionally
  */
 
 %{
 	#include <stdlib.h>
 
+	#include "ast.h"
 	#include "errs.h"
 	#include "scanner.h"
-	#include "ast.h"
 
-	// TODO: Doc
-	// Auxiliary macro to create ids
-	#define ID(string) ast_id(string)
-
-	// TODO: Doc
-	// Auxiliary macro to use with node lists
+	// Auxiliary macro to use with lists
 	#define APPEND(type, assignable, list, elem);	\
 		if (!list) {								\
 			assignable = elem;						\
@@ -30,40 +23,28 @@
 			assignable = list;						\
 		}											\
 
-	// TODO: Should this be static? Test.
-	void yyerror(const char* err);
+	static void yyerror(const char* err);
 %}
 
 // Semantic information
 %union {
 	// Tokens
 	int ival;
-	double dval;
-	const char* strval; // TODO: Really constant?
-	// TODO: IDs line number
+	double fval;
+	const char* strval;
 
 	// Nonterminals
+	Body* body;
 	Declaration* declaration;
 	Definition* definition;
+	Id* id;
 	Type* type;
 	Block* block;
-	Body* body;
 	Statement* statement;
 	Variable* variable;
 	Expression* expression;
 	FunctionCall* function_call;
 }
-
-%start program
-
-// Operators precedence and associativity
-%left		<ival> TK_OR
-%left		<ival> TK_AND
-%nonassoc	<ival> TK_EQUAL TK_NEQUAL
-%nonassoc	<ival> '<' '>' TK_LEQUAL TK_GEQUAL
-%left		<ival> '+' '-'
-%left		<ival> '*' '/'
-%left		<ival> TK_NOT // precedence for unary minus
 
 // Tokens
 %token <ival>
@@ -73,12 +54,13 @@
 	TK_PRIVATE TK_INITIALIZER
 
 %token <ival> TK_INTEGER
-%token <dval> TK_FLOAT
-%token <strval> TK_STRING TK_LOWER_ID TK_UPPER_ID
+%token <fval> TK_FLOAT
+%token <strval> TK_STRING
+%token <id> TK_LOWER_ID TK_UPPER_ID
 
 // Nonterminals
 %type <declaration>
-	parameters parameter_list parameter variable_declaration lower_id_list
+	parameter_list parameters parameter variable_declaration lower_ids
 %type <definition>
 	function_definition method_definition constructor_definition monitor_definition
 %type <type>
@@ -92,9 +74,21 @@
 %type <variable>
 	variable
 %type <expression>
-	expression primary_expression literal arguments expression_list
+	expression primary_expression literal argument_list arguments
 %type <function_call>
 	function_call
+
+// Operator precedence and associativity
+%left		<ival> TK_OR
+%left		<ival> TK_AND
+%nonassoc	<ival> TK_EQUAL TK_NEQUAL
+%nonassoc	<ival> '<' '>' TK_LEQUAL TK_GEQUAL
+%left		<ival> '+' '-'
+%left		<ival> '*' '/'
+%left		<ival> TK_NOT // precedence for unary minus
+
+// First nonterminal
+%start program
 
 %%
 
@@ -128,34 +122,33 @@ body
 	;
 
 function_definition
-	: TK_FUNCTION TK_LOWER_ID parameters ':' type block
+	: TK_FUNCTION TK_LOWER_ID parameter_list ':' type block
 		{
-			$$ = ast_definition_function(ID($2), $3, $5, $6);
+			$$ = ast_definition_function($2, $3, $5, $6);
 		}
-	| TK_FUNCTION TK_LOWER_ID parameters block
+	| TK_FUNCTION TK_LOWER_ID parameter_list block
 		{
-			$$ = ast_definition_function(ID($2), $3, NULL, $4);
+			$$ = ast_definition_function($2, $3, NULL, $4);
 		}
 	;
 
-parameters
+parameter_list
 	: '(' ')'
 		{
 			$$ = NULL;
 		}
-	| '(' parameter_list ')'
+	| '(' parameters ')'
 		{
 			$$ = $2;
 		}
 	;
 
-/* TODO: Not a list */
-parameter_list
+parameters
 	: parameter
 		{
 			$$ = $1;
 		}
-	| parameter_list ',' parameter
+	| parameters ',' parameter
 		{
 			APPEND(Declaration, $$, $1, $3);
 		}
@@ -169,7 +162,7 @@ parameter
 	;
 
 variable_declaration
-	: lower_id_list ':' type
+	: lower_ids ':' type
 		{
 			for ($$ = $1; $1; $1 = $1->next) {
 				$1->type = $3;
@@ -177,22 +170,21 @@ variable_declaration
 		}
 	;
 
-/* TODO: Not a list */
-lower_id_list
+lower_ids
 	: TK_LOWER_ID
 		{
-			$$ = ast_declaration_variable(ID($1), NULL);
+			$$ = ast_declaration_variable($1, NULL);
 		}
-	| lower_id_list ',' TK_LOWER_ID
+	| lower_ids ',' TK_LOWER_ID
 		{
-			APPEND(Declaration, $$, $1, ast_declaration_variable(ID($3), NULL));
+			APPEND(Declaration, $$, $1, ast_declaration_variable($3, NULL));
 		}
 	;
 
 type
 	: TK_UPPER_ID
 		{
-			$$ = ast_type_id(ID($1));
+			$$ = ast_type_id($1);
 		}
 	| '[' type ']'
 		{
@@ -247,7 +239,7 @@ simple_statement
 		}
 	| TK_LOWER_ID TK_DEFINE expression
 		{
-			$$ = ast_statement_definition(ID($1), $3);
+			$$ = ast_statement_definition($1, $3);
 		}
 	| function_call
 		{
@@ -320,7 +312,7 @@ else
 variable
 	: TK_LOWER_ID
 		{
-			$$ = ast_variable_id(ID($1));
+			$$ = ast_variable_id($1);
 		}
 	| primary_expression '[' expression ']'
 		{
@@ -430,38 +422,37 @@ literal
 	;
 
 function_call
-	: TK_LOWER_ID arguments
+	: TK_LOWER_ID argument_list
 		{
-			$$ = ast_function_call_basic(ID($1), $2);
+			$$ = ast_function_call_basic($1, $2);
 		}
-	| primary_expression '.' TK_LOWER_ID arguments
+	| primary_expression '.' TK_LOWER_ID argument_list
 		{
-			$$ = ast_function_call_method($1, ID($3), $4);
+			$$ = ast_function_call_method($1, $3, $4);
 		}
-	| type arguments
+	| type argument_list
 		{
 			$$ = ast_function_call_constructor($1, $2);
 		}
 	;
 
-arguments
+argument_list
 	: '(' ')'
 		{
 			$$ = NULL;
 		}
-	| '(' expression_list ')'
+	| '(' arguments ')'
 		{
 			$$ = $2;
 		}
 	;
 
-/* TODO: Not a list */
-expression_list
+arguments
 	: expression
 		{
 			$$ = $1;
 		}
-	| expression_list ',' expression
+	| arguments ',' expression
 		{
 			APPEND(Expression, $$, $1, $3);
 		}
@@ -470,7 +461,7 @@ expression_list
 monitor_definition
 	: TK_MONITOR TK_UPPER_ID class_body
 		{
-			$$ = ast_definition_monitor(ID($2), $3);
+			$$ = ast_definition_monitor($2, $3);
 		}
 	;
 
@@ -519,7 +510,7 @@ method_definition
 	;
 
 constructor_definition
-	: TK_INITIALIZER parameters block
+	: TK_INITIALIZER parameter_list block
 		{
 			$$ = ast_definition_constructor($2, $3);
 		}
@@ -527,6 +518,6 @@ constructor_definition
 
 %%
 
-void yyerror(const char* err) {
+static void yyerror(const char* err) {
 	parser_error(0, (char*)err); // TODO: Line
 }

@@ -1,8 +1,7 @@
 /*
  * TODO:
- *	- Change float to double?
  *	- Using a vector to deal with ids and strings is very inefficient.
- *		Therefore, another data strcture should be used instead.
+ *		Therefore, another data structure should be used instead.
  */
 
 /*
@@ -36,6 +35,7 @@
 #include <assert.h>
 
 #include "alloc.h"
+#include "ast.h"
 #include "errs.h"
 #include "parser.h"
 #include "scanner.h"
@@ -124,7 +124,7 @@ string 		"\""(\\.|[^\\"])*"\""
 				}
 
 {float}			{
-					yylval.dval = strtod(yytext, NULL);
+					yylval.fval = strtod(yytext, NULL);
 					return TK_FLOAT;
 				}
 
@@ -172,6 +172,7 @@ static void idaction() {
     if (!yylval.strval) {
 		yylval.strval = copystr(yytext, yyleng);
     }
+    yylval.id = ast_id(line, yylval.strval);
 }
 
 // returns NULL if unique

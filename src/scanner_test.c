@@ -38,16 +38,16 @@ int main(int argc, char* argv[]) {
 		case TK_PRIVATE:		printf("TK_PRIVATE");		break;
 		case TK_INITIALIZER:	printf("TK_INITIALIZER");	break;
 		case TK_LOWER_ID:
-			printf("TK_LOWER_ID - %s", yylval.strval);
+			printf("TK_LOWER_ID - %s", yylval.id->name);
 			break;
 		case TK_UPPER_ID:
-			printf("TK_UPPER_ID - %s", yylval.strval);
+			printf("TK_UPPER_ID - %s", yylval.id->name);
 			break;
 		case TK_INTEGER:
 			printf("TK_INTEGER - %d", yylval.ival);
 			break;
 		case TK_FLOAT:
-			printf("TK_FLOAT - %f", yylval.dval);
+			printf("TK_FLOAT - %f", yylval.fval);
 			break;
 		case TK_STRING:
 			printf("TK_STRING - %s", yylval.strval);
