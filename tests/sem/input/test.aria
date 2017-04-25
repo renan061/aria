@@ -1,0 +1,12 @@
+function test() {
+	
+}
+
+monitor Monitor {
+	a: Integer;
+
+	function foo(string: String): Boolean {
+		a := 2;
+		return true;
+	}
+}

@@ -20,3 +20,8 @@ void parser_error(unsigned int line, char* err) {
 	fprintf(stderr, "line %d:\n\tparser error: %s\n", line, err);
 	exit(1);
 }
+
+void sem_error(unsigned int line, char* err) {
+	fprintf(stderr, "line %d:\n\tsemantic error: %s\n", line, err);
+	exit(1);
+}

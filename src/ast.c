@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ast.h"
 #include "alloc.h"
 
@@ -49,9 +51,21 @@ Body* ast_body_definition(Definition* definition) {
 Declaration* ast_declaration_variable(Id* id, Type* type) {
 	Declaration* declaration;
 	MALLOC(declaration, Declaration);
+	declaration->tag = DECLARATION_VARIABLE;
 	declaration->next = NULL;
-	declaration->id = id;
-	declaration->type = type;
+	declaration->variable.id = id;
+	declaration->variable.type = type;
+	return declaration;
+}
+
+Declaration* ast_declaration_function(Id* id, Declaration* params, Type* type) {
+	Declaration* declaration;
+	MALLOC(declaration, Declaration);
+	declaration->tag = DECLARATION_FUNCTION;
+	declaration->next = NULL;
+	declaration->function.id = id;
+	declaration->function.parameters = params;
+	declaration->function.type = type;
 	return declaration;
 }
 
@@ -61,32 +75,43 @@ Declaration* ast_declaration_variable(Id* id, Type* type) {
 //
 // ==================================================
 
-Definition* ast_definition_function(Id* id, Declaration* p, Type* t, Block* b) {
+Definition* ast_definition_variable(Declaration* declaration, Expression* exp) {
+	assert(declaration->tag == DECLARATION_VARIABLE);
+	Definition* definition;
+	MALLOC(definition, Definition);
+	definition->tag = DEFINITION_VARIABLE;
+	definition->variable.declaration = declaration;
+	definition->variable.expression = exp;
+	return definition;
+}
+
+Definition* ast_definition_function(Declaration* declaration, Block* block) {
+	assert(declaration->tag == DECLARATION_FUNCTION);
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_FUNCTION;
-	definition->function.id = id;
-	definition->function.parameters = p;
-	definition->function.type = t;
-	definition->function.block = b;
+	definition->function.declaration = declaration;
+	definition->function.block = block;
 	return definition;
 }
 
-Definition* ast_definition_method(bool private, Definition* function) {
+Definition* ast_definition_method(Definition* function, bool private) {
+	assert(function->tag == DEFINITION_FUNCTION);
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_METHOD;
-	definition->method.private = private;
 	definition->method.function = function;
+	definition->method.private = private;
 	return definition;
 }
 
-Definition* ast_definition_constructor(Declaration* parameters, Block* block) {
+Definition* ast_definition_constructor(Declaration* declaration, Block* block) {
+	assert(declaration->tag == DECLARATION_FUNCTION);
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_CONSTRUCTOR;
-	definition->constructor.parameters = parameters;
-	definition->constructor.block = block;
+	definition->function.declaration = declaration;
+	definition->function.block = block;
 	return definition;
 }
 

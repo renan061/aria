@@ -9,3 +9,10 @@
 					- Variable
 					- Expression
 					- FunctionCall
+
+- Declaration / Definition
+	- Variable
+	- Function
+	- Method
+	- Constructor
+	- Monitor

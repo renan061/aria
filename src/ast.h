@@ -16,7 +16,13 @@ typedef enum BodyTag {
 	BODY_DEFINITION
 } BodyTag;
 
+typedef enum DeclarationTag {
+	DECLARATION_VARIABLE,
+	DECLARATION_FUNCTION
+} DeclarationTag;
+
 typedef enum DefinitionTag {
+	DEFINITION_VARIABLE,
 	DEFINITION_FUNCTION,
 	DEFINITION_METHOD,
 	DEFINITION_CONSTRUCTOR,
@@ -88,6 +94,7 @@ typedef struct Variable Variable;
 typedef struct Expression Expression;
 typedef struct FunctionCall FunctionCall;
 
+// TODO: Remove program and stay with body only?
 struct Program {
 	Body* body;
 };
@@ -103,33 +110,44 @@ struct Body {
 };
 
 struct Declaration {
-	Declaration* next;
+	DeclarationTag tag;
+	Declaration* next; // parameters
 
-	Id* id;
-	Type* type;
+	union {
+		// DeclarationVariable
+		struct {
+			 Id* id;
+			 Type* type;
+		} variable;
+		// DeclarationFunction
+		struct {
+			Id* id;
+			Declaration* parameters;
+			Type* type;
+		} function;
+	};
 };
 
 struct Definition {
 	DefinitionTag tag;
 	
 	union {
-		// DefinitionFunction
+		// DefinitionVariable
 		struct {
-			Id* id;
-			Declaration* parameters;
-			Type* type;
+			Declaration* declaration;
+			Expression* expression;
+		} variable;
+		// DefinitionFunction
+		// DefinitionConstructor
+		struct {
+			Declaration* declaration;
 			Block* block;
 		} function;
 		// DefinitionMethod
 		struct {
-			bool private;
 			Definition* function;
+			bool private;
 		} method;
-		// DefinitionConstructor
-		struct {
-			Declaration* parameters;
-			Block* block;
-		} constructor;
 		// DefinitionMonitor
 		struct {
 			Id* id;
@@ -295,9 +313,11 @@ extern Body* ast_body_declaration(Declaration*);
 extern Body* ast_body_definition(Definition*);
 
 extern Declaration* ast_declaration_variable(Id*, Type*);
+extern Declaration* ast_declaration_function(Id*, Declaration*, Type*);
 
-extern Definition* ast_definition_function(Id*, Declaration*, Type*, Block*);
-extern Definition* ast_definition_method(bool, Definition*);
+extern Definition* ast_definition_variable(Declaration*, Expression*);
+extern Definition* ast_definition_function(Declaration*, Block*);
+extern Definition* ast_definition_method(Definition*, bool);
 extern Definition* ast_definition_constructor(Declaration*, Block*);
 extern Definition* ast_definition_monitor(Id*, Body*);
 

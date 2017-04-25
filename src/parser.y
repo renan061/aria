@@ -3,6 +3,7 @@
  *	- TK_NEQUAL
  *	- Use yyltype for lines and position? Makes it slower...
  *	- Remove ';' occasionally
+ *	- Type of monitor initializer return for function in ast
  */
 
 %{
@@ -124,11 +125,13 @@ body
 function_definition
 	: TK_FUNCTION TK_LOWER_ID parameter_list ':' type block
 		{
-			$$ = ast_definition_function($2, $3, $5, $6);
+			Declaration* declaration = ast_declaration_function($2, $3, $5);
+			$$ = ast_definition_function(declaration, $6);
 		}
 	| TK_FUNCTION TK_LOWER_ID parameter_list block
 		{
-			$$ = ast_definition_function($2, $3, NULL, $4);
+			Declaration* declaration = ast_declaration_function($2, $3, NULL);
+			$$ = ast_definition_function(declaration, $4);
 		}
 	;
 
@@ -165,7 +168,7 @@ variable_declaration
 	: lower_ids ':' type
 		{
 			for ($$ = $1; $1; $1 = $1->next) {
-				$1->type = $3;
+				$1->variable.type = $3;
 			}
 		}
 	;
@@ -501,18 +504,19 @@ class_content
 method_definition
 	: TK_PRIVATE function_definition
 		{
-			$$ = ast_definition_method(true, $2);
+			$$ = ast_definition_method($2, true);
 		}
 	| function_definition
 		{
-			$$ = ast_definition_method(false, $1);
+			$$ = ast_definition_method($1, false);
 		}
 	;
 
 constructor_definition
 	: TK_INITIALIZER parameter_list block
 		{
-			$$ = ast_definition_constructor($2, $3);
+			Declaration* declaration = ast_declaration_function(NULL, $2, NULL);
+			$$ = ast_definition_constructor(declaration, $3);
 		}
 	;
 
