@@ -242,9 +242,9 @@ struct Variable {
 	VariableTag tag;
 
 	union {
-		// VarId
+		// VariableId
 		Id* id;
-		// VarIndexed
+		// VariableIndexed
 		struct {
 			Expression* array;
 			Expression* index;
@@ -292,8 +292,8 @@ struct FunctionCall {
 		Id* basic;
 		// FunctionCallMethod
 		struct {
-			Expression* object;
-			Id* name;
+			Expression* object; // TODO: Rename to instance?
+			Id* name; // TODO: Rename to id?
 		} method;
 		// FunctionCallConstructor
 		Type* constructor;

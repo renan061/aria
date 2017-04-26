@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "ast_printer.c"
+
 #include "ast.h"
 #include "parser.h"
 #include "scanner.h"
