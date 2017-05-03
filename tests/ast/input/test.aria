@@ -1,0 +1,22 @@
+function foo(): Integer {
+	{
+		while a {
+			print(a);
+		}
+		a := true;
+		if a {
+
+		}
+	}
+
+	return 1;
+}
+
+monitor Test {
+	a: Integer;
+
+	initializer() {
+		a = 2;
+		while true wait in a;
+	}
+}

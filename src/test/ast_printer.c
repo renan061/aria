@@ -1,161 +1,322 @@
 #include <stdio.h>
 
 #include "ast.h"
+#include "parser.h"
+#include "scanner.h"
 
-static void ast_print_body(Body*);
-static void ast_print_declaration(Declaration*);
-static void ast_print_definition(Definition*);
-static void ast_print_id(Id*);
-static void ast_print_type(Type*);
-static void ast_print_block(Block*);
-static void ast_print_statement(Statement*);
-static void ast_print_variable(Variable*);
-static void ast_print_expression(Expression*);
-static void ast_print_function_call(FunctionCall*);
+// Used for identation purposes
+static unsigned int tabs = 0;
+static void identation();
 
-void ast_print_program(Program* program) {
-	for (Body* b = program->body; b; b = b->next) {
-		ast_print_body(b);
-	}
+static void printtoken(Token token);
+
+static void print_ast_body(Body*);
+static void print_ast_declaration(Declaration*);
+static void print_ast_definition(Definition*);
+static void print_ast_id(Id*);
+static void print_ast_type(Type*);
+static void print_ast_block(Block*);
+static void print_ast_statement(Statement*);
+static void print_ast_variable(Variable*);
+static void print_ast_expression(Expression*);
+static void print_ast_function_call(FunctionCall*);
+
+void print_ast_program(Program* program) {
+	print_ast_body(program->body);
 }
 
-static void ast_print_body(Body* body) {
-	switch (body->tag) {
-	case BODY_DECLARATION:
-		ast_print_declaration(body->declaration);
-		break;
-	case BODY_DEFINITION:
-		ast_print_definition(body->definition);
-		break;
+static void print_ast_body(Body* body) {
+	printf("{\n");
+	tabs++;
+
+	for (Body* b = body; b; b = b->next) {
+		identation();
+
+		switch (b->tag) {
+		case BODY_DECLARATION:
+			print_ast_declaration(b->declaration);
+			printf("\n");
+			break;
+		case BODY_DEFINITION:
+			print_ast_definition(b->definition);
+			break;
+		}
 	}
+
+	tabs--;
+	identation();
+	printf("}\n");
 }
 
-static void ast_print_declaration(Declaration* declaration) {
+static void print_ast_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		ast_print_id(declaration->variable.id);
+		print_ast_id(declaration->variable.id);
 		printf(": ");
-		ast_print_type(declaration->variable.type);
+		if (declaration->variable.type) { // for := statements
+			print_ast_type(declaration->variable.type);
+		} else {
+			printf("?");
+		}
 		break;
 	case DECLARATION_FUNCTION:
-		printf("function ");
 		if (declaration->function.id) {
-			ast_print_id(declaration->function.id);
+			printf("function ");
+			print_ast_id(declaration->function.id);
 		} else {
 			printf("initializer");
 		}
 		printf("(");
 		for (Declaration* p = declaration->function.parameters; p;) {
-			ast_print_declaration(p);
+			print_ast_declaration(p);
 			if ((p = p->next)) {
 				printf(", ");
 			}
 		}
 		printf(")");
 		if (declaration->function.type) {
-			ast_print_type(declaration->function.type);
+			printf(": ");
+			print_ast_type(declaration->function.type);
 		}
 		break;
 	}
 }
 
-static void ast_print_definition(Definition* definition) {
+static void print_ast_definition(Definition* definition) {
 	switch (definition->tag) {
 	case DEFINITION_VARIABLE:
-		ast_print_declaration(definition->variable.declaration);
+		print_ast_declaration(definition->variable.declaration);
 		printf(" = ");
-		ast_print_expression(definition->variable.expression);
+		print_ast_expression(definition->variable.expression);
 		break;
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
-		ast_print_declaration(definition->function.declaration);
-		printf(" {");
-		for (Block* b = definition->function.block; b; b = b->next) {
-			ast_print_block(b);
-			printf("\n");
-		}
-		printf("}\n");
+		print_ast_declaration(definition->function.declaration);
+		printf(" ");
+		print_ast_block(definition->function.block);
+		printf("\n");
 		break;
 	case DEFINITION_METHOD:
 		if (definition->method.private) {
 			printf("private ");
 		}
-		ast_print_definition(definition->method.function);
+		print_ast_definition(definition->method.function);
 		break;
 	case DEFINITION_MONITOR:
 		printf("monitor ");
-		ast_print_id(definition->monitor.id);
-		printf("{\n");
-		for (Body* b = definition->monitor.body; b; b = b->next) {
-			ast_print_body(b);
-		}
-		printf("}");
+		print_ast_id(definition->monitor.id);
+		printf(" ");
+		print_ast_body(definition->monitor.body);
 		break;
 	}
 }
 
-static void ast_print_id(Id* id) {
+static void print_ast_id(Id* id) {
 	// TODO: Declaration
 	printf("%s", id->name);
 }
 
-static void ast_print_type(Type* type) {
+static void print_ast_type(Type* type) {
 	switch (type->tag) {
 	case TYPE_ID:
-		ast_print_id(type->id);
+		print_ast_id(type->id);
 		break;
 	case TYPE_ARRAY:
 		printf("[");
-		ast_print_type(type->array);
+		print_ast_type(type->array);
 		printf("]");
 		break;
 	}
 }
 
-static void ast_print_block(Block* block) {
-	switch (block->tag) {
-	case BLOCK_DECLARATION:
-		ast_print_declaration(block->declaration);
+static void print_ast_block(Block* block) {
+	printf("{\n");
+	tabs++;
+
+	for (Block* b = block; b; b = b->next) {
+		switch (b->tag) {
+		case BLOCK_DECLARATION:
+			print_ast_declaration(b->declaration);
+			break;
+		case BLOCK_STATEMENT:
+			print_ast_statement(b->statement);
+			break;
+		}
+	}
+
+	tabs--;
+	identation();
+	printf("}");
+}
+
+static void print_ast_statement(Statement* statement) {
+	identation();
+
+	switch (statement->tag) {
+	case STATEMENT_ASSIGNMENT:
+		print_ast_variable(statement->assignment.variable);
+		printf(" = ");
+		print_ast_expression(statement->assignment.expression);
 		break;
-	case BLOCK_STATEMENT:
-		ast_print_statement(block->statement);
+	case STATEMENT_DEFINITION:
+		print_ast_declaration(statement->definition.declaration);
+		printf(" := ");
+		print_ast_expression(statement->definition.expression);
+		break;
+	case STATEMENT_FUNCTION_CALL:
+		print_ast_function_call(statement->function_call);
+		break;
+	case STATEMENT_WHILE_WAIT:
+		printf("while ");
+		print_ast_expression(statement->while_wait.expression);
+		printf(" wait in ");
+		print_ast_variable(statement->while_wait.variable);
+		break;
+	case STATEMENT_SIGNAL:
+		printf("signal ");
+		print_ast_variable(statement->signal);
+		break;
+	case STATEMENT_BROADCAST:
+		printf("broadcast ");
+		print_ast_variable(statement->broadcast);
+		break;
+	case STATEMENT_RETURN:
+		printf("return ");
+		print_ast_expression(statement->return_);
+		break;
+	case STATEMENT_IF:
+		printf("if ");
+		print_ast_expression(statement->if_.expression);
+		printf(" ");
+		print_ast_block(statement->if_.block);
+		break;
+	case STATEMENT_IF_ELSE:
+		printf("if ");
+		print_ast_expression(statement->if_else.expression);
+		printf(" ");
+		print_ast_block(statement->if_else.if_block);
+		printf("else ");
+		printf(" ");
+		print_ast_block(statement->if_else.else_block);
+		break;
+	case STATEMENT_WHILE:
+		printf("while ");
+		print_ast_expression(statement->while_.expression);
+		printf(" ");
+		print_ast_block(statement->while_.block);
+		break;
+	case STATEMENT_SPAWN:
+		printf("spawn ");
+		print_ast_block(statement->spawn);
+		break;
+	case STATEMENT_BLOCK:
+		print_ast_block(statement->block);
 		break;
 	}
+
+	printf("\n");
 }
 
-static void ast_print_statement(Statement* statement) {
-	// TODO
-}
-
-static void ast_print_variable(Variable* variable) {
+static void print_ast_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID:
-		ast_print_id(variable->id);
+		print_ast_id(variable->id);
 		break;
 	case VARIABLE_INDEXED:
-		ast_print_expression(variable->indexed.array);
+		print_ast_expression(variable->indexed.array);
 		printf("[");
-		ast_print_expression(variable->indexed.index);
+		print_ast_expression(variable->indexed.index);
 		printf("]");
 		break;
 	}
 }
 
-static void ast_print_expression(Expression* expression) {
-	// TODO
+static void print_ast_expression(Expression* expression) {
+	printf("(");
+
+	switch (expression->tag) {
+	case EXPRESSION_LITERAL_BOOLEAN:
+		printf("%s", (expression->literal_boolean) ? "true" : "false");
+		break;
+	case EXPRESSION_LITERAL_INTEGER:
+		printf("%d", expression->literal_integer);
+		break;
+	case EXPRESSION_LITERAL_FLOAT:
+		printf("%f", expression->literal_float);
+		break;
+	case EXPRESSION_LITERAL_STRING:
+		printf("%s", expression->literal_string);
+		break;
+	case EXPRESSION_VARIABLE:
+		print_ast_variable(expression->variable);
+		break;
+	case EXPRESSION_FUNCTION_CALL:
+		print_ast_function_call(expression->function_call);
+		break;
+	case EXPRESSION_UNARY:
+		printtoken(expression->unary.token);
+		print_ast_expression(expression->unary.expression);
+		break;
+	case EXPRESSION_BINARY:
+		print_ast_expression(expression->binary.left_expression);
+		printtoken(expression->binary.token);
+		print_ast_expression(expression->binary.right_expression);
+		break;
+	}
+
+	printf(")");
 }
 
-static void ast_print_function_call(FunctionCall* function_call) {
+static void print_ast_function_call(FunctionCall* function_call) {
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC:
-		ast_print_id(function_call->basic);
+		print_ast_id(function_call->basic);
 		break;
 	case FUNCTION_CALL_METHOD:
-		ast_print_expression(function_call->method.object);
+		print_ast_expression(function_call->method.object);
 		printf(".");
-		ast_print_id(function_call->method.name);
+		print_ast_id(function_call->method.name);
 		break;
 	case FUNCTION_CALL_CONSTRUCTOR:
-		ast_print_type(function_call->constructor);
+		print_ast_type(function_call->constructor);
 	}
+
+	printf("(");
+	for (Expression* e = function_call->arguments; e; e = e->next) {
+		print_ast_expression(e);
+		if (e->next) {
+			printf(", ");
+		}
+	}
+	printf(")");
+}
+
+// ==================================================
+//
+//	Auxiliary
+//
+// ==================================================
+
+static void identation() {
+	for (int i = 0; i < tabs; i++) {
+		printf("\t");
+	}
+}
+
+static void printtoken(Token token) {
+	printf(" ");
+
+	switch (token) {
+	case TK_DEFINE:	printf(":=");	break;
+    case TK_OR:		printf("or");	break;
+    case TK_AND:	printf("and");	break;
+    case TK_EQUAL:	printf("==");	break;
+    case TK_NEQUAL:	printf("!=");	break;
+    case TK_LEQUAL:	printf("<=");	break;
+    case TK_GEQUAL:	printf(">=");	break;
+    case TK_NOT:	printf("not");	break;
+    default:		printf("%c", token);
+	}
+
+	printf(" ");
 }

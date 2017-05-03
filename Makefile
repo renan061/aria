@@ -2,7 +2,8 @@
 # ARIA language compiler
 #
 
-CC := gcc-5 -std=c11 -Wall
+# TODO: gnu11 / c11
+CC := gcc-5 -std=gnu11 -Wall
 
 main: objs
 
@@ -65,6 +66,13 @@ parser_test: errs vector parser scanner ast
 	src/test/parser_test.c -Isrc/
 
 	@- sh tests/test.sh parser
+
+ast_test: errs vector parser scanner ast
+	@- $(CC) $(CFLAGS) -o bin/asttest								\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
+	src/test/ast_test.c -Isrc/
+
+	@- sh tests/test.sh ast
 
 sem_test: errs vector parser scanner ast sem
 	@- $(CC) $(CFLAGS) -o bin/semtest								\
