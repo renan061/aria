@@ -82,7 +82,7 @@ sem_test: errs vector parser scanner ast sem
 
 	@- sh tests/test.sh sem
 
-test: clean vector_test scanner_test parser_test sem_test
+test: clean vector_test scanner_test parser_test ast_test sem_test
 
 # ==================================================
 # 

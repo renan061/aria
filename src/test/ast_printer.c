@@ -1,13 +1,15 @@
+#include <assert.h>
 #include <stdio.h>
 
 #include "ast.h"
 #include "parser.h"
 #include "scanner.h"
 
-// Used for identation purposes
+// For identation purposes
 static unsigned int tabs = 0;
 static void identation();
 
+// Prints a scanner token from an expression
 static void printtoken(Token token);
 
 static void print_ast_body(Body*);
@@ -22,16 +24,26 @@ static void print_ast_expression(Expression*);
 static void print_ast_function_call(FunctionCall*);
 
 void print_ast_program(Program* program) {
+	assert(program->body->tag == BODY);
 	print_ast_body(program->body);
+	printf("\n");
 }
 
 static void print_ast_body(Body* body) {
-	printf("{\n");
-	tabs++;
+	if (body->tag == BODY) {
+		printf("{\n");
+		if (body->next) {
+			tabs++;
+			print_ast_body(body->next);
+			tabs--;
+		}
+		identation();
+		printf("}");
+		return;
+	}
 
 	for (Body* b = body; b; b = b->next) {
 		identation();
-
 		switch (b->tag) {
 		case BODY_DECLARATION:
 			print_ast_declaration(b->declaration);
@@ -40,12 +52,10 @@ static void print_ast_body(Body* body) {
 		case BODY_DEFINITION:
 			print_ast_definition(b->definition);
 			break;
+		default:
+			assert(b->tag != BODY);
 		}
 	}
-
-	tabs--;
-	identation();
-	printf("}\n");
 }
 
 static void print_ast_declaration(Declaration* declaration) {
@@ -93,6 +103,7 @@ static void print_ast_definition(Definition* definition) {
 	case DEFINITION_CONSTRUCTOR:
 		print_ast_declaration(definition->function.declaration);
 		printf(" ");
+		assert(definition->function.block->tag == BLOCK);
 		print_ast_block(definition->function.block);
 		printf("\n");
 		break;
@@ -106,7 +117,9 @@ static void print_ast_definition(Definition* definition) {
 		printf("monitor ");
 		print_ast_id(definition->monitor.id);
 		printf(" ");
+		assert(definition->monitor.body->tag == BODY);
 		print_ast_body(definition->monitor.body);
+		printf("\n");
 		break;
 	}
 }
@@ -130,23 +143,32 @@ static void print_ast_type(Type* type) {
 }
 
 static void print_ast_block(Block* block) {
-	printf("{\n");
-	tabs++;
+	if (block->tag == BLOCK) {
+		printf("{\n");
+		if (block->next) {
+			tabs++;
+			print_ast_block(block->next);
+			tabs--;
+		}
+		identation();
+		printf("}");
+		return;
+	}
 
 	for (Block* b = block; b; b = b->next) {
 		switch (b->tag) {
 		case BLOCK_DECLARATION:
+			identation();
 			print_ast_declaration(b->declaration);
+			printf("\n");
 			break;
 		case BLOCK_STATEMENT:
 			print_ast_statement(b->statement);
 			break;
+		default:
+			assert(b->tag != BLOCK);
 		}
 	}
-
-	tabs--;
-	identation();
-	printf("}");
 }
 
 static void print_ast_statement(Statement* statement) {
@@ -181,35 +203,43 @@ static void print_ast_statement(Statement* statement) {
 		print_ast_variable(statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
-		printf("return ");
-		print_ast_expression(statement->return_);
+		printf("return");
+		if (statement->return_) {
+			printf(" ");
+			print_ast_expression(statement->return_);
+		}
 		break;
 	case STATEMENT_IF:
 		printf("if ");
 		print_ast_expression(statement->if_.expression);
 		printf(" ");
+		assert(statement->if_.block->tag == BLOCK);
 		print_ast_block(statement->if_.block);
 		break;
 	case STATEMENT_IF_ELSE:
 		printf("if ");
 		print_ast_expression(statement->if_else.expression);
 		printf(" ");
+		assert(statement->if_else.if_block->tag == BLOCK);
 		print_ast_block(statement->if_else.if_block);
-		printf("else ");
-		printf(" ");
+		printf(" else ");
+		assert(statement->if_else.else_block->tag == BLOCK);
 		print_ast_block(statement->if_else.else_block);
 		break;
 	case STATEMENT_WHILE:
 		printf("while ");
 		print_ast_expression(statement->while_.expression);
 		printf(" ");
+		assert(statement->while_.block->tag == BLOCK);
 		print_ast_block(statement->while_.block);
 		break;
 	case STATEMENT_SPAWN:
 		printf("spawn ");
+		assert(statement->spawn->tag == BLOCK);
 		print_ast_block(statement->spawn);
 		break;
 	case STATEMENT_BLOCK:
+		assert(statement->block->tag == BLOCK);
 		print_ast_block(statement->block);
 		break;
 	}
@@ -245,7 +275,7 @@ static void print_ast_expression(Expression* expression) {
 		printf("%f", expression->literal_float);
 		break;
 	case EXPRESSION_LITERAL_STRING:
-		printf("%s", expression->literal_string);
+		printf("\"%s\"", expression->literal_string);
 		break;
 	case EXPRESSION_VARIABLE:
 		print_ast_variable(expression->variable);
@@ -259,7 +289,9 @@ static void print_ast_expression(Expression* expression) {
 		break;
 	case EXPRESSION_BINARY:
 		print_ast_expression(expression->binary.left_expression);
+		printf(" ");
 		printtoken(expression->binary.token);
+		printf(" ");
 		print_ast_expression(expression->binary.right_expression);
 		break;
 	}
@@ -304,10 +336,7 @@ static void identation() {
 }
 
 static void printtoken(Token token) {
-	printf(" ");
-
 	switch (token) {
-	case TK_DEFINE:	printf(":=");	break;
     case TK_OR:		printf("or");	break;
     case TK_AND:	printf("and");	break;
     case TK_EQUAL:	printf("==");	break;
@@ -317,6 +346,4 @@ static void printtoken(Token token) {
     case TK_NOT:	printf("not");	break;
     default:		printf("%c", token);
 	}
-
-	printf(" ");
 }

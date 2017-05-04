@@ -1,0 +1,188 @@
+// ==================================================
+//
+//	Declarations & Definitions
+//
+// ==================================================
+
+// DefinitionVariable (TODO)
+// a: Integer = 1;
+
+// DefinitionFunction
+function foo(a: Byte): Integer {}					// + return + parameters
+function foo(a: Byte, b: Byte, c: Byte): Integer {}	// + return + parameters
+function foo(a, b, c: Byte): Integer {}				// + return + parameters
+function foo(): Integer {}							// + return - parameters
+function foo(a: Byte) {}							// - return + parameters
+function foo(a: Byte, b: Byte, c: Byte) {}			// - return + parameters
+function foo(a, b, c: Byte) {}						// - return + parameters
+function foo() {}									// - return - parameters
+
+// DefinitionMonitor
+monitor Monitor {
+	// DeclarationVariable
+	flag: Boolean;
+
+	// DefinitionVariable (TODO)
+	// a: Integer = 1;
+
+	// DefinitionMethod
+	function foo() {}
+	private function foo() {}
+
+	// DefinitionConstructor
+	initializer() {}
+}
+
+// DefinitionMonitor
+monitor Monitor {}
+
+// ==================================================
+//
+//	Block
+//
+// ==================================================
+
+function foo() {
+	// ==================================================
+	//
+	//	Types
+	//
+	// ==================================================
+
+	// TypeId
+	type: Integer;
+
+	// TypeArray
+	type: [Integer];
+
+	// TypeArray
+	type: [[[Integer]]];
+
+	// ==================================================
+	//
+	//	Declarations & Definitions
+	//
+	// ==================================================
+
+	// DeclarationVariable
+	flag: Boolean;
+
+	// DefinitionVariable (TODO)
+	// a: Integer = 1;
+
+	// ==================================================
+	//
+	//	Statements
+	//
+	// ==================================================
+
+	// StatementAssignment
+	a = 1;
+
+	// StatementDefinition
+	a := 1;
+
+	// StatementFunctionCall
+	// Function
+	foo();
+	foo(a);
+	foo(a, b, c);
+	// Method
+	m.foo();
+	m.foo(a);
+	m.foo(a, b, c);
+	// Constructor
+	Monitor();
+	Monitor(a);
+	Monitor(a, b, c);
+
+	// StatementWhileWait
+	while true wait in a;
+
+	// StatementSignal
+	signal a;
+
+	// StatementBroadcast
+	broadcast a;
+
+	// StatementReturn
+	return true;	// + expression
+	return;			// - expression
+
+	// StatementIf
+	if true {}
+
+	// StatementIfElse
+	if true {} else {}
+
+	// StatementWhile
+	while true {}
+
+	// StatementSpawn
+	spawn {}
+
+	// StatementBlock
+	{}
+
+	// ==================================================
+	//
+	//	Variables
+	//
+	// ==================================================
+
+	// VariableId
+	var = a;
+
+	// VariableIndexed
+	var = a[1];
+	var = a[1][1][1];
+	var = foo()[1][1][1];
+
+	// ==================================================
+	//
+	//	Expressions
+	//
+	// ==================================================
+
+	// ExpressionLiteralBoolean
+	a = true;
+	a = false;
+
+	// ExpressionLiteralInteger
+	a = 0;
+	a = 1;
+	a = 1000;
+
+	// ExpressionLiteralFloat
+	a = 0.0;
+	a = 1.123;
+	a = 1000.123;
+
+	// ExpressionLiteralString
+	a = "c";
+	a = "string";
+	a = "s p a c e d s t r i n g";
+
+	// ExpressionVariable
+	a = a;
+
+	// ExpressionFunctionCall
+	a = foo();
+
+	// ExpressionUnary
+	a = not true;
+	a = -1;
+
+	// ExpressionBinary
+	a = true or false;
+	a = true and false;
+	a = 1 == 1;
+	a = 1 <= 1;
+	a = 1 >= 1;
+	a = 1 < 1;
+	a = 1 > 1;
+	a = 1 + 1;
+	a = 1 - 1;
+	a = 1 * 1;
+	a = 1 / 1;
+}

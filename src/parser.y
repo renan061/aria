@@ -96,7 +96,7 @@
 program
 	: body_list
 		{
-			program = ast_program($1);
+			program = ast_program(ast_body($1));
 		}
 	;
 
@@ -198,7 +198,7 @@ type
 block
 	: '{' block_content_list '}'
 		{
-			$$ = $2;
+			$$ = ast_block($2);
 		}
 	;
 
@@ -471,7 +471,7 @@ monitor_definition
 class_body
 	: '{' class_content_list '}'
 		{
-			$$ = $2;
+			$$ = ast_body($2);
 		}
 	;
 

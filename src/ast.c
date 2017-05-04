@@ -24,6 +24,14 @@ Program* ast_program(Body* body) {
 //
 // ==================================================
 
+Body* ast_body(Body* body) {
+	Body* base;
+	MALLOC(base, Body);
+	base->tag = BODY;
+	base->next = body;
+	return base;
+}
+
 Body* ast_body_declaration(Declaration* declaration) {
 	Body* body;
 	MALLOC(body, Body);
@@ -165,6 +173,14 @@ Type* ast_type_array(Type* type) {
 //	Block
 //
 // ==================================================
+
+Block* ast_block(Block* block) {
+	Block* base;
+	MALLOC(base, Block);
+	base->tag = BLOCK;
+	base->next = block;
+	return base;
+}
 
 Block* ast_block_declaration(Declaration* declaration) {
 	Block* block;

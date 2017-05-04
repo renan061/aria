@@ -1,0 +1,92 @@
+{
+	function foo(a: Byte): Integer {
+	}
+	function foo(a: Byte, b: Byte, c: Byte): Integer {
+	}
+	function foo(a: Byte, b: Byte, c: Byte): Integer {
+	}
+	function foo(): Integer {
+	}
+	function foo(a: Byte) {
+	}
+	function foo(a: Byte, b: Byte, c: Byte) {
+	}
+	function foo(a: Byte, b: Byte, c: Byte) {
+	}
+	function foo() {
+	}
+	monitor Monitor {
+		flag: Boolean
+		function foo() {
+		}
+		private function foo() {
+		}
+		initializer() {
+		}
+	}
+	monitor Monitor {
+	}
+	function foo() {
+		type: Integer
+		type: [Integer]
+		type: [[[Integer]]]
+		flag: Boolean
+		a = (1)
+		a: ? := (1)
+		foo()
+		foo((a))
+		foo((a), (b), (c))
+		(m).foo()
+		(m).foo((a))
+		(m).foo((a), (b), (c))
+		Monitor()
+		Monitor((a))
+		Monitor((a), (b), (c))
+		while (true) wait in a
+		signal a
+		broadcast a
+		return (true)
+		return
+		if (true) {
+		}
+		if (true) {
+		} else {
+		}
+		while (true) {
+		}
+		spawn {
+		}
+		{
+		}
+		var = (a)
+		var = ((a)[(1)])
+		var = ((((a)[(1)])[(1)])[(1)])
+		var = ((((foo())[(1)])[(1)])[(1)])
+		a = (true)
+		a = (false)
+		a = (0)
+		a = (1)
+		a = (1000)
+		a = (0.000000)
+		a = (1.123000)
+		a = (1000.123000)
+		a = ("c")
+		a = ("string")
+		a = ("s p a c e d s t r i n g")
+		a = (a)
+		a = (foo())
+		a = (not(true))
+		a = (-(1))
+		a = ((true) or (false))
+		a = ((true) and (false))
+		a = ((1) == (1))
+		a = ((1) <= (1))
+		a = ((1) >= (1))
+		a = ((1) < (1))
+		a = ((1) > (1))
+		a = ((1) + (1))
+		a = ((1) - (1))
+		a = ((1) * (1))
+		a = ((1) / (1))
+	}
+}

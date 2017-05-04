@@ -12,6 +12,7 @@
 // ==================================================
 
 typedef enum BodyTag {
+	BODY,
 	BODY_DECLARATION,
 	BODY_DEFINITION
 } BodyTag;
@@ -35,6 +36,7 @@ typedef enum TypeTag {
 } TypeTag;
 
 typedef enum BlockTag {
+	BLOCK,
 	BLOCK_DECLARATION,
 	BLOCK_STATEMENT
 } BlockTag;
@@ -309,6 +311,7 @@ struct FunctionCall {
 extern Program* program;
 extern Program* ast_program(Body*);
 
+extern Body* ast_body(Body*);
 extern Body* ast_body_declaration(Declaration*);
 extern Body* ast_body_definition(Definition*);
 
@@ -326,6 +329,7 @@ extern Id* ast_id(unsigned int, const char*);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
 
+extern Block* ast_block(Block*);
 extern Block* ast_block_declaration(Declaration*);
 extern Block* ast_block_statement(Statement*);
 
