@@ -61,10 +61,10 @@ static void print_ast_body(Body* body) {
 static void print_ast_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		print_ast_id(declaration->variable.id);
+		print_ast_id(declaration->variable->id);
 		printf(": ");
-		if (declaration->variable.type) { // for := statements
-			print_ast_type(declaration->variable.type);
+		if (declaration->variable->type) { // for := statements
+			print_ast_type(declaration->variable->type);
 		} else {
 			printf("?");
 		}
@@ -314,9 +314,9 @@ static void print_ast_function_call(FunctionCall* function_call) {
 	}
 
 	printf("(");
-	for (Expression* e = function_call->arguments; e; e = e->next) {
+	for (Expression* e = function_call->arguments; e;) {
 		print_ast_expression(e);
-		if (e->next) {
+		if ((e = e->next)) {
 			printf(", ");
 		}
 	}

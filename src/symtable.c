@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "alloc.h"
 #include "errs.h"
 #include "symtable.h"
@@ -10,11 +12,13 @@
 //
 // ==================================================
 
+// TODO: Docs
+
 typedef struct Scope Scope;
 typedef struct Symbol Symbol;
 
 struct SymbolTable {
-	Scope* first_scope;
+	Scope* top_scope;
 };
 
 struct Scope {
@@ -24,13 +28,24 @@ struct Scope {
 
 struct Symbol {
 	Symbol* next;
-	Id* id;
+	Declaration* declaration;
 };
 
-static Id* findinside(Scope* scope, Id* id) {
+static Id* declarationid(Declaration* declaration) {
+	switch (declaration->tag) {
+	case DECLARATION_VARIABLE:
+		assert(declaration->variable->tag == VARIABLE_ID);
+		return declaration->variable->id;
+	case DECLARATION_FUNCTION:
+		return declaration->function.id;
+	}
+	return assert(NULL), NULL; // unreachable
+}
+
+static Declaration* findinside(Scope* scope, Id* id) {
 	for (Symbol* symbol = scope->first_symbol; symbol; symbol = symbol->next) {
-		if (id == symbol->id) {
-			return id;
+		if (declarationid(symbol->declaration) == id) {
+			return symbol->declaration;
 		}
 	}
 	return NULL;
@@ -45,12 +60,12 @@ static Id* findinside(Scope* scope, Id* id) {
 SymbolTable* symtable_new() {
 	SymbolTable* table;
 	MALLOC(table, SymbolTable);
-	table->first_scope = NULL;
+	table->top_scope = NULL;
 	return table;
 }
 
 void symtable_free(SymbolTable* table) {
-	if (table->first_scope) {
+	if (table->top_scope) {
 		internal_error(ERR_SCOPE);
 	}
 	free(table);
@@ -60,15 +75,15 @@ void symtable_enter_scope(SymbolTable* table) {
 	Scope* scope;
 	MALLOC(scope, Scope);
 
-	scope->next = table->first_scope;
-	table->first_scope = scope;
+	scope->next = table->top_scope;
+	table->top_scope = scope;
 
 	scope->first_symbol = NULL;
 }
 
 void symtable_leave_scope(SymbolTable* table) {
-	Scope* scope = table->first_scope;
-	table->first_scope = scope->next;
+	Scope* scope = table->top_scope;
+	table->top_scope = scope->next;
 
 	for (Symbol* symbol = scope->first_symbol; symbol;) {
 		scope->first_symbol = symbol;
@@ -78,26 +93,24 @@ void symtable_leave_scope(SymbolTable* table) {
 	free(scope);
 }
 
-Id* symtable_find(SymbolTable* table, Id* id) {
-	Id* found = NULL;
-	for (Scope* scope = table->first_scope; scope; scope = scope->next) {
-		if ((found = findinside(scope, id))) {
-			break;
-		}
+Declaration* symtable_find(SymbolTable* table, Id* id) {
+	Declaration* found = NULL;
+	for (Scope* s = table->top_scope; s && !found; s = s->next) {
+		found = findinside(s, id);
 	}
 	return found;
 }
 
-bool symtable_insert(SymbolTable* table, Id* id) {
+bool symtable_insert(SymbolTable* table, Declaration* declaration) {
 	// Checks for repetition inside same scope
-	if (findinside(table->first_scope, id)) {
+	if (findinside(table->top_scope, declarationid(declaration))) {
 		return false;
 	}
 
 	Symbol* symbol;
 	MALLOC(symbol, Symbol);
-	symbol->id = id;
-	symbol->next = table->first_scope->first_symbol;
-	table->first_scope->first_symbol = symbol;
+	symbol->declaration = declaration;
+	symbol->next = table->top_scope->first_symbol;
+	table->top_scope->first_symbol = symbol;
 	return true;
 }

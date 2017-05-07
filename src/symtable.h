@@ -18,11 +18,11 @@ extern void symtable_leave_scope(SymbolTable*);
 /*
  * Returns NULL if id could not be found.
  */
-extern Id* symtable_find(SymbolTable*, Id*);
+extern Declaration* symtable_find(SymbolTable*, Id*);
 
 /*
- * Returns "false" if id is already inside and "true" otherwise.
+ * Returns "false" if declaration->id is already inside and "true" otherwise.
  */
-extern bool symtable_insert(SymbolTable*, Id*);
+extern bool symtable_insert(SymbolTable*, Declaration*);
 
 #endif

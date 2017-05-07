@@ -56,13 +56,12 @@ Body* ast_body_definition(Definition* definition) {
 //
 // ==================================================
 
-Declaration* ast_declaration_variable(Id* id, Type* type) {
+Declaration* ast_declaration_variable(Variable* variable) {
 	Declaration* declaration;
 	MALLOC(declaration, Declaration);
 	declaration->tag = DECLARATION_VARIABLE;
 	declaration->next = NULL;
-	declaration->variable.id = id;
-	declaration->variable.type = type;
+	declaration->variable = variable;
 	return declaration;
 }
 
@@ -219,7 +218,8 @@ Statement* ast_statement_definition(Id* id, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_DEFINITION;
-	statement->definition.declaration = ast_declaration_variable(id, NULL);
+	statement->definition.declaration =
+		ast_declaration_variable(ast_variable_id(id));
 	statement->definition.expression = expression;
 	return statement;
 }
@@ -319,6 +319,7 @@ Variable* ast_variable_id(Id* id) {
 	Variable* variable;
 	MALLOC(variable, Variable);
 	variable->tag = VARIABLE_ID;
+	variable->type = NULL;
 	variable->id = id;
 	return variable;
 }
@@ -327,6 +328,7 @@ Variable* ast_variable_indexed(Expression* array, Expression* index) {
 	Variable* variable;
 	MALLOC(variable, Variable);
 	variable->tag = VARIABLE_INDEXED;
+	variable->type = NULL;
 	variable->indexed.array = array;
 	variable->indexed.index = index;
 	return variable;
@@ -343,6 +345,7 @@ Expression* ast_expression_literal_boolean(bool literal_boolean) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_BOOLEAN;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->literal_boolean = literal_boolean;
 	return expression;
 }
@@ -352,6 +355,7 @@ Expression* ast_expression_literal_integer(int literal_integer) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_INTEGER;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->literal_integer = literal_integer;
 	return expression;
 }
@@ -361,6 +365,7 @@ Expression* ast_expression_literal_float(double literal_float) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_FLOAT;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->literal_float = literal_float;
 	return expression;
 }
@@ -370,6 +375,7 @@ Expression* ast_expression_literal_string(const char* literal_string) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_STRING;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->literal_string = literal_string;
 	return expression;
 }
@@ -379,6 +385,7 @@ Expression* ast_expression_variable(Variable* variable) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_VARIABLE;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->variable = variable;
 	return expression;
 }
@@ -388,6 +395,7 @@ Expression* ast_expression_function_call(FunctionCall* function_call) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_FUNCTION_CALL;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->function_call = function_call;
 	return expression;
 }
@@ -397,6 +405,7 @@ Expression* ast_expression_unary(Token token, Expression* expression) {
 	MALLOC(unaryExpression, Expression);
 	unaryExpression->tag = EXPRESSION_UNARY;
 	expression->next = NULL;
+	expression->type = NULL;
 	unaryExpression->unary.token = token;
 	unaryExpression->unary.expression = expression;
 	return unaryExpression;
@@ -407,6 +416,7 @@ Expression* ast_expression_binary(Token token, Expression* l, Expression* r) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_BINARY;
 	expression->next = NULL;
+	expression->type = NULL;
 	expression->binary.token = token;
 	expression->binary.left_expression = l;
 	expression->binary.right_expression = r;
@@ -423,6 +433,7 @@ FunctionCall* ast_function_call_basic(Id* id, Expression* arguments) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_BASIC;
+	function_call->type = NULL;
 	function_call->arguments = arguments;
 	function_call->basic = id;
 	return function_call;
@@ -432,6 +443,7 @@ FunctionCall* ast_function_call_method(Expression* o, Id* n, Expression* args) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_METHOD;
+	function_call->type = NULL;
 	function_call->arguments = args;
 	function_call->method.object = o;
 	function_call->method.name = n;
@@ -442,6 +454,7 @@ FunctionCall* ast_function_call_constructor(Type* type, Expression* arguments) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_CONSTRUCTOR;
+	function_call->type = NULL;
 	function_call->arguments = arguments;
 	function_call->constructor = type;
 	return function_call;

@@ -1,12 +1,16 @@
-function test() {
-	
-}
-
 monitor Monitor {
 	a: Integer;
 
-	function foo(string: String): Boolean {
-		a := 2;
-		return true;
+	initializer() {
+		a = 1;
 	}
+
+	function set(num: Integer) {
+		a = num;
+	}
+}
+
+function foo() {
+	m := Monitor();
+	m.set(2);
 }

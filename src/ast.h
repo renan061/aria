@@ -117,10 +117,7 @@ struct Declaration {
 
 	union {
 		// DeclarationVariable
-		struct {
-			 Id* id;
-			 Type* type;
-		} variable;
+		Variable* variable;
 		// DeclarationFunction
 		struct {
 			Id* id;
@@ -242,6 +239,7 @@ struct Statement {
 
 struct Variable {
 	VariableTag tag;
+	Type* type; // redundant
 
 	union {
 		// VariableId
@@ -257,6 +255,7 @@ struct Variable {
 struct Expression {
 	ExpressionTag tag;
 	Expression* next;
+	Type* type;
 	
 	union {
 		// ExpressionLiteralBoolean
@@ -287,6 +286,7 @@ struct Expression {
 
 struct FunctionCall {
 	FunctionCallTag tag;
+	Type* type; // redundant
 	Expression* arguments;
 
 	union {
@@ -315,7 +315,7 @@ extern Body* ast_body(Body*);
 extern Body* ast_body_declaration(Declaration*);
 extern Body* ast_body_definition(Definition*);
 
-extern Declaration* ast_declaration_variable(Id*, Type*);
+extern Declaration* ast_declaration_variable(Variable*);
 extern Declaration* ast_declaration_function(Id*, Declaration*, Type*);
 
 extern Definition* ast_definition_variable(Declaration*, Expression*);

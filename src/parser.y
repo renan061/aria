@@ -168,7 +168,7 @@ variable_declaration
 	: lower_ids ':' type
 		{
 			for ($$ = $1; $1; $1 = $1->next) {
-				$1->variable.type = $3;
+				$1->variable->type = $3;
 			}
 		}
 	;
@@ -176,11 +176,12 @@ variable_declaration
 lower_ids
 	: TK_LOWER_ID
 		{
-			$$ = ast_declaration_variable($1, NULL);
+			$$ = ast_declaration_variable(ast_variable_id($1));
 		}
 	| lower_ids ',' TK_LOWER_ID
 		{
-			APPEND(Declaration, $$, $1, ast_declaration_variable($3, NULL));
+			Variable* variable = ast_variable_id($3);
+			APPEND(Declaration, $$, $1, ast_declaration_variable(variable));
 		}
 	;
 
