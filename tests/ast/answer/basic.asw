@@ -31,6 +31,11 @@
 		type: [Integer]
 		type: [[[Integer]]]
 		flag: Boolean
+		a: Integer
+		b: Integer
+		a: Integer
+		b: Integer
+		c: Integer
 		a = (1)
 		a: ? := (1)
 		foo()

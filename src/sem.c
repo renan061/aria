@@ -25,13 +25,10 @@ static SymbolTable* table;
 
 // TODO: Doc
 void sem_analyse(Program* program) {
-	// Definitions from the program's body
+	assert(program->body->tag == BODY);
 	table = symtable_new();
 	symtable_enter_scope(table);
-	for (Body* body = program->body; body; body = body->next) {
-		assert(body->tag = BODY_DEFINITION); // TODO: Necessary?
-		sem_definition(body->definition);
-	}
+	sem_body(program->body->next);
 	symtable_leave_scope(table);
 	symtable_free(table);
 }
@@ -47,7 +44,7 @@ void sem_body(Body* body) {
 }
 
 void sem_declaration(Declaration* declaration) {
-
+	// TODO
 }
 
 void sem_definition(Definition* definition) {

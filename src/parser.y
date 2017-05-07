@@ -213,10 +213,20 @@ block_content_list
 		}
 	;
 
+/*
+	Syntactic sugar:
+
+	a, b, c: Integer;	->		a: Integer;
+						->		b: Integer;
+						->		c: Integer;
+*/
 block_content
 	: variable_declaration ';'
 		{
 			$$ = ast_block_declaration($1);
+			for (Block* temp = $$; $1->next; $1 = $1->next, temp = temp->next) {
+				temp->next = ast_block_declaration($1->next);
+			}
 		}
 	| statement
 		{
@@ -293,18 +303,34 @@ compound_statement
 		}
 	;
 
+/*
+	Syntactic sugars:
+
+	if e {				->		if e {
+	} else if e {		->		} else {
+	}					->			if e {
+						->			}
+						->		}
+
+	if e {				->		if e {
+	} else if e {		->		} else {
+	} else {			->			if e {
+	}					->			} else {
+						->			}
+ 						->		}
+*/
 else
 	: /* empty */
 		{
 			$$ = NULL;
 		}
 	| TK_ELSE TK_IF expression block else
-		{
+		{			
 			Statement* statement = ($5)
 				? ast_statement_if_else($3, $4, $5)
 				: ast_statement_if($3, $4)
 				;
-			$$ = ast_block_statement(statement);
+			$$ = ast_block(ast_block_statement(statement));
 		}
 	| TK_ELSE block
 		{

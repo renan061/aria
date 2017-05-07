@@ -1,10 +1,10 @@
 #include <stdio.h>
 
-#include "ast_printer.c"
-
 #include "ast.h"
 #include "parser.h"
 #include "scanner.h"
+
+#include "ast_printer.c"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
