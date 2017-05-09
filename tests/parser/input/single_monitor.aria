@@ -1,16 +1,15 @@
-monitor SomeMonitor {
-
+monitor Monitor {
 	counter: Integer;
 	
 	initializer(number: Integer) {
-		variable = number;
+		counter = number;
 	}
 
-	function foo() {
+	function foo {
 		counter = bar();
 	}
 	
-	private function bar(): Integer {
+	private function bar: Integer {
 		return 10;
 	}
 }

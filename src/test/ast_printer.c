@@ -76,14 +76,16 @@ static void print_ast_declaration(Declaration* declaration) {
 		} else {
 			printf("initializer");
 		}
-		printf("(");
-		for (Declaration* p = declaration->function.parameters; p;) {
-			print_ast_declaration(p);
-			if ((p = p->next)) {
-				printf(", ");
+		if (declaration->function.parameters) {
+			printf("(");
+			for (Declaration* p = declaration->function.parameters; p;) {
+				print_ast_declaration(p);
+				if ((p = p->next)) {
+					printf(", ");
+				}
 			}
+			printf(")");
 		}
-		printf(")");
 		if (declaration->function.type) {
 			printf(": ");
 			print_ast_type(declaration->function.type);

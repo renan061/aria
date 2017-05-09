@@ -1,6 +1,6 @@
 // Tests with chains of "ifs" and "else-ifs"
 
-function foo() {
+function foo {
 	// ==================================================
 	//
 	//	Empty blocks

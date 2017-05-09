@@ -1,33 +1,39 @@
-/*
- * Function definition
- */
+// ==================================================
+//
+//	Function definition
+//
+// ==================================================
 
-// Function without return value(s)
-function f1() {}
+// Function without return value
+function foo {}
 
-// Function with return value(s)
-function f2(): Integer {
+// Function with return value
+function foo: Integer {
 	return 1;
 }
 
-/*
- * Parameters
- */
+// ==================================================
+//
+//	Parameters
+//
+// ==================================================
 
 // No parameters
-function f3() {}
+function foo {}
 
 // Single parameter
-function f4(a: Type) {}
+function foo(a: Type) {}
 
 // Many parameters
-function f5(x: Byte, y: Integer, z: String) {}
+function foo(x: Byte, y: Integer, z: String) {}
 
-/*
- * Variable declaration
- */
+// ==================================================
+//
+//	Variable declaration
+//
+// ==================================================
 
-function f6() {
+function foo {
 	// Single variable
 	a: Integer;
 
@@ -38,12 +44,14 @@ function f6() {
 	i, j, k, l, m, n, o: Integer;
 }
 
-/*
- * Type
- */
+// ==================================================
+//
+//	Type
+//
+// ==================================================
 
 // Array type
-function f7(a, b: [Array]) {
+function foo(a, b: [Array]) {
 	// Upper ID type
 	c: Type;
 
@@ -51,20 +59,22 @@ function f7(a, b: [Array]) {
 	d: [[[Integer]]];
 }
 
-/*
- * Block
- */
+// ==================================================
+//
+//	Block
+//
+// ==================================================
 
 // Empty block
-function f8() {}
+function foo {}
 
 // Single statement/variable declaration
-function f9() {
+function foo {
 	a: Integer;
 }
 
 // Mixed between variable declarations and statements
-function f10() {
+function foo {
 	a: Integer;
 	a = 1;
 	b: Integer;
@@ -72,7 +82,7 @@ function f10() {
 }
 
 // Variable declarations first and statements second
-function f11() {
+function foo {
 	a: Integer;
 	b: Integer;
 	a = 1;
@@ -80,18 +90,20 @@ function f11() {
 }
 
 // Variable declarations second and statements first
-function f12() {
+function foo {
 	if not true {
 		return;
 	}
 	a: Integer;
 }
 
-/*
- * Statement
- */
+// ==================================================
+//
+//	Statement
+//
+// ==================================================
 
-function f13() {
+function foo {
 	// Declared variable assignment
 	a = 1;
 
@@ -145,11 +157,13 @@ function f13() {
 	}
 }
 
-/*
- * Variable
- */
+// ==================================================
+//
+//	Variable
+//
+// ==================================================
 
-function f14() {
+function foo {
 	// Lower ID Variable
 	a = 1;
 
@@ -157,11 +171,13 @@ function f14() {
 	a[0] = 2;
 }
 
-/*
- * Expression
- */
+// ==================================================
+//
+//	Expression
+//
+// ==================================================
 
-function f15() {
+function foo {
 	// Or
 	a := true or false;
 
@@ -228,7 +244,7 @@ function f15() {
  * Literal
  */
 
-function f16() {
+function foo {
 	// True
 	a := true;
 
@@ -245,11 +261,13 @@ function f16() {
 	a := "string";
 }
 
-/*
- * Function call
- */
+// ==================================================
+//
+//	Function call
+//
+// ==================================================
 
-function f17() {
+function foo {
 	// No parameters
 	foo();
 
@@ -266,9 +284,11 @@ function f17() {
 	a.foo();
 }
 
-/*
- * Monitor
- */
+// ==================================================
+//
+//	Monitor
+//
+// ==================================================
 
 // Empty
 monitor Monitor {}
@@ -281,30 +301,34 @@ monitor Monitor {
 // Mixed between properties, methods and constructors
 monitor Monitor {
 	a: Integer;
-	function foo() {}
-	initializer() {}
+
+	function foo {
+
+	}
+
+	initializer {
+
+	}
+
 	b: Integer;
-	function bar() {}
+
+	function bar {
+
+	}
 }
 
-/*
- * Method definition
- */
-
+// Method definition
 monitor Monitor {
-	function foo() {
+	function foo {
 
 	}
 	
-	private function bar() {
+	private function bar {
 
 	}
 }
 
-/*
- * Constructor definition
- */
-
+// Constructor definition
 monitor Monitor {
 	initializer(a: Int) {
 		print(a);

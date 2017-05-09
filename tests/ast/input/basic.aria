@@ -11,11 +11,11 @@
 function foo(a: Byte): Integer {}					// + return + parameters
 function foo(a: Byte, b: Byte, c: Byte): Integer {}	// + return + parameters
 function foo(a, b, c: Byte): Integer {}				// + return + parameters
-function foo(): Integer {}							// + return - parameters
+function foo: Integer {}							// + return - parameters
 function foo(a: Byte) {}							// - return + parameters
 function foo(a: Byte, b: Byte, c: Byte) {}			// - return + parameters
 function foo(a, b, c: Byte) {}						// - return + parameters
-function foo() {}									// - return - parameters
+function foo {}										// - return - parameters
 
 // DefinitionMonitor
 monitor Monitor {
@@ -26,11 +26,11 @@ monitor Monitor {
 	// a: Integer = 1;
 
 	// DefinitionMethod
-	function foo() {}
-	private function foo() {}
+	function foo {}
+	private function foo {}
 
 	// DefinitionConstructor
-	initializer() {}
+	initializer {}
 }
 
 // DefinitionMonitor
@@ -42,7 +42,7 @@ monitor Monitor {}
 //
 // ==================================================
 
-function foo() {
+function foo {
 	// ==================================================
 	//
 	//	Types

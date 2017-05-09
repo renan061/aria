@@ -5,7 +5,7 @@
 	}
 	function foo(a: Byte, b: Byte, c: Byte): Integer {
 	}
-	function foo(): Integer {
+	function foo: Integer {
 	}
 	function foo(a: Byte) {
 	}
@@ -13,20 +13,20 @@
 	}
 	function foo(a: Byte, b: Byte, c: Byte) {
 	}
-	function foo() {
+	function foo {
 	}
 	monitor Monitor {
 		flag: Boolean
-		function foo() {
+		function foo {
 		}
-		private function foo() {
+		private function foo {
 		}
-		initializer() {
+		initializer {
 		}
 	}
 	monitor Monitor {
 	}
-	function foo() {
+	function foo {
 		type: Integer
 		type: [Integer]
 		type: [[[Integer]]]

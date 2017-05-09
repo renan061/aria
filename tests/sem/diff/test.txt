@@ -1,16 +1,3 @@
-0a1,15
-> {
-> 	monitor Monitor {
-> 		a: Integer
-> 		initializer() {
-> 			a = (1)
-> 		}
-> 		function set(num: Integer) {
-> 			a = (num)
-> 		}
-> 	}
-> 	function foo() {
-> 		m: ? := (Monitor())
-> 		(m).set((2))
-> 	}
-> }
+0a1,2
+> line 0:
+> 	parser error: syntax error
