@@ -34,8 +34,8 @@ struct Symbol {
 static Id* declarationid(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		assert(declaration->variable->tag == VARIABLE_ID);
-		return declaration->variable->id;
+		assert(declaration->variable.variable->tag == VARIABLE_ID);
+		return declaration->variable.variable->id;
 	case DECLARATION_FUNCTION:
 		return declaration->function.id;
 	}

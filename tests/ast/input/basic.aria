@@ -4,8 +4,8 @@
 //
 // ==================================================
 
-// DefinitionVariable (TODO)
-// a: Integer = 1;
+// DefinitionVariable
+value a: Integer = 1;
 
 // DefinitionFunction
 function foo(a: Byte): Integer {}					// + return + parameters
@@ -20,7 +20,7 @@ function foo {}										// - return - parameters
 // DefinitionMonitor
 monitor Monitor {
 	// DeclarationVariable
-	flag: Boolean;
+	variable flag: Boolean;
 
 	// DefinitionVariable (TODO)
 	// a: Integer = 1;
@@ -50,11 +50,11 @@ function foo {
 	// ==================================================
 
 	// TypeId
-	type: Integer;
+	value type: Integer;
 
 	// TypeArray
-	type: [Integer];
-	type: [[[Integer]]];
+	variable type: [Integer];
+	variable type: [[[Integer]]];
 
 	// ==================================================
 	//
@@ -63,12 +63,13 @@ function foo {
 	// ==================================================
 
 	// DeclarationVariable
-	flag: Boolean;
-	a, b: Integer;
-	a, b, c: Integer;
+	value flag: Boolean;
+	value a, b: Integer;
+	variable a, b, c: Integer;
 
 	// DefinitionVariable (TODO)
-	// a: Integer = 1;
+	// value a: Integer = 1;
+	// variable a: Integer = 1;
 
 	// ==================================================
 	//

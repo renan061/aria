@@ -1,5 +1,15 @@
 // ==================================================
 //
+//	Variable definition
+//
+// ==================================================
+
+value a: Integer = 2;
+
+value a = 2;
+
+// ==================================================
+//
 //	Function definition
 //
 // ==================================================
@@ -35,13 +45,16 @@ function foo(x: Byte, y: Integer, z: String) {}
 
 function foo {
 	// Single variable
-	a: Integer;
+	variable a: Integer;
+	variable a: Integer;
 
 	// Two variables
-	x, y: Integer;
+	variable x, y: Integer;
+	variable x, y: Integer;
 
 	// Many variables
-	i, j, k, l, m, n, o: Integer;
+	variable i, j, k, l, m, n, o: Integer;
+	variable i, j, k, l, m, n, o: Integer;
 }
 
 // ==================================================
@@ -53,10 +66,10 @@ function foo {
 // Array type
 function foo(a, b: [Array]) {
 	// Upper ID type
-	c: Type;
+	variable c: Type;
 
 	// Nested arrays
-	d: [[[Integer]]];
+	variable d: [[[Integer]]];
 }
 
 // ==================================================
@@ -70,21 +83,21 @@ function foo {}
 
 // Single statement/variable declaration
 function foo {
-	a: Integer;
+	variable a: Integer;
 }
 
 // Mixed between variable declarations and statements
 function foo {
-	a: Integer;
+	variable a: Integer;
 	a = 1;
-	b: Integer;
+	variable b: Integer;
 	b = a;
 }
 
 // Variable declarations first and statements second
 function foo {
-	a: Integer;
-	b: Integer;
+	variable a: Integer;
+	variable b: Integer;
 	a = 1;
 	b = a;
 }
@@ -94,7 +107,7 @@ function foo {
 	if not true {
 		return;
 	}
-	a: Integer;
+	variable a: Integer;
 }
 
 // ==================================================
@@ -107,7 +120,7 @@ function foo {
 	// Declared variable assignment
 	a = 1;
 
-	// Declared variable assignment
+	// Define variable statement
 	b := 2;
 
 	foo();
@@ -295,12 +308,13 @@ monitor Monitor {}
 
 // Single property/method
 monitor Monitor {
-	a: Integer;
+	variable a: Integer;
 }
 
 // Mixed between properties, methods and constructors
 monitor Monitor {
-	a: Integer;
+	value a: Integer;
+	variable b: Integer;
 
 	function foo {
 
@@ -310,7 +324,7 @@ monitor Monitor {
 
 	}
 
-	b: Integer;
+	variable c: Integer;
 
 	function bar {
 

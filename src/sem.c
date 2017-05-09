@@ -41,7 +41,6 @@ static SymbolTable* utable;
 
 // TODO: Doc
 void sem_analyse(Program* program) {
-	assert(program->body->tag == BODY);
 	ltable = symtable_new();
 	utable = symtable_new();
 	sem_body(program->body);
@@ -77,8 +76,8 @@ static void sem_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
 		if (!symtable_insert(ltable, declaration)) {
-			sem_error(declaration->variable->id->line,
-				ERR_REDECLARATION(declaration->variable->id->name));
+			sem_error(declaration->variable.variable->id->line,
+				ERR_REDECLARATION(declaration->variable.variable->id->name));
 		}
 		break;
 	case DECLARATION_FUNCTION:
@@ -99,14 +98,13 @@ static void sem_definition(Definition* definition) {
 	case DEFINITION_VARIABLE:
 		sem_declaration(definition->variable.declaration);
 		sem_expression(definition->variable.expression);
-		typecheck(definition->variable.declaration->variable->type,
+		typecheck(definition->variable.declaration->variable.variable->type,
 			definition->variable.expression);
 		break;
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
 		symtable_enter_scope(ltable);
 		sem_declaration(definition->function.declaration);
-		assert(definition->function.block->tag == BLOCK);
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
 		symtable_leave_scope(ltable);
@@ -122,7 +120,6 @@ static void sem_definition(Definition* definition) {
 		// 	sem_error(definition->monitor.id->line,
 		// 		ERR_REDECLARATION(definition->monitor.id->name));
 		// }
-		// assert(definition->monitor.body->tag == BODY);
 		// sem_body(definition->monitor.body);
 		break;
 	}
@@ -162,7 +159,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_DEFINITION:
 		sem_declaration(statement->definition.declaration);
 		sem_expression(statement->definition.expression);
-		statement->definition.declaration->variable->type =
+		statement->definition.declaration->variable.variable->type =
 			statement->definition.expression->type;
 		break;
 	case STATEMENT_FUNCTION_CALL:
@@ -186,27 +183,21 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		break;
 	case STATEMENT_IF:
 		sem_expression(statement->if_.expression);
-		assert(statement->if_.block->tag == BLOCK);
 		sem_block(statement->if_.block, return_type);
 		break;
 	case STATEMENT_IF_ELSE:
 		sem_expression(statement->if_else.expression);
-		assert(statement->if_else.if_block->tag == BLOCK);
 		sem_block(statement->if_else.if_block, return_type);
-		assert(statement->if_else.else_block->tag == BLOCK);
 		sem_block(statement->if_else.else_block, return_type);
 		break;
 	case STATEMENT_WHILE:
 		sem_expression(statement->while_.expression);
-		assert(statement->while_.block->tag == BLOCK);
 		sem_block(statement->while_.block, return_type);
 		break;
 	case STATEMENT_SPAWN:
-		assert(statement->spawn->tag == BLOCK);
 		sem_block(statement->spawn, return_type);
 		break;
 	case STATEMENT_BLOCK:
-		assert(statement->block->tag == BLOCK);
 		sem_block(statement->block, return_type);
 		break;
 	}
@@ -224,8 +215,8 @@ static void sem_variable(Variable* variable) {
 			assert(0);
 		}
 		// TODO: free variable->id ?
-		variable->id = declaration->variable->id;
-		variable->type = declaration->variable->type;
+		variable->id = declaration->variable.variable->id;
+		variable->type = declaration->variable.variable->type;
 		break;
 	}
 	case VARIABLE_INDEXED:

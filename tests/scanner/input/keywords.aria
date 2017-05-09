@@ -1,6 +1,8 @@
 /*
  * Keywords
  */
+value
+variable
 function
 while wait in signal broadcast
 return

@@ -1,16 +1,25 @@
 monitor Monitor {
-	a: Integer;
+	variable a: Integer;
 
-	initializer() {
+	initializer {
 		a = 1;
 	}
 
 	function set(num: Integer) {
 		a = num;
 	}
+
+	function get: Integer {
+		return a;
+	}
+
+	function print {
+		print(a);
+	}
 }
 
 function foo() {
+	value number: Integer = 2;
 	m := Monitor();
-	m.set(2);
+	m.set(number);
 }

@@ -38,86 +38,86 @@
 			}
 		}
 		if (true) {
-			a: ? := (1)
-			b: ? := (2)
-			c: ? := (3)
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		} else {
-			a: ? := (1)
-			b: ? := (2)
-			c: ? := (3)
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		}
 		if (true) {
-			a: ? := (1)
-			b: ? := (2)
-			c: ? := (3)
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		} else {
 			if (true) {
-				a: ? := (1)
-				b: ? := (2)
-				c: ? := (3)
+				value a: ? = (1)
+				value b: ? = (2)
+				value c: ? = (3)
 			}
 		}
 		if (true) {
-			a: ? := (1)
-			b: ? := (2)
-			c: ? := (3)
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		} else {
 			if (true) {
-				a: ? := (1)
-				b: ? := (2)
-				c: ? := (3)
+				value a: ? = (1)
+				value b: ? = (2)
+				value c: ? = (3)
 			} else {
-				a: ? := (1)
-				b: ? := (2)
-				c: ? := (3)
+				value a: ? = (1)
+				value b: ? = (2)
+				value c: ? = (3)
 			}
 		}
 		if (true) {
-			a: ? := (1)
-			b: ? := (2)
-			c: ? := (3)
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		} else {
 			if (true) {
-				a: ? := (1)
-				b: ? := (2)
-				c: ? := (3)
+				value a: ? = (1)
+				value b: ? = (2)
+				value c: ? = (3)
 			} else {
 				if (true) {
-					a: ? := (1)
-					b: ? := (2)
-					c: ? := (3)
+					value a: ? = (1)
+					value b: ? = (2)
+					value c: ? = (3)
 				} else {
 					if (true) {
-						a: ? := (1)
-						b: ? := (2)
-						c: ? := (3)
+						value a: ? = (1)
+						value b: ? = (2)
+						value c: ? = (3)
 					}
 				}
 			}
 		}
 		if (true) {
-			a: ? := (1)
-			b: ? := (2)
-			c: ? := (3)
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		} else {
 			if (true) {
-				a: ? := (1)
-				b: ? := (2)
-				c: ? := (3)
+				value a: ? = (1)
+				value b: ? = (2)
+				value c: ? = (3)
 			} else {
 				if (true) {
-					a: ? := (1)
-					b: ? := (2)
-					c: ? := (3)
+					value a: ? = (1)
+					value b: ? = (2)
+					value c: ? = (3)
 				} else {
 					if (true) {
-						a: ? := (1)
-						b: ? := (2)
-						c: ? := (3)
+						value a: ? = (1)
+						value b: ? = (2)
+						value c: ? = (3)
 					} else {
-						a: ? := (1)
-						b: ? := (2)
-						c: ? := (3)
+						value a: ? = (1)
+						value b: ? = (2)
+						value c: ? = (3)
 					}
 				}
 			}

@@ -117,7 +117,10 @@ struct Declaration {
 
 	union {
 		// DeclarationVariable
-		Variable* variable;
+		struct {
+			bool immutable; // true by default
+			Variable* variable;
+		} variable;
 		// DeclarationFunction
 		struct {
 			Id* id;

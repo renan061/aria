@@ -24,7 +24,6 @@ static void print_ast_expression(Expression*);
 static void print_ast_function_call(FunctionCall*);
 
 void print_ast_program(Program* program) {
-	assert(program->body->tag == BODY);
 	print_ast_body(program->body);
 	printf("\n");
 }
@@ -51,6 +50,9 @@ static void print_ast_body(Body* body) {
 			break;
 		case BODY_DEFINITION:
 			print_ast_definition(b->definition);
+			if (b->definition->tag == DEFINITION_VARIABLE) {
+				printf("\n");
+			}
 			break;
 		default:
 			assert(b->tag != BODY);
@@ -61,10 +63,11 @@ static void print_ast_body(Body* body) {
 static void print_ast_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		print_ast_id(declaration->variable->id);
+		printf("%s ", (declaration->variable.immutable) ? "value" : "variable");
+		print_ast_id(declaration->variable.variable->id);
 		printf(": ");
-		if (declaration->variable->type) { // for := statements
-			print_ast_type(declaration->variable->type);
+		if (declaration->variable.variable->type) {
+			print_ast_type(declaration->variable.variable->type);
 		} else {
 			printf("?");
 		}
@@ -105,7 +108,6 @@ static void print_ast_definition(Definition* definition) {
 	case DEFINITION_CONSTRUCTOR:
 		print_ast_declaration(definition->function.declaration);
 		printf(" ");
-		assert(definition->function.block->tag == BLOCK);
 		print_ast_block(definition->function.block);
 		printf("\n");
 		break;
@@ -119,7 +121,6 @@ static void print_ast_definition(Definition* definition) {
 		printf("monitor ");
 		print_ast_id(definition->monitor.id);
 		printf(" ");
-		assert(definition->monitor.body->tag == BODY);
 		print_ast_body(definition->monitor.body);
 		printf("\n");
 		break;
@@ -178,13 +179,14 @@ static void print_ast_statement(Statement* statement) {
 
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
+		// TODO: Definition*
 		print_ast_variable(statement->assignment.variable);
 		printf(" = ");
 		print_ast_expression(statement->assignment.expression);
 		break;
 	case STATEMENT_DEFINITION:
 		print_ast_declaration(statement->definition.declaration);
-		printf(" := ");
+		printf(" = ");
 		print_ast_expression(statement->definition.expression);
 		break;
 	case STATEMENT_FUNCTION_CALL:
@@ -215,33 +217,27 @@ static void print_ast_statement(Statement* statement) {
 		printf("if ");
 		print_ast_expression(statement->if_.expression);
 		printf(" ");
-		assert(statement->if_.block->tag == BLOCK);
 		print_ast_block(statement->if_.block);
 		break;
 	case STATEMENT_IF_ELSE:
 		printf("if ");
 		print_ast_expression(statement->if_else.expression);
 		printf(" ");
-		assert(statement->if_else.if_block->tag == BLOCK);
 		print_ast_block(statement->if_else.if_block);
 		printf(" else ");
-		assert(statement->if_else.else_block->tag == BLOCK);
 		print_ast_block(statement->if_else.else_block);
 		break;
 	case STATEMENT_WHILE:
 		printf("while ");
 		print_ast_expression(statement->while_.expression);
 		printf(" ");
-		assert(statement->while_.block->tag == BLOCK);
 		print_ast_block(statement->while_.block);
 		break;
 	case STATEMENT_SPAWN:
 		printf("spawn ");
-		assert(statement->spawn->tag == BLOCK);
 		print_ast_block(statement->spawn);
 		break;
 	case STATEMENT_BLOCK:
-		assert(statement->block->tag == BLOCK);
 		print_ast_block(statement->block);
 		break;
 	}

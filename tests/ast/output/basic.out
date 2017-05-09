@@ -1,22 +1,23 @@
 {
-	function foo(a: Byte): Integer {
+	value a: Integer = (1)
+	function foo(value a: Byte): Integer {
 	}
-	function foo(a: Byte, b: Byte, c: Byte): Integer {
+	function foo(value a: Byte, value b: Byte, value c: Byte): Integer {
 	}
-	function foo(a: Byte, b: Byte, c: Byte): Integer {
+	function foo(value a: Byte, value b: Byte, value c: Byte): Integer {
 	}
 	function foo: Integer {
 	}
-	function foo(a: Byte) {
+	function foo(value a: Byte) {
 	}
-	function foo(a: Byte, b: Byte, c: Byte) {
+	function foo(value a: Byte, value b: Byte, value c: Byte) {
 	}
-	function foo(a: Byte, b: Byte, c: Byte) {
+	function foo(value a: Byte, value b: Byte, value c: Byte) {
 	}
 	function foo {
 	}
 	monitor Monitor {
-		flag: Boolean
+		variable flag: Boolean
 		function foo {
 		}
 		private function foo {
@@ -27,17 +28,17 @@
 	monitor Monitor {
 	}
 	function foo {
-		type: Integer
-		type: [Integer]
-		type: [[[Integer]]]
-		flag: Boolean
-		a: Integer
-		b: Integer
-		a: Integer
-		b: Integer
-		c: Integer
+		value type: Integer
+		variable type: [Integer]
+		variable type: [[[Integer]]]
+		value flag: Boolean
+		value a: Integer
+		value b: Integer
+		variable a: Integer
+		variable b: Integer
+		variable c: Integer
 		a = (1)
-		a: ? := (1)
+		value a: ? = (1)
 		foo()
 		foo((a))
 		foo((a), (b), (c))

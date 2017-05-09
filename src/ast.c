@@ -12,6 +12,7 @@
 Program* program;
 
 Program* ast_program(Body* body) {
+	assert(body->tag == BODY);
 	Program* program;
 	MALLOC(program, Program);
 	program->body = body;
@@ -61,7 +62,8 @@ Declaration* ast_declaration_variable(Variable* variable) {
 	MALLOC(declaration, Declaration);
 	declaration->tag = DECLARATION_VARIABLE;
 	declaration->next = NULL;
-	declaration->variable = variable;
+	declaration->variable.immutable = true;
+	declaration->variable.variable = variable;
 	return declaration;
 }
 
@@ -94,6 +96,7 @@ Definition* ast_definition_variable(Declaration* declaration, Expression* exp) {
 
 Definition* ast_definition_function(Declaration* declaration, Block* block) {
 	assert(declaration->tag == DECLARATION_FUNCTION);
+	assert(block->tag == BLOCK);
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_FUNCTION;
@@ -114,6 +117,7 @@ Definition* ast_definition_method(Definition* function, bool private) {
 
 Definition* ast_definition_constructor(Declaration* declaration, Block* block) {
 	assert(declaration->tag == DECLARATION_FUNCTION);
+	assert(block->tag == BLOCK);
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_CONSTRUCTOR;
@@ -266,6 +270,7 @@ Statement* ast_statement_return(Expression* expression) {
 }
 
 Statement* ast_statement_if(Expression* expression, Block* block) {
+	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_IF;
@@ -275,6 +280,7 @@ Statement* ast_statement_if(Expression* expression, Block* block) {
 }
 
 Statement* ast_statement_if_else(Expression* exp, Block* if_, Block* else_) {
+	assert(if_->tag == BLOCK && else_->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_IF_ELSE;
@@ -285,6 +291,7 @@ Statement* ast_statement_if_else(Expression* exp, Block* if_, Block* else_) {
 }
 
 Statement* ast_statement_while(Expression* expression, Block* block) {
+	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_WHILE;
@@ -294,6 +301,7 @@ Statement* ast_statement_while(Expression* expression, Block* block) {
 }
 
 Statement* ast_statement_spawn(Block* block) {
+	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SPAWN;
@@ -302,6 +310,7 @@ Statement* ast_statement_spawn(Block* block) {
 }
 
 Statement* ast_statement_block(Block* block) {
+	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_BLOCK;
