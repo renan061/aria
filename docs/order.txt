@@ -1,6 +1,6 @@
 - Program
 	- Body
-		- Declaration
+		- Declaration (variable, function, monitor)
 		- Definition
 			- Id
 			- Type

@@ -2,6 +2,7 @@
 #define symtable_h
 
 // TODO: Docs
+// Ex.: After new is top_scope null? (yes)
 
 #include <stdbool.h>
 

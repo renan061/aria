@@ -3,6 +3,7 @@
  *
  *	- initializer(): Semântica? Pode ter mais de um? Pode ter mais de um com
  *		tipos / quantidade diferentes de parâmetros?
+ *	- Necessidade de ter algo como "type Integer;"?
  *
  */
 #include <assert.h>
@@ -32,6 +33,7 @@ static void sem_function_call(FunctionCall*);
  * Symbol table for lowercase ids (holds variables and functions).
  */
 static SymbolTable* ltable;
+
 /*
  * Symbol table for uppercase ids (holds monitors).
  */

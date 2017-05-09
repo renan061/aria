@@ -91,6 +91,8 @@ string 		"\""(\\.|[^\\"])*"\""
 {space} 		; /* empty */
 {newline}		line++;
 
+"value"			return yylval.ival = line, TK_VALUE;
+"variable"		return yylval.ival = line, TK_VARIABLE;
 "function"		return yylval.ival = line, TK_FUNCTION;
 ":="			return yylval.ival = line, TK_DEFINE;
 "while"			return yylval.ival = line, TK_WHILE;
