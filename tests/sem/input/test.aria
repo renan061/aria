@@ -1,8 +1,15 @@
-monitor Monitor {
+monitor Stack {
+	value constant: Integer = 1;
+
 	variable a: Integer;
 
 	initializer {
 		a = 1;
+	}
+
+	function test(num: Integer): Integer {
+		a = num;
+		return num;
 	}
 
 	function set(num: Integer) {
@@ -18,8 +25,8 @@ monitor Monitor {
 	}
 }
 
-function foo() {
+function foo {
 	value number: Integer = 2;
-	m := Monitor();
+	m := Monitor(); // value m: Monitor = Monitor();
 	m.set(number);
 }

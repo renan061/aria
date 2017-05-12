@@ -20,10 +20,15 @@ function foo {}										// - return - parameters
 // DefinitionMonitor
 monitor Monitor {
 	// DeclarationVariable
-	variable flag: Boolean;
+	variable a: Integer;
+	variable x, y: Integer;
+	variable i, j, k, l, m, n, o: Integer;
 
-	// DefinitionVariable (TODO)
-	// a: Integer = 1;
+	// DefinitionVariable
+	variable a: Integer = 1;
+	variable a = 1;
+	value a: Integer = 1;
+	value a = 1;
 
 	// DefinitionMethod
 	function foo {}
@@ -50,7 +55,7 @@ function foo {
 	// ==================================================
 
 	// TypeId
-	value type: Integer;
+	variable type: Integer;
 
 	// TypeArray
 	variable type: [Integer];
@@ -58,18 +63,17 @@ function foo {
 
 	// ==================================================
 	//
-	//	Declarations & Definitions
+	//	Variable Declarations & Definitions
 	//
 	// ==================================================
 
-	// DeclarationVariable
-	value flag: Boolean;
-	value a, b: Integer;
-	variable a, b, c: Integer;
-
-	// DefinitionVariable (TODO)
-	// value a: Integer = 1;
-	// variable a: Integer = 1;
+	variable a: Integer;
+	variable x, y: Integer;
+	variable i, j, k, l, m, n, o: Integer;
+	variable a: Integer = 1;
+	variable a = 1;
+	value a: Integer = 1;
+	value a = 1;
 
 	// ==================================================
 	//

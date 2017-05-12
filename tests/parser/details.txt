@@ -26,3 +26,6 @@ misc.aria
 		*
 	description
 		miscellaneous tests
+
+TODO
+	test 'value'/'variable' declaration/definition errors

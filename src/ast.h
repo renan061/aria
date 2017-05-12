@@ -32,12 +32,14 @@ typedef enum DefinitionTag {
 
 typedef enum TypeTag {
 	TYPE_ID,
+	// TYPE_MONITOR, TODO
 	TYPE_ARRAY,
 } TypeTag;
 
 typedef enum BlockTag {
 	BLOCK,
 	BLOCK_DECLARATION,
+	BLOCK_DEFINITION,
 	BLOCK_STATEMENT
 } BlockTag;
 
@@ -117,10 +119,7 @@ struct Declaration {
 
 	union {
 		// DeclarationVariable
-		struct {
-			bool immutable; // true by default
-			Variable* variable;
-		} variable;
+		Variable* variable;
 		// DeclarationFunction
 		struct {
 			Id* id;
@@ -175,6 +174,8 @@ struct Type {
 	union {
 		// TypeID
 		Id* id;
+		// TypeMonitor
+		Definition* monitor; // TODO
 		// TypeArray
 		Type* array;
 	};
@@ -186,6 +187,7 @@ struct Block {
 
 	union {
 		Declaration* declaration;
+		Definition* definition;
 		Statement* statement;
 	};
 };
@@ -243,6 +245,7 @@ struct Statement {
 struct Variable {
 	VariableTag tag;
 	Type* type; // redundant
+	bool value; // default false
 
 	union {
 		// VariableId
@@ -334,6 +337,7 @@ extern Type* ast_type_array(Type*);
 
 extern Block* ast_block(Block*);
 extern Block* ast_block_declaration(Declaration*);
+extern Block* ast_block_definition(Definition*);
 extern Block* ast_block_statement(Statement*);
 
 extern Statement* ast_statement_assignment(Variable*, Expression*);

@@ -62,8 +62,7 @@ Declaration* ast_declaration_variable(Variable* variable) {
 	MALLOC(declaration, Declaration);
 	declaration->tag = DECLARATION_VARIABLE;
 	declaration->next = NULL;
-	declaration->variable.immutable = true;
-	declaration->variable.variable = variable;
+	declaration->variable = variable;
 	return declaration;
 }
 
@@ -194,6 +193,15 @@ Block* ast_block_declaration(Declaration* declaration) {
 	return block;
 }
 
+Block* ast_block_definition(Definition* definition) {
+	Block* block;
+	MALLOC(block, Block);
+	block->tag = BLOCK_DEFINITION;
+	block->next = NULL;
+	block->definition = definition;
+	return block;
+}
+
 Block* ast_block_statement(Statement* statement) {
 	Block* block;
 	MALLOC(block, Block);
@@ -222,8 +230,9 @@ Statement* ast_statement_definition(Id* id, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_DEFINITION;
-	statement->definition.declaration =
-		ast_declaration_variable(ast_variable_id(id));
+	Variable* variable = ast_variable_id(id);
+	variable->value = true;
+	statement->definition.declaration = ast_declaration_variable(variable);
 	statement->definition.expression = expression;
 	return statement;
 }
@@ -329,6 +338,7 @@ Variable* ast_variable_id(Id* id) {
 	MALLOC(variable, Variable);
 	variable->tag = VARIABLE_ID;
 	variable->type = NULL;
+	variable->value = false;
 	variable->id = id;
 	return variable;
 }
@@ -338,6 +348,7 @@ Variable* ast_variable_indexed(Expression* array, Expression* index) {
 	MALLOC(variable, Variable);
 	variable->tag = VARIABLE_INDEXED;
 	variable->type = NULL;
+	variable->value = false;
 	variable->indexed.array = array;
 	variable->indexed.index = index;
 	return variable;

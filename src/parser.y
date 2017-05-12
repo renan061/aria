@@ -4,7 +4,6 @@
  *	- Use yyltype for lines and position? Makes it slower...
  *	- Remove ';' occasionally
  *	- Type of monitor initializer return for function in ast
- *	- value a: Integer; still possible
  */
 
 %{
@@ -24,6 +23,15 @@
 			e->next = elem;							\
 			assignable = list;						\
 		}											\
+
+	// Auxiliary macro to wrap a list of declarations in the
+	// appropriate Body or Block type
+	#define WRAP_VARIABLE_DECLARATIONS(assignable, func, first, type)	\
+		assignable = func(first);										\
+		for (type* t = assignable; first->next; first = first->next) {	\
+			t->next = func(first->next);								\
+			t = t->next;												\
+		}																\
 
 	static void yyerror(const char* err);
 %}
@@ -62,9 +70,11 @@
 
 // Nonterminals
 %type <declaration>
-	variable_declaration parameter_list parameters parameter lower_ids
+	variable_declaration variable_declaration_base variable_declaration_single
+	parameter_list parameters parameter lower_ids
 %type <definition>
-	variable_definition function_definition monitor_definition
+	variable_definition variable_definition_value variable_definition_variable
+	variable_definition_base function_definition monitor_definition
 	method_definition constructor_definition
 %type <type>
 	type
@@ -80,10 +90,6 @@
 	expression primary_expression literal argument_list arguments
 %type <function_call>
 	function_call
-
-// Auxiliary (TODO)
-%type <ival>
-	variable_qualifier
 
 // Operator precedence and associativity
 %left		<ival> TK_OR
@@ -124,9 +130,9 @@ body_list
 	;
 
 body
-	: TK_VALUE variable_definition ';'
+	: variable_definition_value ';'
 		{
-			$$ = ast_body_definition($2);
+			$$ = ast_body_definition($1);
 		}
 	| function_definition
 		{
@@ -144,19 +150,42 @@ body
 //
 // ==================================================
 
-/*
-	Syntactic sugar:
-
-	a, b, c: Integer;	->		a: Integer;
-						->		b: Integer;
-						->		c: Integer;
-*/
-variable_declaration
-	: lower_ids ':' type
+variable_declaration_single
+	: TK_LOWER_ID ':' type
 		{
-			for ($$ = $1; $1; $1 = $1->next) {
-				$1->variable.variable->type = $3;
+			Variable* variable = ast_variable_id($1);
+			variable->type = $3;
+			$$ = ast_declaration_variable(variable);
+		}
+	;
+
+variable_declaration_base
+	: variable_declaration_single
+		{
+			$$ = $1;
+		}
+	/*
+		Syntactic sugar:
+
+		a, b, c: Integer		->		a: Integer
+								->		b: Integer
+								->		c: Integer
+	*/
+	| lower_ids ',' variable_declaration_single
+		{
+			Declaration* last = NULL;
+			for ($$ = $1; $1; last = $1, $1 = $1->next) {
+				$1->variable->type = $3->variable->type;
 			}
+			last->next = $3; // there is always at least one lower_id
+		}
+	; 
+
+variable_declaration
+	: TK_VARIABLE variable_declaration_base
+		{
+			$2->variable->value = false;
+			$$ = $2;
 		}
 	;
 
@@ -166,17 +195,42 @@ variable_declaration
 //
 // ==================================================
 
-variable_definition
-	: TK_LOWER_ID ':' type '=' expression
+variable_definition_base
+	: variable_declaration_single '=' expression
 		{
-			Variable* var = ast_variable_id($1);
-			var->type = $3;
-			$$ = ast_definition_variable(ast_declaration_variable(var), $5);
+			$$ = ast_definition_variable($1, $3);
 		}
 	| TK_LOWER_ID '=' expression
 		{
 			Variable* var = ast_variable_id($1);
 			$$ = ast_definition_variable(ast_declaration_variable(var), $3);
+		}
+	;
+
+variable_definition_value
+	: TK_VALUE variable_definition_base
+		{
+			$2->variable.declaration->variable->value = true;
+			$$ = $2;
+		}
+	;
+
+variable_definition_variable
+	: TK_VARIABLE variable_definition_base
+		{
+			$2->variable.declaration->variable->value = false;
+			$$ = $2;
+		}
+	;
+
+variable_definition
+	: variable_definition_value
+		{
+			$$ = $1;
+		}
+	| variable_definition_variable
+		{
+			$$ = $1;
 		}
 	;
 
@@ -202,50 +256,9 @@ monitor_definition
 
 // ==================================================
 //
-//	TODO
+//	Type
 //
 // ==================================================
-
-parameter_list
-	: /* empty */
-		{
-			$$ = NULL;
-		}
-	| '(' parameters ')'
-		{
-			$$ = $2;
-		}
-	;
-
-parameters
-	: parameter
-		{
-			$$ = $1;
-		}
-	| parameters ',' parameter
-		{
-			APPEND(Declaration, $$, $1, $3);
-		}
-	;
-
-parameter
-	: variable_declaration
-		{
-			$$ = $1;
-		}
-	;
-
-lower_ids
-	: TK_LOWER_ID
-		{
-			$$ = ast_declaration_variable(ast_variable_id($1));
-		}
-	| lower_ids ',' TK_LOWER_ID
-		{
-			Variable* variable = ast_variable_id($3);
-			APPEND(Declaration, $$, $1, ast_declaration_variable(variable));
-		}
-	;
 
 type
 	: TK_UPPER_ID
@@ -257,6 +270,12 @@ type
 			$$ = ast_type_array($2);
 		}
 	;
+
+// ==================================================
+//
+//	Block
+//
+// ==================================================
 
 block
 	: '{' block_content_list '}'
@@ -277,31 +296,17 @@ block_content_list
 	;
 
 block_content
-	: variable_qualifier variable_declaration ';'
+	: variable_declaration ';'
 		{
-			// TODO: Clean up
-			$$ = ast_block_declaration($2);
-			$$->declaration->variable.immutable = (bool)$1;
-			for (Block* temp = $$; $2->next; $2 = $2->next, temp = temp->next) {
-				$2->next->variable.immutable = (bool)$1;
-				temp->next = ast_block_declaration($2->next);
-			}
+			WRAP_VARIABLE_DECLARATIONS($$, ast_block_declaration, $1, Block);
+		}
+	| variable_definition ';'
+		{
+			$$ = ast_block_definition($1);
 		}
 	| statement
 		{
 			$$ = ast_block_statement($1);
-		}
-	;
-
-// TODO: Name (immutable?)
-variable_qualifier
-	: TK_VALUE
-		{
-			$$ = 1;
-		}
-	| TK_VARIABLE
-		{
-			$$ = 0;
 		}
 	;
 
@@ -607,15 +612,13 @@ class_content_list
 	;
 
 class_content
-	: variable_qualifier variable_declaration ';'
+	: variable_declaration ';'
 		{
-			// TODO: Clean up
-			$$ = ast_body_declaration($2);
-			$$->declaration->variable.immutable = (bool)$1;
-			for (Body* temp = $$; $2->next; $2 = $2->next, temp = temp->next) {
-				$2->next->variable.immutable = (bool)$1;
-				temp->next = ast_body_declaration($2->next);
-			}
+			WRAP_VARIABLE_DECLARATIONS($$, ast_body_declaration, $1, Body);
+		}
+	| variable_definition ';'
+		{
+			$$ = ast_body_definition($1);
 		}
 	| constructor_definition
 		{
@@ -643,6 +646,57 @@ constructor_definition
 		{
 			Declaration* declaration = ast_declaration_function(NULL, $2, NULL);
 			$$ = ast_definition_constructor(declaration, $3);
+		}
+	;
+
+// ==================================================
+//
+//	Auxiliary
+//
+// ==================================================
+
+// Used by variable_declaration_base
+lower_ids
+	: TK_LOWER_ID
+		{
+			$$ = ast_declaration_variable(ast_variable_id($1));
+		}
+	| lower_ids ',' TK_LOWER_ID
+		{
+			Variable* variable = ast_variable_id($3);
+			APPEND(Declaration, $$, $1, ast_declaration_variable(variable));
+		}
+	;
+
+// Used by function declarations
+parameter_list
+	: /* empty */
+		{
+			$$ = NULL;
+		}
+	| '(' parameters ')'
+		{
+			$$ = $2;
+		}
+	;
+
+parameters
+	: parameter
+		{
+			$$ = $1;
+		}
+	| parameters ',' parameter
+		{
+			APPEND(Declaration, $$, $1, $3);
+		}
+	;
+
+parameter
+	: variable_declaration_base
+		{
+			for ($$ = $1; $1; $1 = $1->next) {
+				$1->variable->value = false;
+			}
 		}
 	;
 

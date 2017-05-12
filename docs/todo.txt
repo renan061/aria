@@ -5,16 +5,7 @@
 //
 // ==================================================
 
-- Comandos 'signal' e 'broadcast': 'variable' ou 'expression' (permite functions calls)?
-
-- O use de 'self' dentro de um monitor
-self.values = [Char](size)
-
-- 'wait' statement
-while stackIsFull() wait in stackIsFullQueue
-wait in stackIsFullQueue until stackIsNotFull()
-
-- 'for' na gramática
+- a := 1 é um statement ou um block_variable_definition?
 
 // ==================================================
 //

@@ -63,11 +63,11 @@ static void print_ast_body(Body* body) {
 static void print_ast_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		printf("%s ", (declaration->variable.immutable) ? "value" : "variable");
-		print_ast_id(declaration->variable.variable->id);
+		printf("%s ", (declaration->variable->value) ? "value" : "variable");
+		print_ast_id(declaration->variable->id);
 		printf(": ");
-		if (declaration->variable.variable->type) {
-			print_ast_type(declaration->variable.variable->type);
+		if (declaration->variable->type) {
+			print_ast_type(declaration->variable->type);
 		} else {
 			printf("?");
 		}
@@ -163,6 +163,11 @@ static void print_ast_block(Block* block) {
 		case BLOCK_DECLARATION:
 			identation();
 			print_ast_declaration(b->declaration);
+			printf("\n");
+			break;
+		case BLOCK_DEFINITION:
+			identation();
+			print_ast_definition(b->definition);
 			printf("\n");
 			break;
 		case BLOCK_STATEMENT:

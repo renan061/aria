@@ -1,6 +1,6 @@
 // ==================================================
 //
-//	Variable definition
+//	Global variable definition
 //
 // ==================================================
 
@@ -46,15 +46,25 @@ function foo(x: Byte, y: Integer, z: String) {}
 function foo {
 	// Single variable
 	variable a: Integer;
-	variable a: Integer;
 
 	// Two variables
-	variable x, y: Integer;
 	variable x, y: Integer;
 
 	// Many variables
 	variable i, j, k, l, m, n, o: Integer;
-	variable i, j, k, l, m, n, o: Integer;
+}
+
+// ==================================================
+//
+//	Variable definition
+//
+// ==================================================
+
+function foo {
+	variable a: Integer = 1;
+	variable a = 1;
+	value a: Integer = 1;
+	value a = 1;
 }
 
 // ==================================================
@@ -313,7 +323,9 @@ monitor Monitor {
 
 // Mixed between properties, methods and constructors
 monitor Monitor {
-	value a: Integer;
+	value x = 1;
+	value y: Integer = 1;
+
 	variable b: Integer;
 
 	function foo {
