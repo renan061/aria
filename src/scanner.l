@@ -37,7 +37,7 @@
 #include "alloc.h"
 #include "ast.h"
 #include "errs.h"
-#include "parser.h"
+#include "parser.h" // for the tokens
 #include "scanner.h"
 #include "vector.h"
 
@@ -149,7 +149,7 @@ string 		"\""(\\.|[^\\"])*"\""
 %%
 
 // initializes strs vector and sets yyin
-void scanner_setup(char* file) {
+void scanner_setup(const char* file) {
 	if (!(yyin = fopen(file, "r"))) {
     	scanner_error(line, ERR_FILE);
     }

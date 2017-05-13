@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdio.h> // TODO: Remove
 
 #include "alloc.h"
 #include "errs.h"
@@ -34,8 +35,8 @@ struct Symbol {
 static Id* declarationid(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		assert(declaration->variable.variable->tag == VARIABLE_ID);
-		return declaration->variable.variable->id;
+		assert(declaration->variable->tag == VARIABLE_ID);
+		return declaration->variable->id;
 	case DECLARATION_FUNCTION:
 		return declaration->function.id;
 	}
@@ -44,7 +45,7 @@ static Id* declarationid(Declaration* declaration) {
 
 static Declaration* findinside(Scope* scope, Id* id) {
 	for (Symbol* symbol = scope->first_symbol; symbol; symbol = symbol->next) {
-		if (declarationid(symbol->declaration) == id) {
+		if (declarationid(symbol->declaration)->name == id->name) {
 			return symbol->declaration;
 		}
 	}

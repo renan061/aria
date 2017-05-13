@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 	yyparse();
 	scanner_clean();
 	sem_analyse(program);
-	print_ast_program(program);
+	print_ast_program(program, true);
 
     return 0;
 }

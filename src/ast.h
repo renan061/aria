@@ -32,7 +32,7 @@ typedef enum DefinitionTag {
 
 typedef enum TypeTag {
 	TYPE_ID,
-	// TYPE_MONITOR, TODO
+	TYPE_MONITOR, // TODO
 	TYPE_ARRAY,
 } TypeTag;
 
@@ -71,7 +71,8 @@ typedef enum ExpressionTag {
 	EXPRESSION_VARIABLE,
 	EXPRESSION_FUNCTION_CALL,
 	EXPRESSION_UNARY,
-	EXPRESSION_BINARY
+	EXPRESSION_BINARY,
+	EXPRESSION_CAST
 } ExpressionTag;
 
 typedef enum FunctionCallTag {
@@ -170,6 +171,7 @@ struct Id {
 
 struct Type {
 	TypeTag tag;
+	bool primitive;
 
 	union {
 		// TypeID
@@ -287,6 +289,8 @@ struct Expression {
 			Expression* left_expression;
 			Expression* right_expression;
 		} binary;
+		// ExpressionCast
+		Expression* cast;
 	};
 };
 
@@ -310,7 +314,7 @@ struct FunctionCall {
 
 // ==================================================
 //
-//	Functions
+//	Functions & Variable
 //
 // ==================================================
 
@@ -332,6 +336,10 @@ extern Definition* ast_definition_monitor(Id*, Body*);
 
 extern Id* ast_id(unsigned int, const char*);
 
+extern Type* ast_type_boolean(void);
+extern Type* ast_type_integer(void);
+extern Type* ast_type_float(void);
+extern Type* ast_type_string(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
 
@@ -364,6 +372,7 @@ extern Expression* ast_expression_variable(Variable*);
 extern Expression* ast_expression_function_call(FunctionCall*);
 extern Expression* ast_expression_unary(Token, Expression*);
 extern Expression* ast_expression_binary(Token, Expression*, Expression*);
+extern Expression* ast_expression_cast(Expression*, Type*);
 
 extern FunctionCall* ast_function_call_basic(Id*, Expression*);
 extern FunctionCall* ast_function_call_method(Expression*, Id*, Expression*);

@@ -1,1 +1,27 @@
-tests/test.sh: line 26: ../../bin/semtest: No such file or directory
+{
+	monitor Stack {
+		value constant: Integer = (1[: Void])
+		variable a: Integer
+		initializer[: Void] {
+			a = (1[: Void])
+		}
+		function test(variable num: Integer): Integer[: Integer] {
+			a = (num[: Void])
+			return (num[: Void])
+		}
+		function set(variable num: Integer)[: Void] {
+			a = (num[: Void])
+		}
+		function get: Integer[: Integer] {
+			return (a[: Void])
+		}
+		function print[: Void] {
+			print((a[: Void]))
+		}
+	}
+	function foo[: Void] {
+		value number: Integer = (2[: Integer])
+		value m: ? = (Monitor()[: Void])
+		(m[: Void]).set((number[: Integer]))
+	}
+}

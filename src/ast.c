@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <string.h>
+#include <stdio.h> // TODO: Remove
 
 #include "ast.h"
 #include "alloc.h"
@@ -154,10 +156,55 @@ Id* ast_id(unsigned int line, const char* name) {
 //
 // ==================================================
 
+#define PRIMITIVE_TYPE(v, s)			\
+	static Type* v = NULL;				\
+	if (!v) {							\
+		MALLOC(v, Type);				\
+		v->tag = TYPE_ID;				\
+		v->primitive = true;			\
+		v->id = ast_id(-1, s);			\
+	}									\
+	return v;							\
+
+Type* ast_type_boolean(void) {
+	PRIMITIVE_TYPE(type_boolean, "Boolean");
+}
+
+Type* ast_type_integer(void) {
+	PRIMITIVE_TYPE(type_integer, "Integer");
+}
+
+Type* ast_type_float(void) {
+	PRIMITIVE_TYPE(type_float, "Float");
+}
+
+Type* ast_type_string(void) {
+	PRIMITIVE_TYPE(type_string, "String");
+}
+
+static Type* checkprimitive(Id* id) {
+	#define CHECK_TYPE(s, v)			\
+		if (!strcmp(s, id->name)) {		\
+			free(id);					\
+			return v;					\
+		}								\
+
+	CHECK_TYPE("Boolean", ast_type_boolean());
+	CHECK_TYPE("Integer", ast_type_integer());
+	CHECK_TYPE("Float", ast_type_float());
+	CHECK_TYPE("String", ast_type_string());
+	return NULL;
+}
+
 Type* ast_type_id(Id* id) {
 	Type* type;
+	if ((type = checkprimitive(id))) { // For primitive types
+		return type;
+	}
+
 	MALLOC(type, Type);
 	type->tag = TYPE_ID;
+	type->primitive = false;
 	type->id = id;
 	return type;
 }
@@ -166,6 +213,7 @@ Type* ast_type_array(Type* type) {
 	Type* arrayType;
 	MALLOC(arrayType, Type);
 	arrayType->tag = TYPE_ARRAY;
+	arrayType->primitive = false;
 	arrayType->array = type;
 	return arrayType;	
 }
@@ -441,6 +489,23 @@ Expression* ast_expression_binary(Token token, Expression* l, Expression* r) {
 	expression->binary.left_expression = l;
 	expression->binary.right_expression = r;
 	return expression;
+}
+
+Expression* ast_expression_cast(Expression* expression, Type* type) {
+	assert(expression->type != type);
+
+	Expression* castExpression;
+	MALLOC(castExpression, Expression);
+	castExpression->tag = EXPRESSION_CAST;
+
+	// TODO: Test this with arguments in function calls (think it won't work)
+	castExpression->next = expression->next;
+	expression->next = NULL;
+
+	// printf("cast type %s\n", type->id->name);
+	castExpression->type = type;
+	castExpression->cast = expression;
+	return castExpression;
 }
 
 // ==================================================

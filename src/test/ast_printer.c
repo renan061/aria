@@ -1,16 +1,23 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "ast.h"
 #include "parser.h"
 #include "scanner.h"
 
+// Does not print types by default
+static bool should_print_types = false;
+
 // For identation purposes
 static unsigned int tabs = 0;
-static void identation();
+static void identation(void);
 
 // Prints a scanner token from an expression
 static void printtoken(Token token);
+
+// TODO
+static void printtype(Type* type);
 
 static void print_ast_body(Body*);
 static void print_ast_declaration(Declaration*);
@@ -23,7 +30,8 @@ static void print_ast_variable(Variable*);
 static void print_ast_expression(Expression*);
 static void print_ast_function_call(FunctionCall*);
 
-void print_ast_program(Program* program) {
+void print_ast_program(Program* program, bool print_types) {
+	should_print_types = print_types;
 	print_ast_body(program->body);
 	printf("\n");
 }
@@ -93,6 +101,7 @@ static void print_ast_declaration(Declaration* declaration) {
 			printf(": ");
 			print_ast_type(declaration->function.type);
 		}
+		printtype(declaration->function.type);
 		break;
 	}
 }
@@ -136,6 +145,9 @@ static void print_ast_type(Type* type) {
 	switch (type->tag) {
 	case TYPE_ID:
 		print_ast_id(type->id);
+		break;
+	case TYPE_MONITOR:
+		// TODO
 		break;
 	case TYPE_ARRAY:
 		printf("[");
@@ -270,32 +282,48 @@ static void print_ast_expression(Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
 		printf("%s", (expression->literal_boolean) ? "true" : "false");
+		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
 		printf("%d", expression->literal_integer);
+		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
 		printf("%f", expression->literal_float);
+		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_STRING:
 		printf("\"%s\"", expression->literal_string);
+		printtype(expression->type);
 		break;
 	case EXPRESSION_VARIABLE:
 		print_ast_variable(expression->variable);
+		printtype(expression->type);
 		break;
 	case EXPRESSION_FUNCTION_CALL:
 		print_ast_function_call(expression->function_call);
+		printtype(expression->type);
 		break;
 	case EXPRESSION_UNARY:
 		printtoken(expression->unary.token);
 		print_ast_expression(expression->unary.expression);
+		printtype(expression->type);
 		break;
 	case EXPRESSION_BINARY:
 		print_ast_expression(expression->binary.left_expression);
 		printf(" ");
 		printtoken(expression->binary.token);
+		printtype(expression->type);
 		printf(" ");
 		print_ast_expression(expression->binary.right_expression);
+		break;
+	case EXPRESSION_CAST:
+		if (!should_print_types) {
+			assert(expression->tag != EXPRESSION_CAST);
+		}
+		print_ast_expression(expression->cast);
+		printf(" as ");
+		printtype(expression->type);
 		break;
 	}
 
@@ -332,7 +360,7 @@ static void print_ast_function_call(FunctionCall* function_call) {
 //
 // ==================================================
 
-static void identation() {
+static void identation(void) {
 	for (int i = 0; i < tabs; i++) {
 		printf("\t");
 	}
@@ -349,4 +377,30 @@ static void printtoken(Token token) {
     case TK_NOT:	printf("not");	break;
     default:		printf("%c", token);
 	}
+}
+
+static void printtype(Type* type) {
+	if (!should_print_types) {
+		return;
+	}
+
+	if (!type) { // void type (type for non-returning functions)
+		printf("[: Void]");
+		return;
+	}
+
+	const char* string;
+	switch (type->tag) {
+	case TYPE_ID:
+		string = type->id->name;
+		break;
+	case TYPE_MONITOR:
+		string = type->monitor->monitor.id->name;
+		break;
+	case TYPE_ARRAY:
+		// string = type->array;
+		string = "[TODO]";
+		break;
+	}
+	printf("[: %s]", string);
 }

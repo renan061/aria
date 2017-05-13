@@ -16,7 +16,7 @@ extern int yylex(void);
  * to use the scanner and after finishing doing so,
  * respectively.
  */
-extern void scanner_setup(char* file);
+extern void scanner_setup(const char* file);
 extern void scanner_clean(void);
 
 #endif

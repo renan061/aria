@@ -8,16 +8,28 @@
  */
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h> // TODO: Remove
 
 #include "ast.h"
 #include "errs.h"
+#include "parser.h" // for the tokens
 #include "symtable.h"
 
 #define ERR_REDECLARATION(id) "symbol redeclaration" // TODO: Use id
 
-// Checks for type equivalence and deals with errors internally.
-static void typecheck(Type*, Expression*);
+// TODO: Remove and deal the with errors
+static void todoerr(const char* err) {
+	printf("%s\n", err);
+	exit(1);
+}
+
+// Auxiliary functions to deal with type analysis
+static void typecheck(Type*, Expression**);
+static Type* typecast(Expression**, Expression**);
+static bool numbertype(Type*);
+static bool conditiontype(Type*);
+static bool equatabletype(Type*);
 
 // TODO: Doc
 static void sem_body(Body*);
@@ -30,30 +42,29 @@ static void sem_expression(Expression*);
 static void sem_function_call(FunctionCall*);
 
 /*
- * Symbol table for lowercase ids (holds variables and functions).
+ * TODO
  */
-static SymbolTable* ltable;
-
-/*
- * Symbol table for uppercase ids (holds monitors).
- */
-static SymbolTable* utable;
+static SymbolTable* table;
 
 // TODO: Doc
 void sem_analyse(Program* program) {
-	ltable = symtable_new();
-	utable = symtable_new();
+	table = symtable_new();
 	sem_body(program->body);
-	symtable_free(ltable);
-	symtable_free(utable);
+	symtable_free(table);
 }
+
+// ==================================================
+//
+//	Recursive functions
+//
+// ==================================================
 
 static void sem_body(Body* body) {
 	if (body->tag == BODY) {
 		if (body->next) {
-			symtable_enter_scope(ltable);
+			symtable_enter_scope(table);
 			sem_body(body->next);
-			symtable_leave_scope(ltable);
+			symtable_leave_scope(table);
 		}
 		return;
 	}
@@ -75,14 +86,14 @@ static void sem_body(Body* body) {
 static void sem_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		if (!symtable_insert(ltable, declaration)) {
-			sem_error(declaration->variable.variable->id->line,
-				ERR_REDECLARATION(declaration->variable.variable->id->name));
+		if (!symtable_insert(table, declaration)) {
+			sem_error(declaration->variable->id->line,
+				ERR_REDECLARATION(declaration->variable->id->name));
 		}
 		break;
 	case DECLARATION_FUNCTION:
 		if (declaration->function.id) { // constructors have id == NULL
-			if (!symtable_insert(ltable, declaration)) {
+			if (!symtable_insert(table, declaration)) {
 				sem_error(declaration->function.id->line,
 					ERR_REDECLARATION(declaration->function.id->name));
 			}
@@ -98,16 +109,16 @@ static void sem_definition(Definition* definition) {
 	case DEFINITION_VARIABLE:
 		sem_declaration(definition->variable.declaration);
 		sem_expression(definition->variable.expression);
-		typecheck(definition->variable.declaration->variable.variable->type,
-			definition->variable.expression);
+		typecheck(definition->variable.declaration->variable->type,
+			&definition->variable.expression);
 		break;
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
-		symtable_enter_scope(ltable);
+		symtable_enter_scope(table);
 		sem_declaration(definition->function.declaration);
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
-		symtable_leave_scope(ltable);
+		symtable_leave_scope(table);
 		break;
 	case DEFINITION_METHOD:
 		// TODO: semantics? (private)
@@ -139,6 +150,9 @@ static void sem_block(Block* block, Type* type) {
 		case BLOCK_DECLARATION:
 			sem_declaration(b->declaration);
 			break;
+		case BLOCK_DEFINITION:
+			sem_definition(b->definition);
+			break;
 		case BLOCK_STATEMENT:
 			sem_statement(b->statement, type);
 			break;
@@ -154,12 +168,12 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		sem_variable(statement->assignment.variable);
 		sem_expression(statement->assignment.expression);
 		typecheck(statement->assignment.variable->type,
-			statement->assignment.expression);
+			&statement->assignment.expression);
 		break;
 	case STATEMENT_DEFINITION:
 		sem_declaration(statement->definition.declaration);
 		sem_expression(statement->definition.expression);
-		statement->definition.declaration->variable.variable->type =
+		statement->definition.declaration->variable->type =
 			statement->definition.expression->type;
 		break;
 	case STATEMENT_FUNCTION_CALL:
@@ -178,7 +192,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_RETURN:
 		if (statement->return_) {
 			sem_expression(statement->return_);
-			typecheck(return_type, statement->return_);
+			typecheck(return_type, &statement->return_);
 		}
 		break;
 	case STATEMENT_IF:
@@ -206,28 +220,25 @@ static void sem_statement(Statement* statement, Type* return_type) {
 static void sem_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID: {
-		Declaration* declaration = symtable_find(ltable, variable->id);
+		Declaration* declaration = symtable_find(table, variable->id);
 		if (!declaration) {
-			// TODO: "variable not defined"
-			assert(0);
+			todoerr("variable not defined");
 		} else if (declaration->tag != DECLARATION_VARIABLE) {
-			// TODO: "not a variable"
-			assert(0);
+			todoerr("not a variable");
 		}
-		// TODO: free variable->id ?
-		variable->id = declaration->variable.variable->id;
-		variable->type = declaration->variable.variable->type;
+		free(variable->id);
+		variable->id = declaration->variable->id;
+		variable->type = declaration->variable->type;
 		break;
 	}
 	case VARIABLE_INDEXED:
 		sem_expression(variable->indexed.array);
 		sem_expression(variable->indexed.index);
 		if (variable->indexed.array->type->tag != TYPE_ARRAY) {
-			// TODO: "not array type"
-			assert(0);
+			todoerr("not array type");
 		}
 		// TODO: error "invalid index type for array"
-		// typecheck(type_integer, variable->indexed.index);
+		// typecheck(type_integer, &variable->indexed.index);
 		variable->type = variable->indexed.array->type->array;
 		break;
 	}
@@ -236,20 +247,16 @@ static void sem_variable(Variable* variable) {
 static void sem_expression(Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		// TODO
-		// expression->type = type_boolean;
+		expression->type = ast_type_boolean();
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		// TODO
-		// expression->type = type_integer;
+		expression->type = ast_type_integer();
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		// TODO
-		// expression->type = type_float;
+		expression->type = ast_type_float();
 		break;
 	case EXPRESSION_LITERAL_STRING:
-		// TODO
-		// expression->type = type_string;
+		expression->type = ast_type_string();
 		break;
 	case EXPRESSION_VARIABLE:
 		sem_variable(expression->variable);
@@ -260,10 +267,71 @@ static void sem_expression(Expression* expression) {
 		expression->type = expression->function_call->type;
 		break;
 	case EXPRESSION_UNARY:
-		// TODO
+		sem_expression(expression->unary.expression);
+		switch (expression->unary.token) {
+		case '-':
+			if (!numbertype(expression->unary.expression->type)) {
+				todoerr("invalid type for unary minus");
+			}
+			expression->type = expression->unary.expression->type;
+			break;
+		case TK_NOT:
+			if (!conditiontype(expression->unary.expression->type)) {
+				todoerr("invalid type for unary not");
+			}
+			expression->type = ast_type_boolean();
+			break;
+		}
 		break;
 	case EXPRESSION_BINARY:
-		// TODO
+		sem_expression(expression->binary.left_expression);
+		sem_expression(expression->binary.right_expression);
+		switch (expression->binary.token) {
+		case TK_OR: case TK_AND:
+			if (!conditiontype(expression->binary.left_expression->type)) {
+				todoerr("invalid type for left and/or expression");
+			}
+			if (!conditiontype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for left and/or expression");
+			}
+			expression->type = ast_type_boolean();
+			break;
+		case TK_EQUAL:
+			if (!equatabletype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for left comparison expression");
+			}
+			if (!equatabletype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for right comparison expression");
+			}
+			typecast(&expression->binary.left_expression,
+				&expression->binary.right_expression);
+			expression->type = ast_type_boolean();
+			break;
+		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
+			if (!numbertype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for left comparison expression");
+			}
+			if (!numbertype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for right comparison expression");
+			}
+			typecast(&expression->binary.left_expression,
+				&expression->binary.right_expression);
+			expression->type = ast_type_boolean();
+			break;
+		case '+': case '-': case '*': case '/':
+			if (!numbertype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for left arith expression");
+			}
+			if (!numbertype(expression->binary.right_expression->type)) {
+				todoerr("invalid type for right arith expression");
+			}
+			expression->type = typecast(&expression->binary.left_expression,
+				&expression->binary.right_expression);
+			break;
+		}
+		break;
+	case EXPRESSION_CAST:
+		assert(expression->tag != EXPRESSION_CAST);
 		break;
 	}
 }
@@ -271,24 +339,22 @@ static void sem_expression(Expression* expression) {
 static void sem_function_call(FunctionCall* function_call) {
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC: {
-		Declaration* declaration = symtable_find(ltable, function_call->basic);
+		Declaration* declaration = symtable_find(table, function_call->basic);
 		if (!declaration) {
-			// TODO: "function not defined"
-			assert(0);
+			todoerr("function not defined");
 		} else if (declaration->tag != DECLARATION_FUNCTION) {
-			// TODO: "not a function"
-			assert(0);
+			todoerr("not a function");
 		}
 		// TODO: free old function_call->basic ?
 		function_call->basic = declaration->function.id;
 		break;
 	}
 	case FUNCTION_CALL_METHOD:
-		// TODO
+		// sem_expression(function_call->method.object);
+		// Body* body = function_call->method.object->type->monitor->monitor.body;
 
-		// object.name(...)
-		
-		// Look inside object->type scope for name
+		// check if function_call->method.name is inside the class
+		// check if arguments match parameters
 
 		break;
 	case FUNCTION_CALL_CONSTRUCTOR:
@@ -316,6 +382,47 @@ static void sem_function_call(FunctionCall* function_call) {
 //
 // ==================================================
 
-static void typecheck(Type* type, Expression* expression) {
+/* 
+ * Checks for type equivalence (performing casts if necessary).
+ * Deals with errors internally.
+ */
+static void typecheck(Type* type, Expression** expression) {
 	// TODO
+}
+
+/*
+ * Casts one of the expressions if they have mismatching types.
+ * Casts always go from integer to float.
+ * The expressions must be of number type.
+ */
+static Type* typecast(Expression** le, Expression** re) {
+	assert(numbertype((*le)->type) && numbertype((*re)->type));
+
+	if ((*le)->type == (*re)->type) {
+		return (*le)->type;
+	}
+
+	Type* float_ = ast_type_float();
+	if ((*le)->type == float_) {
+		return (*re = ast_expression_cast(*re, float_))->type;
+	}
+	if ((*re)->type == float_) {
+		return (*le = ast_expression_cast(*le, float_))->type;
+	}
+
+	return NULL;
+}
+
+static bool numbertype(Type* type) {
+	return type == ast_type_integer() || type == ast_type_float();
+}
+
+static bool conditiontype(Type* type) { // TODO: Necessary?
+	return type == ast_type_boolean();
+}
+
+static bool equatabletype(Type* type) { // TODO: Strings?
+	return type == ast_type_boolean()
+		|| type == ast_type_integer()
+		|| type == ast_type_float();
 }
