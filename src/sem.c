@@ -27,6 +27,7 @@ static void todoerr(const char* err) {
 // Auxiliary functions to deal with type analysis
 static void typecheck(Type*, Expression**);
 static Type* typecast(Expression**, Expression**);
+static bool indextype(Type*);
 static bool numbertype(Type*);
 static bool conditiontype(Type*);
 static bool equatabletype(Type*);
@@ -237,8 +238,9 @@ static void sem_variable(Variable* variable) {
 		if (variable->indexed.array->type->tag != TYPE_ARRAY) {
 			todoerr("not array type");
 		}
-		// TODO: error "invalid index type for array"
-		// typecheck(type_integer, &variable->indexed.index);
+		if (!indextype(variable->indexed.index->type)) {
+			todoerr("invalid index type for array");
+		}
 		variable->type = variable->indexed.array->type->array;
 		break;
 	}
@@ -411,6 +413,10 @@ static Type* typecast(Expression** le, Expression** re) {
 	}
 
 	return NULL;
+}
+
+static bool indextype(Type* type) {
+	return type == ast_type_integer();
 }
 
 static bool numbertype(Type* type) {
