@@ -274,17 +274,6 @@ Statement* ast_statement_assignment(Variable* var, Expression* exp) {
 	return statement;
 }
 
-Statement* ast_statement_definition(Id* id, Expression* expression) {
-	Statement* statement;
-	MALLOC(statement, Statement);
-	statement->tag = STATEMENT_DEFINITION;
-	Variable* variable = ast_variable_id(id);
-	variable->value = true;
-	statement->definition.declaration = ast_declaration_variable(variable);
-	statement->definition.expression = expression;
-	return statement;
-}
-
 Statement* ast_statement_function_call(FunctionCall* function_call) {
 	Statement* statement;
 	MALLOC(statement, Statement);

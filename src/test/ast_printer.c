@@ -201,11 +201,6 @@ static void print_ast_statement(Statement* statement) {
 		printf(" = ");
 		print_ast_expression(statement->assignment.expression);
 		break;
-	case STATEMENT_DEFINITION:
-		print_ast_declaration(statement->definition.declaration);
-		printf(" = ");
-		print_ast_expression(statement->definition.expression);
-		break;
 	case STATEMENT_FUNCTION_CALL:
 		print_ast_function_call(statement->function_call);
 		break;
@@ -266,12 +261,16 @@ static void print_ast_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID:
 		print_ast_id(variable->id);
+		printtype(variable->type);
 		break;
 	case VARIABLE_INDEXED:
+		printf("(");
 		print_ast_expression(variable->indexed.array);
 		printf("[");
 		print_ast_expression(variable->indexed.index);
 		printf("]");
+		printtype(variable->indexed.array->type->array);
+		printf(")");
 		break;
 	}
 }
@@ -298,7 +297,6 @@ static void print_ast_expression(Expression* expression) {
 		break;
 	case EXPRESSION_VARIABLE:
 		print_ast_variable(expression->variable);
-		printtype(expression->type);
 		break;
 	case EXPRESSION_FUNCTION_CALL:
 		print_ast_function_call(expression->function_call);
@@ -399,7 +397,7 @@ static void printtype(Type* type) {
 		break;
 	case TYPE_ARRAY:
 		// string = type->array;
-		string = "[TODO]";
+		string = "TODO";
 		break;
 	}
 	printf("[: %s]", string);

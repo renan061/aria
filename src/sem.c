@@ -24,6 +24,9 @@ static void todoerr(const char* err) {
 	exit(1);
 }
 
+// TODO
+static void assignment(Variable*, Expression**);
+
 // Auxiliary functions to deal with type analysis
 static void typecheck(Type*, Expression**);
 static Type* typecast(Expression**, Expression**);
@@ -110,7 +113,7 @@ static void sem_definition(Definition* definition) {
 	case DEFINITION_VARIABLE:
 		sem_declaration(definition->variable.declaration);
 		sem_expression(definition->variable.expression);
-		typecheck(definition->variable.declaration->variable->type,
+		assignment(definition->variable.declaration->variable,
 			&definition->variable.expression);
 		break;
 	case DEFINITION_FUNCTION:
@@ -168,14 +171,8 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_ASSIGNMENT:
 		sem_variable(statement->assignment.variable);
 		sem_expression(statement->assignment.expression);
-		typecheck(statement->assignment.variable->type,
+		assignment(statement->assignment.variable,
 			&statement->assignment.expression);
-		break;
-	case STATEMENT_DEFINITION:
-		sem_declaration(statement->definition.declaration);
-		sem_expression(statement->definition.expression);
-		statement->definition.declaration->variable->type =
-			statement->definition.expression->type;
 		break;
 	case STATEMENT_FUNCTION_CALL:
 		sem_function_call(statement->function_call);
@@ -383,6 +380,18 @@ static void sem_function_call(FunctionCall* function_call) {
 //	Auxiliary
 //
 // ==================================================
+
+// TODO
+static void assignment(Variable* variable, Expression** expression) {
+	if (!(*expression)->type) {
+		todoerr("can't assign variable to type void");
+	}
+	if (variable->type) {
+		typecheck(variable->type, expression);
+	} else { // when defining with implicit type
+		variable->type = (*expression)->type;
+	}
+}
 
 /* 
  * Checks for type equivalence (performing casts if necessary).

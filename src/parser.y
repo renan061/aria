@@ -73,9 +73,11 @@
 	variable_declaration variable_declaration_base variable_declaration_single
 	parameter_list parameters parameter lower_ids
 %type <definition>
-	variable_definition variable_definition_value variable_definition_variable
-	variable_definition_base function_definition monitor_definition
-	method_definition constructor_definition
+	variable_definition block_variable_definition
+	variable_definition_value variable_definition_variable
+	variable_definition_base
+	function_definition method_definition constructor_definition
+	monitor_definition
 %type <type>
 	type
 %type <block>
@@ -300,7 +302,7 @@ block_content
 		{
 			WRAP_VARIABLE_DECLARATIONS($$, ast_block_declaration, $1, Block);
 		}
-	| variable_definition ';'
+	| block_variable_definition ';'
 		{
 			$$ = ast_block_definition($1);
 		}
@@ -331,10 +333,6 @@ simple_statement
 	: variable '=' expression
 		{
 			$$ = ast_statement_assignment($1, $3);
-		}
-	| TK_LOWER_ID TK_DEFINE expression
-		{
-			$$ = ast_statement_definition($1, $3);
 		}
 	| function_call
 		{
@@ -697,6 +695,25 @@ parameter
 			for ($$ = $1; $1; $1 = $1->next) {
 				$1->variable->value = false;
 			}
+		}
+	;
+
+// Used by block
+block_variable_definition
+	: variable_definition
+		{
+			$$ = $1;
+		}
+	/*
+		Syntactic sugar:
+
+		a := 1		->		value a: ? = 1
+	*/
+	| TK_LOWER_ID TK_DEFINE expression
+		{
+			Variable* var = ast_variable_id($1);
+			var->value = true;
+			$$ = ast_definition_variable(ast_declaration_variable(var), $3);
 		}
 	;
 
