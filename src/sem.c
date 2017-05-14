@@ -1,9 +1,12 @@
 /*
  * TODO:
  *
- *	- initializer(): Semântica? Pode ter mais de um? Pode ter mais de um com
- *		tipos / quantidade diferentes de parâmetros?
- *	- Necessidade de ter algo como "type Integer;"?
+ *	- initializer(): Semântica? Pode ter mais de um?
+ *		Pode ter mais de um com tipos / quantidade
+ *		diferentes de parâmetros?
+ *
+ *	- Conferir se os tipos existem antes de inserir
+ *		eles (ex.: variable: B -> B não existe).
  *
  */
 #include <assert.h>
@@ -179,38 +182,68 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		break;
 	case STATEMENT_WHILE_WAIT:
 		sem_expression(statement->while_wait.expression);
+		if (!conditiontype(statement->while_wait.expression->type)) {
+			todoerr("invalid type for condition");
+		}
+		// TODO: Special semantics for condition variables?
 		sem_variable(statement->while_wait.variable);
 		break;
 	case STATEMENT_SIGNAL:
+		// TODO: Special semantics for condition variables?
 		sem_variable(statement->signal);
 		break;
 	case STATEMENT_BROADCAST:
+		// TODO: Special semantics for condition variables?
 		sem_variable(statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
 		if (statement->return_) {
 			sem_expression(statement->return_);
 			typecheck(return_type, &statement->return_);
+		} else if (return_type) {
+			todoerr("invalid type for return");
 		}
 		break;
 	case STATEMENT_IF:
 		sem_expression(statement->if_.expression);
+		if (!conditiontype(statement->if_.expression->type)) {
+			todoerr("invalid type for condition");
+		}
+		symtable_enter_scope(table);
 		sem_block(statement->if_.block, return_type);
+		symtable_leave_scope(table);
 		break;
 	case STATEMENT_IF_ELSE:
 		sem_expression(statement->if_else.expression);
+		if (!conditiontype(statement->if_else.expression->type)) {
+			todoerr("invalid type for condition");
+		}
+		symtable_enter_scope(table);
 		sem_block(statement->if_else.if_block, return_type);
+		symtable_leave_scope(table);
+		symtable_enter_scope(table);
 		sem_block(statement->if_else.else_block, return_type);
+		symtable_leave_scope(table);
 		break;
 	case STATEMENT_WHILE:
 		sem_expression(statement->while_.expression);
+		if (!conditiontype(statement->while_.expression->type)) {
+			todoerr("invalid type for condition");
+		}
+		symtable_enter_scope(table);
 		sem_block(statement->while_.block, return_type);
+		symtable_leave_scope(table);
 		break;
 	case STATEMENT_SPAWN:
+		symtable_enter_scope(table);
+		// TODO: Special semantics for spawn blocks
 		sem_block(statement->spawn, return_type);
+		symtable_leave_scope(table);
 		break;
 	case STATEMENT_BLOCK:
+		symtable_enter_scope(table);
 		sem_block(statement->block, return_type);
+		symtable_leave_scope(table);
 		break;
 	}
 }

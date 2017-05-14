@@ -100,8 +100,9 @@ static void print_ast_declaration(Declaration* declaration) {
 		if (declaration->function.type) {
 			printf(": ");
 			print_ast_type(declaration->function.type);
+		} else {
+			printtype(declaration->function.type);
 		}
-		printtype(declaration->function.type);
 		break;
 	}
 }

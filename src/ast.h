@@ -31,6 +31,7 @@ typedef enum DefinitionTag {
 } DefinitionTag;
 
 typedef enum TypeTag {
+	// TYPE_VOID, TYPE_NIL TODO
 	TYPE_ID,
 	TYPE_MONITOR, // TODO
 	TYPE_ARRAY,
