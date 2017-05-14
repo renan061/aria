@@ -160,13 +160,7 @@ struct Definition {
 
 struct Id {
 	unsigned int line;
-
-	union {
-		// Name
-		const char* name;
-		// Declaration
-		Declaration* declaration;
-	};
+	const char* name;
 };
 
 struct Type {

@@ -197,13 +197,13 @@ static void print_ast_statement(Statement* statement) {
 
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
-		// TODO: Definition*
 		print_ast_variable(statement->assignment.variable);
 		printf(" = ");
 		print_ast_expression(statement->assignment.expression);
 		break;
 	case STATEMENT_FUNCTION_CALL:
 		print_ast_function_call(statement->function_call);
+		printtype(statement->function_call->type);
 		break;
 	case STATEMENT_WHILE_WAIT:
 		printf("while ");
@@ -270,7 +270,9 @@ static void print_ast_variable(Variable* variable) {
 		printf("[");
 		print_ast_expression(variable->indexed.index);
 		printf("]");
-		printtype(variable->indexed.array->type->array);
+		if (variable->indexed.array->type) {
+			printtype(variable->indexed.array->type->array);
+		}
 		printf(")");
 		break;
 	}

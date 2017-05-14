@@ -38,6 +38,7 @@ static Id* declarationid(Declaration* declaration) {
 		assert(declaration->variable->tag == VARIABLE_ID);
 		return declaration->variable->id;
 	case DECLARATION_FUNCTION:
+		assert(declaration->function.id); // can't be constructor
 		return declaration->function.id;
 	}
 	return assert(NULL), NULL; // unreachable

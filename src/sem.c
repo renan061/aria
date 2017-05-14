@@ -114,15 +114,15 @@ static void sem_declaration(Declaration* declaration) {
 static void sem_definition(Definition* definition) {
 	switch (definition->tag) {
 	case DEFINITION_VARIABLE:
-		sem_declaration(definition->variable.declaration);
 		sem_expression(definition->variable.expression);
+		sem_declaration(definition->variable.declaration);
 		assignment(definition->variable.declaration->variable,
 			&definition->variable.expression);
 		break;
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
-		symtable_enter_scope(table);
 		sem_declaration(definition->function.declaration);
+		symtable_enter_scope(table);
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
 		symtable_leave_scope(table);
@@ -143,11 +143,10 @@ static void sem_definition(Definition* definition) {
 	}
 }
 
-// TODO: Type
-static void sem_block(Block* block, Type* type) {
+static void sem_block(Block* block, Type* return_type) {
 	if (block->tag == BLOCK) {
 		if (block->next) {
-			sem_block(block->next, type);
+			sem_block(block->next, return_type);
 		}
 		return;
 	}
@@ -161,7 +160,7 @@ static void sem_block(Block* block, Type* type) {
 			sem_definition(b->definition);
 			break;
 		case BLOCK_STATEMENT:
-			sem_statement(b->statement, type);
+			sem_statement(b->statement, return_type);
 			break;
 		default:
 			assert(b->tag != BLOCK);
@@ -369,18 +368,20 @@ static void sem_expression(Expression* expression) {
 }
 
 static void sem_function_call(FunctionCall* function_call) {
+	Declaration* declaration;
+
 	switch (function_call->tag) {
-	case FUNCTION_CALL_BASIC: {
-		Declaration* declaration = symtable_find(table, function_call->basic);
+	case FUNCTION_CALL_BASIC:
+		declaration = symtable_find(table, function_call->basic);
 		if (!declaration) {
 			todoerr("function not defined");
 		} else if (declaration->tag != DECLARATION_FUNCTION) {
 			todoerr("not a function");
 		}
-		// TODO: free old function_call->basic ?
+		free(function_call->basic);
+		function_call->type = declaration->function.type;
 		function_call->basic = declaration->function.id;
 		break;
-	}
 	case FUNCTION_CALL_METHOD:
 		// sem_expression(function_call->method.object);
 		// Body* body = function_call->method.object->type->monitor->monitor.body;
