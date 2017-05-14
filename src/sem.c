@@ -34,7 +34,7 @@ static void assignment(Variable*, Expression**);
 static void typecheck(Type*, Expression**);
 static Type* typecast(Expression**, Expression**);
 static bool indextype(Type*);
-static bool numbertype(Type*);
+static bool numerictype(Type*);
 static bool conditiontype(Type*);
 static bool equatabletype(Type*);
 
@@ -99,7 +99,7 @@ static void sem_declaration(Declaration* declaration) {
 		}
 		break;
 	case DECLARATION_FUNCTION:
-		if (declaration->function.id) { // constructors have id == NULL
+		if (declaration->function.id) { // constructors don't have an id
 			if (!symtable_insert(table, declaration)) {
 				sem_error(declaration->function.id->line,
 					ERR_REDECLARATION(declaration->function.id->name));
@@ -301,7 +301,7 @@ static void sem_expression(Expression* expression) {
 		sem_expression(expression->unary.expression);
 		switch (expression->unary.token) {
 		case '-':
-			if (!numbertype(expression->unary.expression->type)) {
+			if (!numerictype(expression->unary.expression->type)) {
 				todoerr("invalid type for unary minus");
 			}
 			expression->type = expression->unary.expression->type;
@@ -323,7 +323,7 @@ static void sem_expression(Expression* expression) {
 				todoerr("invalid type for left and/or expression");
 			}
 			if (!conditiontype(expression->binary.right_expression->type)) {
-				todoerr("invalid type for left and/or expression");
+				todoerr("invalid type for right and/or expression");
 			}
 			expression->type = ast_type_boolean();
 			break;
@@ -339,10 +339,10 @@ static void sem_expression(Expression* expression) {
 			expression->type = ast_type_boolean();
 			break;
 		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
-			if (!numbertype(expression->binary.right_expression->type)) {
+			if (!numerictype(expression->binary.right_expression->type)) {
 				todoerr("invalid type for left comparison expression");
 			}
-			if (!numbertype(expression->binary.right_expression->type)) {
+			if (!numerictype(expression->binary.right_expression->type)) {
 				todoerr("invalid type for right comparison expression");
 			}
 			typecast(&expression->binary.left_expression,
@@ -350,10 +350,10 @@ static void sem_expression(Expression* expression) {
 			expression->type = ast_type_boolean();
 			break;
 		case '+': case '-': case '*': case '/':
-			if (!numbertype(expression->binary.right_expression->type)) {
+			if (!numerictype(expression->binary.right_expression->type)) {
 				todoerr("invalid type for left arith expression");
 			}
-			if (!numbertype(expression->binary.right_expression->type)) {
+			if (!numerictype(expression->binary.right_expression->type)) {
 				todoerr("invalid type for right arith expression");
 			}
 			expression->type = typecast(&expression->binary.left_expression,
@@ -402,6 +402,7 @@ static void sem_function_call(FunctionCall* function_call) {
 		break;
 	}
 
+	// TODO
 	// Checking the arguments with the parameters
 	for (Expression* e = function_call->arguments; e; e = e->next) {
 		// TODO
@@ -417,7 +418,7 @@ static void sem_function_call(FunctionCall* function_call) {
 
 // TODO
 static void assignment(Variable* variable, Expression** expression) {
-	if (!(*expression)->type) {
+	if (!(*expression)->type) { // when defining with implicit type
 		todoerr("can't assign variable to type void");
 	}
 	if (variable->type) {
@@ -432,16 +433,31 @@ static void assignment(Variable* variable, Expression** expression) {
  * Deals with errors internally.
  */
 static void typecheck(Type* type, Expression** expression) {
-	// TODO
+	bool numeric1 = numerictype(type);
+	bool numeric2 = numerictype((*expression)->type);
+
+	if ((numeric1 && !numeric2) || (!numeric1 && numeric2)) {
+		todoerr("mismatching types");
+	}
+
+	// Both types are not numeric and are different
+	if (!numeric1 && type != (*expression)->type) {
+		todoerr("mismatching types");
+	}
+
+	// Casting for when both are numeric types
+	if (type != (*expression)->type) {
+		*expression = ast_expression_cast(*expression, type);
+	}
 }
 
 /*
- * Casts one of the expressions if they have mismatching types.
+ * Casts one of the (numeric) expressions if they have mismatching types.
  * Casts always go from integer to float.
  * The expressions must be of number type.
  */
 static Type* typecast(Expression** le, Expression** re) {
-	assert(numbertype((*le)->type) && numbertype((*re)->type));
+	assert(numerictype((*le)->type) && numerictype((*re)->type));
 
 	if ((*le)->type == (*re)->type) {
 		return (*le)->type;
@@ -462,7 +478,7 @@ static bool indextype(Type* type) {
 	return type == ast_type_integer();
 }
 
-static bool numbertype(Type* type) {
+static bool numerictype(Type* type) {
 	return type == ast_type_integer() || type == ast_type_float();
 }
 
