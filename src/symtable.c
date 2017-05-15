@@ -69,6 +69,10 @@ static Declaration* finddeclaration(Scope* scope, const char* idstring) {
 // Finds a type inside a given scope
 static Type* findtype(Scope* scope, const char* idstring) {
 	for (Symbol* s = scope->first_symbol; s; s = s->next) {
+		// printf("loop\n");
+		printf("%s - %s - equal %s (%p %p)\n", idstring, typestring(s->type),
+			typestring(s->type) == idstring ? "true" : "false", idstring,
+			typestring(s->type));
 		if (s->type && typestring(s->type) == idstring) {
 			return s->type;
 		}

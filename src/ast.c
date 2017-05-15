@@ -156,6 +156,9 @@ Id* ast_id(unsigned int line, const char* name) {
 //
 // ==================================================
 
+// TODO: This wont work (ex.: program -> monitor Integer {},
+// Integer from lex is different from this integer)
+
 // TODO: Test static
 #define PRIMITIVE_TYPE(v, s)			\
 	static Type* v = NULL;				\

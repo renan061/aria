@@ -285,7 +285,7 @@ struct Expression {
 
 struct FunctionCall {
 	FunctionCallTag tag;
-	Type* type; // redundant
+	Type* type; // redundant - TODO: use for array and monitor constructors
 	Expression* arguments;
 
 	union {

@@ -1,3 +1,0 @@
-0a1,2
-> line 15:
-> 	semantic error: symbol redeclaration

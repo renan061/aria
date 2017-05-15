@@ -7,7 +7,6 @@
  *
  *	- Conferir se os tipos existem antes de inserir
  *		eles (ex.: variable: B -> B não existe).
- *
  */
 #include <assert.h>
 #include <stdbool.h>
@@ -27,7 +26,8 @@ static void todoerr(const char* err) {
 	exit(1);
 }
 
-// Table for symbols (gets declarations and types) TODO
+// TODO: ltable and utable?
+// Symbol table for declarations and types
 static SymbolTable* table;
 
 /*
@@ -35,6 +35,12 @@ static SymbolTable* table;
  * body (NULL otherwise).
  */
 static Type* monitor = NULL;
+
+// Primitive types
+static Type* boolean_;
+static Type* integer_;
+static Type* float_;
+static Type* string_;
 
 // Auxiliary functions that deal with type analysis
 static void assignment(Variable*, Expression**);
@@ -59,8 +65,20 @@ static void sem_function_call(FunctionCall*);
  * TODO
  */
 void sem_analyse(Program* program) {
+	// Setup
 	table = symtable_new();
+	boolean_ = ast_type_boolean();
+	integer_ = ast_type_integer();
+	float_ = ast_type_float();
+	string_ = ast_type_string();
+
+	symtable_enter_scope(table);
+	symtable_insert_type(table, boolean_);
+	symtable_insert_type(table, integer_);
+	symtable_insert_type(table, float_);
+	symtable_insert_type(table, string_);
 	sem_body(program->body);
+	symtable_leave_scope(table);
 	symtable_free(table);
 }
 
@@ -73,9 +91,7 @@ void sem_analyse(Program* program) {
 static void sem_body(Body* body) {
 	if (body->tag == BODY) {
 		if (body->next) {
-			symtable_enter_scope(table);
 			sem_body(body->next);
-			symtable_leave_scope(table);
 		}
 		return;
 	}
@@ -145,7 +161,9 @@ static void sem_definition(Definition* definition) {
 				ERR_REDECLARATION(definition->type->monitor.id->line));
 		}
 		monitor = definition->type;
+		symtable_enter_scope(table);
 		sem_body(definition->type->monitor.body);
+		symtable_leave_scope(table);
 		monitor = NULL;
 		break;
 	}
@@ -259,7 +277,7 @@ static void sem_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID: {
 		Declaration* declaration =
-			symtable_find_declaration(table, variable->id);
+			declaration = symtable_find_declaration(table, variable->id);
 		if (!declaration) {
 			todoerr("variable not defined");
 		} else if (declaration->tag != DECLARATION_VARIABLE) {
@@ -287,16 +305,16 @@ static void sem_variable(Variable* variable) {
 static void sem_expression(Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		expression->type = ast_type_boolean();
+		expression->type = boolean_;
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		expression->type = ast_type_integer();
+		expression->type = integer_;
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->type = ast_type_float();
+		expression->type = float_;
 		break;
 	case EXPRESSION_LITERAL_STRING:
-		expression->type = ast_type_string();
+		expression->type = string_;
 		break;
 	case EXPRESSION_VARIABLE:
 		sem_variable(expression->variable);
@@ -319,7 +337,7 @@ static void sem_expression(Expression* expression) {
 			if (!conditiontype(expression->unary.expression->type)) {
 				todoerr("invalid type for unary not");
 			}
-			expression->type = ast_type_boolean();
+			expression->type = boolean_;
 			break;
 		}
 		break;
@@ -334,7 +352,7 @@ static void sem_expression(Expression* expression) {
 			if (!conditiontype(expression->binary.right_expression->type)) {
 				todoerr("invalid type for right and/or expression");
 			}
-			expression->type = ast_type_boolean();
+			expression->type = boolean_;
 			break;
 		case TK_EQUAL:
 			if (!equatabletype(expression->binary.right_expression->type)) {
@@ -345,7 +363,7 @@ static void sem_expression(Expression* expression) {
 			}
 			typecast(&expression->binary.left_expression,
 				&expression->binary.right_expression);
-			expression->type = ast_type_boolean();
+			expression->type = boolean_;
 			break;
 		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
 			if (!numerictype(expression->binary.right_expression->type)) {
@@ -356,7 +374,7 @@ static void sem_expression(Expression* expression) {
 			}
 			typecast(&expression->binary.left_expression,
 				&expression->binary.right_expression);
-			expression->type = ast_type_boolean();
+			expression->type = boolean_;
 			break;
 		case '+': case '-': case '*': case '/':
 			if (!numerictype(expression->binary.right_expression->type)) {
@@ -399,16 +417,34 @@ static void sem_function_call(FunctionCall* function_call) {
 		// check if arguments match parameters
 
 		break;
-	case FUNCTION_CALL_CONSTRUCTOR:
-		// TODO
+	case FUNCTION_CALL_CONSTRUCTOR: {
+		Type* temp = function_call->constructor;
 
-		// Check if function_call->constructor->id->tag
-		// if id (monitor constructor)
-		// 		find monitor type in symtable
-		// if array (array constructor)
-		// 		find array "final type" in symtable
-
+		switch (temp->tag) {
+		case TYPE_ID: // monitor types
+			function_call->type = function_call->constructor =
+				symtable_find_type(table, temp->id);
+			if (!function_call->type) {
+				todoerr("type TODO does not exist");
+			}
+			free(temp->id);
+			free(temp);
+			break;
+		case TYPE_ARRAY:
+			function_call->type = temp;
+			for (; temp->tag == TYPE_ARRAY; temp = temp->array);
+			assert(temp->tag == TYPE_ID);
+			temp = symtable_find_type(table, temp->id);
+			if (!temp) {
+				todoerr("type TODO does not exist");
+			}
+			// TODO: Free temp? Won't work with monitor ids
+			break;
+		default:
+			assert(NULL); // unreachable
+		}
 		break;
+	}
 	}
 
 	// TODO
@@ -476,7 +512,6 @@ static Type* typecast(Expression** le, Expression** re) {
 		return (*le)->type;
 	}
 
-	Type* float_ = ast_type_float();
 	if ((*le)->type == float_) {
 		return (*re = ast_expression_cast(*re, float_))->type;
 	}
@@ -488,19 +523,19 @@ static Type* typecast(Expression** le, Expression** re) {
 }
 
 static bool indextype(Type* type) {
-	return type == ast_type_integer();
+	return type == integer_;
 }
 
 static bool numerictype(Type* type) {
-	return type == ast_type_integer() || type == ast_type_float();
+	return type == integer_ || type == float_;
 }
 
 static bool conditiontype(Type* type) {
-	return type == ast_type_boolean();
+	return type == boolean_;
 }
 
 static bool equatabletype(Type* type) { // TODO: Strings?
-	return type == ast_type_boolean()
-		|| type == ast_type_integer()
-		|| type == ast_type_float();
+	return type == boolean_
+		|| type == integer_
+		|| type == float_;
 }
