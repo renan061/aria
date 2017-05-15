@@ -252,7 +252,7 @@ function_definition
 monitor_definition
 	: TK_MONITOR TK_UPPER_ID class_body
 		{
-			$$ = ast_definition_monitor($2, $3);
+			$$ = ast_definition_type(ast_type_monitor($2, $3));
 		}
 	;
 
@@ -618,11 +618,11 @@ class_content
 		{
 			$$ = ast_body_definition($1);
 		}
-	| constructor_definition
+	| method_definition
 		{
 			$$ = ast_body_definition($1);
 		}
-	| method_definition
+	| constructor_definition
 		{
 			$$ = ast_body_definition($1);
 		}

@@ -30,27 +30,61 @@ struct Scope {
 struct Symbol {
 	Symbol* next;
 	Declaration* declaration;
+	Type* type;
 };
 
-static Id* declarationid(Declaration* declaration) {
+static const char* declarationstring(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
 		assert(declaration->variable->tag == VARIABLE_ID);
-		return declaration->variable->id;
+		return declaration->variable->id->name;
 	case DECLARATION_FUNCTION:
 		assert(declaration->function.id); // can't be constructor
-		return declaration->function.id;
+		return declaration->function.id->name;
 	}
 	return assert(NULL), NULL; // unreachable
 }
 
-static Declaration* findinside(Scope* scope, Id* id) {
-	for (Symbol* symbol = scope->first_symbol; symbol; symbol = symbol->next) {
-		if (declarationid(symbol->declaration)->name == id->name) {
-			return symbol->declaration;
+static const char* typestring(Type* type) {
+	switch (type->tag) {
+	case TYPE_ID:
+		return type->id->name;
+	case TYPE_MONITOR:
+		return type->monitor.id->name;
+	default:
+		return assert(NULL), NULL; // unreachable
+	}
+}
+
+// Finds a declaration inside a given scope
+static Declaration* finddeclaration(Scope* scope, const char* idstring) {
+	for (Symbol* s = scope->first_symbol; s; s = s->next) {
+		if (s->declaration && declarationstring(s->declaration) == idstring) {
+			return s->declaration;
 		}
 	}
 	return NULL;
+}
+
+// Finds a type inside a given scope
+static Type* findtype(Scope* scope, const char* idstring) {
+	for (Symbol* s = scope->first_symbol; s; s = s->next) {
+		if (s->type && typestring(s->type) == idstring) {
+			return s->type;
+		}
+	}
+	return NULL;
+}
+
+// Used for inserting new symbols
+static Symbol* newsymbol(SymbolTable* t, Declaration* declaration, Type* type) {
+	Symbol* symbol;
+	MALLOC(symbol, Symbol);
+	symbol->declaration = declaration;
+	symbol->type = type;
+	symbol->next = t->top_scope->first_symbol;
+	t->top_scope->first_symbol = symbol;
+	return symbol;
 }
 
 // ==================================================
@@ -95,24 +129,34 @@ void symtable_leave_scope(SymbolTable* table) {
 	free(scope);
 }
 
-Declaration* symtable_find(SymbolTable* table, Id* id) {
+Declaration* symtable_find_declaration(SymbolTable* table, Id* id) {
 	Declaration* found = NULL;
 	for (Scope* s = table->top_scope; s && !found; s = s->next) {
-		found = findinside(s, id);
+		found = finddeclaration(s, id->name);
 	}
 	return found;
 }
 
-bool symtable_insert(SymbolTable* table, Declaration* declaration) {
-	// Checks for repetition inside same scope
-	if (findinside(table->top_scope, declarationid(declaration))) {
-		return false;
+Type* symtable_find_type(SymbolTable* table, Id* id) {
+	Type* found = NULL;
+	for (Scope* s = table->top_scope; s && !found; s = s->next) {
+		found = findtype(s, id->name);
 	}
+	return found;
+}
 
-	Symbol* symbol;
-	MALLOC(symbol, Symbol);
-	symbol->declaration = declaration;
-	symbol->next = table->top_scope->first_symbol;
-	table->top_scope->first_symbol = symbol;
+bool symtable_insert_declaration(SymbolTable* table, Declaration* declaration) {
+	if (finddeclaration(table->top_scope, declarationstring(declaration))) {
+		return false; // repetition
+	}
+	newsymbol(table, declaration, NULL);
+	return true;
+}
+
+bool symtable_insert_type(SymbolTable* table, Type* type) {
+	if (findtype(table->top_scope, typestring(type))) {
+		return false; // repetition
+	}
+	newsymbol(table, NULL, type);
 	return true;
 }

@@ -1,1 +1,2 @@
-can't assign variable to type void
+line 15:
+	semantic error: symbol redeclaration

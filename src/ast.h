@@ -27,14 +27,14 @@ typedef enum DefinitionTag {
 	DEFINITION_FUNCTION,
 	DEFINITION_METHOD,
 	DEFINITION_CONSTRUCTOR,
-	DEFINITION_MONITOR,
+	DEFINITION_TYPE
 } DefinitionTag;
 
 typedef enum TypeTag {
 	// TYPE_VOID, TYPE_NIL TODO
 	TYPE_ID,
-	TYPE_MONITOR, // TODO
 	TYPE_ARRAY,
+	TYPE_MONITOR
 } TypeTag;
 
 typedef enum BlockTag {
@@ -150,11 +150,8 @@ struct Definition {
 			Definition* function;
 			bool private;
 		} method;
-		// DefinitionMonitor
-		struct {
-			Id* id;
-			Body* body;
-		} monitor;
+		// DefinitionType
+		Type* type;
 	};
 };
 
@@ -170,10 +167,13 @@ struct Type {
 	union {
 		// TypeID
 		Id* id;
-		// TypeMonitor
-		Definition* monitor; // TODO
 		// TypeArray
 		Type* array;
+		// TypeMonitor
+		struct {
+			Id* id;
+			Body* body;
+		} monitor;
 	};
 };
 
@@ -321,7 +321,7 @@ extern Definition* ast_definition_variable(Declaration*, Expression*);
 extern Definition* ast_definition_function(Declaration*, Block*);
 extern Definition* ast_definition_method(Definition*, bool);
 extern Definition* ast_definition_constructor(Declaration*, Block*);
-extern Definition* ast_definition_monitor(Id*, Body*);
+extern Definition* ast_definition_type(Type*);
 
 extern Id* ast_id(unsigned int, const char*);
 
@@ -331,6 +331,7 @@ extern Type* ast_type_float(void);
 extern Type* ast_type_string(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
+extern Type* ast_type_monitor(Id*, Body*);
 
 extern Block* ast_block(Block*);
 extern Block* ast_block_declaration(Declaration*);

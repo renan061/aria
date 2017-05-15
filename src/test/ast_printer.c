@@ -127,18 +127,17 @@ static void print_ast_definition(Definition* definition) {
 		}
 		print_ast_definition(definition->method.function);
 		break;
-	case DEFINITION_MONITOR:
+	case DEFINITION_TYPE:
 		printf("monitor ");
-		print_ast_id(definition->monitor.id);
+		print_ast_id(definition->type->monitor.id);
 		printf(" ");
-		print_ast_body(definition->monitor.body);
+		print_ast_body(definition->type->monitor.body);
 		printf("\n");
 		break;
 	}
 }
 
 static void print_ast_id(Id* id) {
-	// TODO: Declaration
 	printf("%s", id->name);
 }
 
@@ -147,13 +146,13 @@ static void print_ast_type(Type* type) {
 	case TYPE_ID:
 		print_ast_id(type->id);
 		break;
-	case TYPE_MONITOR:
-		// TODO
-		break;
 	case TYPE_ARRAY:
 		printf("[");
 		print_ast_type(type->array);
 		printf("]");
+		break;
+	case TYPE_MONITOR:
+		print_ast_id(type->monitor.id);
 		break;
 	}
 }
@@ -396,7 +395,7 @@ static void printtype(Type* type) {
 		string = type->id->name;
 		break;
 	case TYPE_MONITOR:
-		string = type->monitor->monitor.id->name;
+		string = type->monitor.id->name;
 		break;
 	case TYPE_ARRAY:
 		// string = type->array;

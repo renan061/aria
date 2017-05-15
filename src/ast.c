@@ -127,12 +127,12 @@ Definition* ast_definition_constructor(Declaration* declaration, Block* block) {
 	return definition;
 }
 
-Definition* ast_definition_monitor(Id* id, Body* body) {
+Definition* ast_definition_type(Type* type) {
+	assert(type->tag == TYPE_MONITOR);
 	Definition* definition;
 	MALLOC(definition, Definition);
-	definition->tag = DEFINITION_MONITOR;
-	definition->monitor.id = id;
-	definition->monitor.body = body;
+	definition->tag = DEFINITION_TYPE;
+	definition->type = type;
 	return definition;
 }
 
@@ -156,6 +156,7 @@ Id* ast_id(unsigned int line, const char* name) {
 //
 // ==================================================
 
+// TODO: Test static
 #define PRIMITIVE_TYPE(v, s)			\
 	static Type* v = NULL;				\
 	if (!v) {							\
@@ -183,12 +184,7 @@ Type* ast_type_string(void) {
 }
 
 static Type* checkprimitive(Id* id) {
-	#define CHECK_TYPE(s, v)			\
-		if (!strcmp(s, id->name)) {		\
-			free(id);					\
-			return v;					\
-		}								\
-
+	#define CHECK_TYPE(s, v) if (!strcmp(s, id->name)) return free(id), v;
 	CHECK_TYPE("Boolean", ast_type_boolean());
 	CHECK_TYPE("Integer", ast_type_integer());
 	CHECK_TYPE("Float", ast_type_float());
@@ -216,6 +212,15 @@ Type* ast_type_array(Type* type) {
 	arrayType->primitive = false;
 	arrayType->array = type;
 	return arrayType;	
+}
+
+Type* ast_type_monitor(Id* id, Body* body) {
+	Type* type;
+	MALLOC(type, Type);
+	type->tag = TYPE_MONITOR;
+	type->monitor.id = id;
+	type->monitor.body = body;
+	return type;
 }
 
 // ==================================================
@@ -491,7 +496,6 @@ Expression* ast_expression_cast(Expression* expression, Type* type) {
 	castExpression->next = expression->next;
 	expression->next = NULL;
 
-	// printf("cast type %s\n", type->id->name);
 	castExpression->type = type;
 	castExpression->cast = expression;
 	return castExpression;

@@ -27,10 +27,17 @@ static void todoerr(const char* err) {
 	exit(1);
 }
 
-// TODO
-static void assignment(Variable*, Expression**);
+// Table for symbols (gets declarations and types) TODO
+static SymbolTable* table;
 
-// Auxiliary functions to deal with type analysis
+/*
+ * A monitor type instance if currently analysing a monitor's
+ * body (NULL otherwise).
+ */
+static Type* monitor = NULL;
+
+// Auxiliary functions that deal with type analysis
+static void assignment(Variable*, Expression**);
 static void typecheck(Type*, Expression**);
 static Type* typecast(Expression**, Expression**);
 static bool indextype(Type*);
@@ -38,12 +45,12 @@ static bool numerictype(Type*);
 static bool conditiontype(Type*);
 static bool equatabletype(Type*);
 
-// TODO: Doc
+// Functions that analyse the abstract syntax tree recursively
 static void sem_body(Body*);
 static void sem_declaration(Declaration*);
 static void sem_definition(Definition*);
-static void sem_block(Block*, Type*);
-static void sem_statement(Statement*, Type*);
+static void sem_block(Block*, Type*); // return type
+static void sem_statement(Statement*, Type*); // return type
 static void sem_variable(Variable*);
 static void sem_expression(Expression*);
 static void sem_function_call(FunctionCall*);
@@ -51,9 +58,6 @@ static void sem_function_call(FunctionCall*);
 /*
  * TODO
  */
-static SymbolTable* table;
-
-// TODO: Doc
 void sem_analyse(Program* program) {
 	table = symtable_new();
 	sem_body(program->body);
@@ -93,17 +97,21 @@ static void sem_body(Body* body) {
 static void sem_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		if (!symtable_insert(table, declaration)) {
+		if (!symtable_insert_declaration(table, declaration)) {
 			sem_error(declaration->variable->id->line,
 				ERR_REDECLARATION(declaration->variable->id->name));
 		}
 		break;
 	case DECLARATION_FUNCTION:
 		if (declaration->function.id) { // constructors don't have an id
-			if (!symtable_insert(table, declaration)) {
+			if (!symtable_insert_declaration(table, declaration)) {
 				sem_error(declaration->function.id->line,
 					ERR_REDECLARATION(declaration->function.id->name));
 			}
+		} else { // constructors need to be given a type
+			assert(monitor);
+			declaration->function.type =
+				symtable_find_type(table, monitor->monitor.id);
 		}
 		for (Declaration* p = declaration->function.parameters; p;
 			sem_declaration(p), p = p->next);
@@ -131,14 +139,14 @@ static void sem_definition(Definition* definition) {
 		// TODO: semantics? (private)
 		sem_definition(definition->method.function);
 		break;
-	case DEFINITION_MONITOR:
-		// TODO: utable: how to insert a monitor->id? create DECLARATION_MONITOR?
-
-		// if (!symtable_insert(utable, definition->monitor.id)) {
-		// 	sem_error(definition->monitor.id->line,
-		// 		ERR_REDECLARATION(definition->monitor.id->name));
-		// }
-		// sem_body(definition->monitor.body);
+	case DEFINITION_TYPE:
+		if (!symtable_insert_type(table, definition->type)) {
+			sem_error(definition->type->monitor.id->line,
+				ERR_REDECLARATION(definition->type->monitor.id->line));
+		}
+		monitor = definition->type;
+		sem_body(definition->type->monitor.body);
+		monitor = NULL;
 		break;
 	}
 }
@@ -250,7 +258,8 @@ static void sem_statement(Statement* statement, Type* return_type) {
 static void sem_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID: {
-		Declaration* declaration = symtable_find(table, variable->id);
+		Declaration* declaration =
+			symtable_find_declaration(table, variable->id);
 		if (!declaration) {
 			todoerr("variable not defined");
 		} else if (declaration->tag != DECLARATION_VARIABLE) {
@@ -372,7 +381,7 @@ static void sem_function_call(FunctionCall* function_call) {
 
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC:
-		declaration = symtable_find(table, function_call->basic);
+		declaration = symtable_find_declaration(table, function_call->basic);
 		if (!declaration) {
 			todoerr("function not defined");
 		} else if (declaration->tag != DECLARATION_FUNCTION) {
@@ -416,7 +425,11 @@ static void sem_function_call(FunctionCall* function_call) {
 //
 // ==================================================
 
-// TODO
+/*
+ * Checks for type equivalence between variable and expression.
+ * Works for definitions and simple assignments.
+ * Deals with errors internally.
+ */
 static void assignment(Variable* variable, Expression** expression) {
 	if (!(*expression)->type) { // when defining with implicit type
 		todoerr("can't assign variable to type void");
@@ -452,7 +465,7 @@ static void typecheck(Type* type, Expression** expression) {
 }
 
 /*
- * Casts one of the (numeric) expressions if they have mismatching types.
+ * Casts one of the expressions if they have mismatching types.
  * Casts always go from integer to float.
  * The expressions must be of number type.
  */
@@ -471,7 +484,7 @@ static Type* typecast(Expression** le, Expression** re) {
 		return (*le = ast_expression_cast(*le, float_))->type;
 	}
 
-	return NULL;
+	return assert(NULL), NULL; // unreachable
 }
 
 static bool indextype(Type* type) {
@@ -482,7 +495,7 @@ static bool numerictype(Type* type) {
 	return type == ast_type_integer() || type == ast_type_float();
 }
 
-static bool conditiontype(Type* type) { // TODO: Necessary?
+static bool conditiontype(Type* type) {
 	return type == ast_type_boolean();
 }
 
