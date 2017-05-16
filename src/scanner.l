@@ -148,12 +148,18 @@ string 		"\""(\\.|[^\\"])*"\""
 
 %%
 
+const char* primitive_types[4];
+
 // initializes strs vector and sets yyin
 void scanner_setup(const char* file) {
 	if (!(yyin = fopen(file, "r"))) {
     	scanner_error(line, ERR_FILE);
     }
 	strs = vector_new();
+	vector_append(strs, (void*)(primitive_types[SCANNER_BOOLEAN] = "Boolean"));
+	vector_append(strs, (void*)(primitive_types[SCANNER_INTEGER] = "Integer"));
+	vector_append(strs, (void*)(primitive_types[SCANNER_FLOAT] = "Float"));
+	vector_append(strs, (void*)(primitive_types[SCANNER_STRING] = "String"));
 }
 
 // frees strs vector and closes yyin

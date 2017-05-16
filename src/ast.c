@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "alloc.h"
+#include "scanner.h" // for primitive_types
 
 // ==================================================
 //
@@ -156,48 +157,49 @@ Id* ast_id(unsigned int line, const char* name) {
 //
 // ==================================================
 
-// TODO: This wont work (ex.: program -> monitor Integer {},
-// Integer from lex is different from this integer)
-
 // TODO: Test static
-#define PRIMITIVE_TYPE(v, s)			\
-	static Type* v = NULL;				\
-	if (!v) {							\
-		MALLOC(v, Type);				\
-		v->tag = TYPE_ID;				\
-		v->primitive = true;			\
-		v->id = ast_id(-1, s);			\
-	}									\
-	return v;							\
+#define PRIMITIVE_TYPE(v, i)					\
+	static Type* v = NULL;						\
+	if (!v) {									\
+		MALLOC(v, Type);						\
+		v->tag = TYPE_ID;						\
+		v->primitive = true;					\
+		v->id = ast_id(-1, primitive_types[i]);	\
+	}											\
+	return v;									\
 
 Type* ast_type_boolean(void) {
-	PRIMITIVE_TYPE(type_boolean, "Boolean");
+	PRIMITIVE_TYPE(type_boolean, SCANNER_BOOLEAN);
 }
 
 Type* ast_type_integer(void) {
-	PRIMITIVE_TYPE(type_integer, "Integer");
+	PRIMITIVE_TYPE(type_integer, SCANNER_INTEGER);
 }
 
 Type* ast_type_float(void) {
-	PRIMITIVE_TYPE(type_float, "Float");
+	PRIMITIVE_TYPE(type_float, SCANNER_FLOAT);
 }
 
 Type* ast_type_string(void) {
-	PRIMITIVE_TYPE(type_string, "String");
+	PRIMITIVE_TYPE(type_string, SCANNER_STRING);
 }
 
 static Type* checkprimitive(Id* id) {
-	#define CHECK_TYPE(s, v) if (!strcmp(s, id->name)) return free(id), v;
-	CHECK_TYPE("Boolean", ast_type_boolean());
-	CHECK_TYPE("Integer", ast_type_integer());
-	CHECK_TYPE("Float", ast_type_float());
-	CHECK_TYPE("String", ast_type_string());
+	#define CHECK_TYPE(i, v)					\
+		if (primitive_types[i] == id->name) {	\
+			return free(id), v;					\
+		}										\
+
+	CHECK_TYPE(SCANNER_BOOLEAN, ast_type_boolean());
+	CHECK_TYPE(SCANNER_INTEGER, ast_type_integer());
+	CHECK_TYPE(SCANNER_FLOAT, ast_type_float());
+	CHECK_TYPE(SCANNER_STRING, ast_type_string());
 	return NULL;
 }
 
 Type* ast_type_id(Id* id) {
 	Type* type;
-	if ((type = checkprimitive(id))) { // For primitive types
+	if ((type = checkprimitive(id))) {
 		return type;
 	}
 

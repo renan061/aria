@@ -12,6 +12,15 @@ typedef unsigned int Token;
 extern int yylex(void);
 
 /*
+ * TODO
+ */
+#define SCANNER_BOOLEAN 0
+#define SCANNER_INTEGER 1
+#define SCANNER_FLOAT 2
+#define SCANNER_STRING 3
+extern const char* primitive_types[4];
+
+/*
  * Setup and Clean should be called before starting
  * to use the scanner and after finishing doing so,
  * respectively.
