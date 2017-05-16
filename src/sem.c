@@ -20,6 +20,13 @@
 
 #define ERR_REDECLARATION(id) "symbol redeclaration" // TODO: Use id
 
+// TODO: 2000
+#define ERR(line, format, ...) {			\
+		char err[2000];						\
+		sprintf(err, format, __VA_ARGS__);	\
+		sem_error(line, err);				\
+	}										\
+
 // TODO: Remove and deal the with errors
 static void todoerr(const char* err) {
 	printf("%s\n", err);
@@ -341,53 +348,57 @@ static void sem_expression(Expression* expression) {
 			break;
 		}
 		break;
-	case EXPRESSION_BINARY:
-		sem_expression(expression->binary.left_expression);
-		sem_expression(expression->binary.right_expression);
+	case EXPRESSION_BINARY: {
+		Expression** lp = &expression->binary.left_expression;
+		Expression** rp = &expression->binary.right_expression;
+		sem_expression(*lp);
+		sem_expression(*rp);
 		switch (expression->binary.token) {
 		case TK_OR: case TK_AND:
-			if (!conditiontype(expression->binary.left_expression->type)) {
-				todoerr("invalid type for left and/or expression");
-			}
-			if (!conditiontype(expression->binary.right_expression->type)) {
-				todoerr("invalid type for right and/or expression");
+			// TESTING
+			if (!conditiontype((*lp)->type) || !conditiontype((*rp)->type)) {
+				ERR(expression->line,
+					"invalid type for the left side of the %s expression "
+					"(expected %s, got %s)",
+					(expression->binary.token == TK_OR) ? "`or`" : "`and`",
+					primitive_types[SCANNER_BOOLEAN],
+					"TODO TYPE"
+				);
 			}
 			expression->type = boolean_;
 			break;
 		case TK_EQUAL:
-			if (!equatabletype(expression->binary.right_expression->type)) {
+			if (!equatabletype((*lp)->type)) {
 				todoerr("invalid type for left comparison expression");
 			}
-			if (!equatabletype(expression->binary.right_expression->type)) {
+			if (!equatabletype((*rp)->type)) {
 				todoerr("invalid type for right comparison expression");
 			}
-			typecast(&expression->binary.left_expression,
-				&expression->binary.right_expression);
+			typecast(lp, rp); // TODO: Won't work
 			expression->type = boolean_;
 			break;
 		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
-			if (!numerictype(expression->binary.right_expression->type)) {
+			if (!numerictype((*lp)->type)) {
 				todoerr("invalid type for left comparison expression");
 			}
-			if (!numerictype(expression->binary.right_expression->type)) {
+			if (!numerictype((*rp)->type)) {
 				todoerr("invalid type for right comparison expression");
 			}
-			typecast(&expression->binary.left_expression,
-				&expression->binary.right_expression);
+			typecast(lp, rp); // TODO: Won't work
 			expression->type = boolean_;
 			break;
 		case '+': case '-': case '*': case '/':
-			if (!numerictype(expression->binary.right_expression->type)) {
+			if (!numerictype((*lp)->type)) {
 				todoerr("invalid type for left arith expression");
 			}
-			if (!numerictype(expression->binary.right_expression->type)) {
+			if (!numerictype((*rp)->type)) {
 				todoerr("invalid type for right arith expression");
 			}
-			expression->type = typecast(&expression->binary.left_expression,
-				&expression->binary.right_expression);
+			expression->type = typecast(lp, rp); // TODO: Won't work
 			break;
 		}
 		break;
+	}
 	case EXPRESSION_CAST:
 		assert(expression->tag != EXPRESSION_CAST);
 		break;
@@ -535,7 +546,5 @@ static bool conditiontype(Type* type) {
 }
 
 static bool equatabletype(Type* type) { // TODO: Strings?
-	return type == boolean_
-		|| type == integer_
-		|| type == float_;
+	return type == boolean_ || type == integer_ || type == float_;
 }

@@ -407,70 +407,77 @@ Variable* ast_variable_indexed(Expression* array, Expression* index) {
 //
 // ==================================================
 
-Expression* ast_expression_literal_boolean(bool literal_boolean) {
+Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_BOOLEAN;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_boolean = literal_boolean;
 	return expression;
 }
 
-Expression* ast_expression_literal_integer(int literal_integer) {
+Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_INTEGER;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_integer = literal_integer;
 	return expression;
 }
 
-Expression* ast_expression_literal_float(double literal_float) {
+Expression* ast_expression_literal_float(Line ln, double literal_float) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_FLOAT;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_float = literal_float;
 	return expression;
 }
 
-Expression* ast_expression_literal_string(const char* literal_string) {
+Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_STRING;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_string = literal_string;
 	return expression;
 }
 
-Expression* ast_expression_variable(Variable* variable) {
+Expression* ast_expression_variable(Line ln, Variable* variable) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_VARIABLE;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->variable = variable;
 	return expression;
 }
 
-Expression* ast_expression_function_call(FunctionCall* function_call) {
+Expression* ast_expression_function_call(Line ln, FunctionCall* function_call) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_FUNCTION_CALL;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->function_call = function_call;
 	return expression;
 }
 
-Expression* ast_expression_unary(Token token, Expression* expression) {
+Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
 	Expression* unaryExpression;
 	MALLOC(unaryExpression, Expression);
 	unaryExpression->tag = EXPRESSION_UNARY;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
 	unaryExpression->unary.token = token;
@@ -478,24 +485,27 @@ Expression* ast_expression_unary(Token token, Expression* expression) {
 	return unaryExpression;
 }
 
-Expression* ast_expression_binary(Token token, Expression* l, Expression* r) {
+Expression* ast_expression_binary(Line ln, Token t, Expression* l, Expression* r) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_BINARY;
+	expression->line = ln;
 	expression->next = NULL;
 	expression->type = NULL;
-	expression->binary.token = token;
+	expression->binary.token = t;
 	expression->binary.left_expression = l;
 	expression->binary.right_expression = r;
 	return expression;
 }
 
 Expression* ast_expression_cast(Expression* expression, Type* type) {
+	// TODO: Remove when 'as' gets in the language
 	assert(expression->type != type);
 
 	Expression* castExpression;
 	MALLOC(castExpression, Expression);
 	castExpression->tag = EXPRESSION_CAST;
+	castExpression->line = expression->line;
 
 	// TODO: Test this with arguments in function calls (think it won't work)
 	castExpression->next = expression->next;

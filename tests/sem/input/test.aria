@@ -1,32 +1,32 @@
-monitor Stack {
-	value constant: Integer = 1;
+// monitor Stack {
+// 	value constant: Integer = 1;
 
-	variable a: Integer;
+// 	variable a: Integer;
 
-	initializer {
-		a = 1;
-	}
+// 	initializer {
+// 		a = 1;
+// 	}
 
-	function test(num: Integer): Integer {
-		a = num;
-		return num;
-	}
+// 	function test(num: Integer): Integer {
+// 		a = num;
+// 		return num;
+// 	}
 
-	function set(num: Integer) {
-		a = num;
-	}
+// 	function set(num: Integer) {
+// 		a = num;
+// 	}
 
-	function get: Integer {
-		return a;
-	}
+// 	function get: Integer {
+// 		return a;
+// 	}
 
-	function print {
-		print(a);
-	}
-}
+// 	function print {
+// 		print(a);
+// 	}
+// }
 
-function foo {
-	value number: Integer = 2;
-	m := Monitor(); // value m: Monitor = Monitor();
-	m.set(number);
-}
+// function foo {
+// 	value number: Integer = 2;
+// 	m := Monitor(); // value m: Monitor = Monitor();
+// 	m.set(number);
+// }

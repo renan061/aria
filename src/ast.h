@@ -5,6 +5,9 @@
 
 #include "scanner.h"
 
+// TODO
+typedef unsigned int Line;
+
 // ==================================================
 //
 //	Tags
@@ -250,6 +253,7 @@ struct Variable {
 
 struct Expression {
 	ExpressionTag tag;
+	Line line;
 	Expression* next;
 	Type* type;
 	
@@ -352,14 +356,14 @@ extern Statement* ast_statement_block(Block*);
 extern Variable* ast_variable_id(Id*);
 extern Variable* ast_variable_indexed(Expression*, Expression*);
 
-extern Expression* ast_expression_literal_boolean(bool);
-extern Expression* ast_expression_literal_integer(int);
-extern Expression* ast_expression_literal_float(double);
-extern Expression* ast_expression_literal_string(const char*);
-extern Expression* ast_expression_variable(Variable*);
-extern Expression* ast_expression_function_call(FunctionCall*);
-extern Expression* ast_expression_unary(Token, Expression*);
-extern Expression* ast_expression_binary(Token, Expression*, Expression*);
+extern Expression* ast_expression_literal_boolean(Line, bool);
+extern Expression* ast_expression_literal_integer(Line, int);
+extern Expression* ast_expression_literal_float(Line, double);
+extern Expression* ast_expression_literal_string(Line, const char*);
+extern Expression* ast_expression_variable(Line, Variable*);
+extern Expression* ast_expression_function_call(Line, FunctionCall*);
+extern Expression* ast_expression_unary(Line, Token, Expression*);
+extern Expression* ast_expression_binary(Line, Token, Expression*, Expression*);
 extern Expression* ast_expression_cast(Expression*, Type*);
 
 extern FunctionCall* ast_function_call_basic(Id*, Expression*);

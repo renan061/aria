@@ -444,55 +444,55 @@ variable
 expression
 	: expression TK_OR expression
 		{
-			$$ = ast_expression_binary(TK_OR, $1, $3);
+			$$ = ast_expression_binary($2, TK_OR, $1, $3);
 		}
 	| expression TK_AND expression
 		{
-			$$ = ast_expression_binary(TK_AND, $1, $3);
+			$$ = ast_expression_binary($2, TK_AND, $1, $3);
 		}
 	| expression TK_EQUAL expression
 		{
-			$$ = ast_expression_binary(TK_EQUAL, $1, $3);
+			$$ = ast_expression_binary($2, TK_EQUAL, $1, $3);
 		}
 	| expression TK_LEQUAL expression
 		{
-			$$ = ast_expression_binary(TK_LEQUAL, $1, $3);
+			$$ = ast_expression_binary($2, TK_LEQUAL, $1, $3);
 		}
 	| expression TK_GEQUAL expression
 		{
-			$$ = ast_expression_binary(TK_GEQUAL, $1, $3);
+			$$ = ast_expression_binary($2, TK_GEQUAL, $1, $3);
 		}
 	| expression '<' expression
 		{
-			$$ = ast_expression_binary('<', $1, $3);
+			$$ = ast_expression_binary($2, '<', $1, $3);
 		}
 	| expression '>' expression
 		{
-			$$ = ast_expression_binary('>', $1, $3);
+			$$ = ast_expression_binary($2, '>', $1, $3);
 		}
 	| expression '+' expression
 		{
-			$$ = ast_expression_binary('+', $1, $3);
+			$$ = ast_expression_binary($2, '+', $1, $3);
 		}
 	| expression '-' expression
 		{
-			$$ = ast_expression_binary('-', $1, $3);
+			$$ = ast_expression_binary($2, '-', $1, $3);
 		}
 	| expression '*' expression
 		{
-			$$ = ast_expression_binary('*', $1, $3);
+			$$ = ast_expression_binary($2, '*', $1, $3);
 		}
 	| expression '/' expression
 		{
-			$$ = ast_expression_binary('/', $1, $3);
+			$$ = ast_expression_binary($2, '/', $1, $3);
 		}
 	| '-' expression %prec TK_NOT
 		{
-			$$ = ast_expression_unary('-', $2);
+			$$ = ast_expression_unary($1, '-', $2);
 		}
 	| TK_NOT expression
 		{
-			$$ = ast_expression_unary(TK_NOT, $2);
+			$$ = ast_expression_unary($1, TK_NOT, $2);
 		}
 	| primary_expression
 		{
@@ -507,11 +507,11 @@ primary_expression
 		}
 	| variable
 		{
-			$$ = ast_expression_variable($1);
+			$$ = ast_expression_variable(0, $1); // TODO: Line
 		}
 	| function_call
 		{
-			$$ = ast_expression_function_call($1);
+			$$ = ast_expression_function_call(0, $1); // TODO: Line
 		}
 	| '(' expression ')'
 		{
@@ -522,23 +522,23 @@ primary_expression
 literal
 	: TK_TRUE
 		{
-			$$ = ast_expression_literal_boolean(true);
+			$$ = ast_expression_literal_boolean($1, true);
 		}
 	| TK_FALSE
 		{
-			$$ = ast_expression_literal_boolean(false);
+			$$ = ast_expression_literal_boolean($1, false);
 		}
 	| TK_INTEGER
 		{
-			$$ = ast_expression_literal_integer($1);
+			$$ = ast_expression_literal_integer(0, $1); // TODO: Line
 		}
 	| TK_FLOAT
 		{
-			$$ = ast_expression_literal_float($1);
+			$$ = ast_expression_literal_float(0, $1); // TODO: Line
 		}
 	| TK_STRING
 		{
-			$$ = ast_expression_literal_string($1);
+			$$ = ast_expression_literal_string(0, $1); // TODO: Line
 		}
 	;
 
