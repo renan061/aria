@@ -1,0 +1,4 @@
+// In 'while-wait's
+function foo {
+	while 1 wait in x;
+}

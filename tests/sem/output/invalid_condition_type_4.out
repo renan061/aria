@@ -1,0 +1,2 @@
+line 0:
+	semantic error: invalid type 'String' for condition (expecting Boolean)

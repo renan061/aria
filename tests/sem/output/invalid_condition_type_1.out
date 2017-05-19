@@ -1,0 +1,2 @@
+line 0:
+	semantic error: invalid type 'Integer' for condition (expecting Boolean)

@@ -4,9 +4,6 @@
  *	- initializer(): Semântica? Pode ter mais de um?
  *		Pode ter mais de um com tipos / quantidade
  *		diferentes de parâmetros?
- *
- *	- Conferir se os tipos existem antes de inserir
- *		eles (ex.: variable: B -> B não existe).
  */
 #include <assert.h>
 #include <stdbool.h>
@@ -19,33 +16,6 @@
 #include "errs.h"
 #include "parser.h" // for the tokens
 #include "symtable.h"
-
-#define ERRMSG1(format, mod, name, err)					\
-	size_t len = strlen(format) - mod + strlen(name);	\
-	MALLOC_ARRAY(err, char, len + 1);					\
-	sprintf(err, format, name);							\
-	err[len] = '\0';									\
-
-#define ERR_REDECLARATION(id)										\
-	{ 																\
-		char* err;													\
-		ERRMSG1("redeclaration of name '%s'", 2, id->name, err);	\
-		sem_error(id->line, err);									\
-	}																\
-
-#define ERR_UNKOWN_TYPE_NAME(id)							\
-	{ 														\
-		char* err;											\
-		ERRMSG1("unkown type name '%s'", 2, id->name, err);	\
-		sem_error(id->line, err);							\
-	}														\
-
-// TODO: 2000
-#define ERR(line, format, ...) {			\
-		char err[2000];						\
-		sprintf(err, format, __VA_ARGS__);	\
-		sem_error(line, err);				\
-	}										\
 
 // TODO: Remove and deal the with errors
 static void todoerr(const char* err) {
@@ -70,21 +40,6 @@ static Type* integer_;
 static Type* float_;
 static Type* string_;
 
-// TODO: Scope
-static void enterscope(void);
-static void leavescope(void);
-
-// Auxiliary functions that deal with type analysis
-static void linktype(Type**);
-static void assignment(Variable*, Expression**);
-static void typecheck(Type*, Expression**);
-static Type* typecast(Expression**, Expression**);
-static bool indextype(Type*);
-static bool numerictype(Type*);
-static bool conditiontype(Type*);
-static bool equatabletype(Type*);
-static void freetypeid(Type*);
-
 // Functions that analyse the abstract syntax tree recursively
 static void sem_body(Body*);
 static void sem_declaration(Declaration*);
@@ -94,6 +49,23 @@ static void sem_statement(Statement*, Type*); // return type
 static void sem_variable(Variable*);
 static void sem_expression(Expression*);
 static void sem_function_call(FunctionCall*);
+
+// Auxiliary functions that deal with type analysis
+static void enterscope(void);
+static void leavescope(void);
+static void linktype(Type**);
+static void assignment(Variable*, Expression**);
+static void typecheck(Type*, Expression**);
+static Type* typecast(Expression**, Expression**);
+static bool indextype(Type*);
+static bool numerictype(Type*);
+static bool conditiontype(Type*);
+static bool equatabletype(Type*);
+
+// Auxiliary functions that deal with errors
+static void err_redeclaration(Id*);
+static void err_unkown_type_name(Id*);
+static void err_invalid_condition_type(Expression*);
 
 /*
  * TODO
@@ -153,7 +125,7 @@ static void sem_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
 		if (!symtable_insert_declaration(ltable, declaration)) {
-			ERR_REDECLARATION(declaration->variable->id);
+			err_redeclaration(declaration->variable->id);
 		}
 		if (declaration->variable->type) { // inferred declarations have no type
 			linktype(&declaration->variable->type);
@@ -162,7 +134,7 @@ static void sem_declaration(Declaration* declaration) {
 	case DECLARATION_FUNCTION:
 		if (declaration->function.id) { // constructors don't have an id
 			if (!symtable_insert_declaration(ltable, declaration)) {
-				ERR_REDECLARATION(declaration->function.id);
+				err_redeclaration(declaration->function.id);
 			}
 			if (declaration->function.type) { // some functions return nothing
 				linktype(&declaration->function.type);
@@ -198,7 +170,7 @@ static void sem_definition(Definition* definition) {
 		break;
 	case DEFINITION_TYPE:
 		if (!symtable_insert_type(utable, definition->type)) {
-			ERR_REDECLARATION(definition->type->monitor.id);
+			err_redeclaration(definition->type->monitor.id);
 		}
 		monitor = definition->type;
 		enterscope();
@@ -234,6 +206,7 @@ static void sem_block(Block* block, Type* return_type) {
 	}
 }
 
+// TODO: Line for literal expressions
 static void sem_statement(Statement* statement, Type* return_type) {
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
@@ -248,7 +221,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_WHILE_WAIT:
 		sem_expression(statement->while_wait.expression);
 		if (!conditiontype(statement->while_wait.expression->type)) {
-			todoerr("invalid type for condition");
+			err_invalid_condition_type(statement->while_wait.expression);
 		}
 		// TODO: Special semantics for condition variables?
 		sem_variable(statement->while_wait.variable);
@@ -272,7 +245,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_IF:
 		sem_expression(statement->if_.expression);
 		if (!conditiontype(statement->if_.expression->type)) {
-			todoerr("invalid type for condition");
+			err_invalid_condition_type(statement->if_.expression);
 		}
 		enterscope();
 		sem_block(statement->if_.block, return_type);
@@ -281,7 +254,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_IF_ELSE:
 		sem_expression(statement->if_else.expression);
 		if (!conditiontype(statement->if_else.expression->type)) {
-			todoerr("invalid type for condition");
+			err_invalid_condition_type(statement->if_else.expression);
 		}
 		enterscope();
 		sem_block(statement->if_else.if_block, return_type);
@@ -293,7 +266,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_WHILE:
 		sem_expression(statement->while_.expression);
 		if (!conditiontype(statement->while_.expression->type)) {
-			todoerr("invalid type for condition");
+			err_invalid_condition_type(statement->while_.expression);
 		}
 		enterscope();
 		sem_block(statement->while_.block, return_type);
@@ -388,15 +361,8 @@ static void sem_expression(Expression* expression) {
 		sem_expression(*rp);
 		switch (expression->binary.token) {
 		case TK_OR: case TK_AND:
-			// TESTING
 			if (!conditiontype((*lp)->type) || !conditiontype((*rp)->type)) {
-				ERR(expression->line,
-					"invalid type for the left side of the %s expression "
-					"(expected %s, got %s)",
-					(expression->binary.token == TK_OR) ? "`or`" : "`and`",
-					primitive_types[SCANNER_BOOLEAN],
-					"TODO TYPE"
-				);
+				todoerr("invalid type for the left side of the or/and expression");
 			}
 			expression->type = boolean_;
 			break;
@@ -481,6 +447,15 @@ static void sem_function_call(FunctionCall* function_call) {
 //
 // ==================================================
 
+static void freetypeid(Type* type) {
+	assert(type->tag == TYPE_ID);
+	if (type->primitive) {
+		return;
+	}
+	free(type->id);
+	free(type);
+}
+
 // TODO
 static void enterscope(void) {
 	symtable_enter_scope(ltable);
@@ -504,7 +479,7 @@ static void linktype(Type** pointer) {
 	case TYPE_ID: {
 		Type* type = *pointer;
 		if (!(*pointer = symtable_find_type(utable, type->id))) {
-			ERR_UNKOWN_TYPE_NAME(type->id);
+			err_unkown_type_name(type->id);
 		}
 		freetypeid(type);
 		break;
@@ -595,11 +570,62 @@ static bool equatabletype(Type* type) { // TODO: Strings?
 	return type == boolean_ || type == integer_ || type == float_;
 }
 
-static void freetypeid(Type* type) {
-	assert(type->tag == TYPE_ID);
-	if (type->primitive) {
-		return;
+// ==================================================
+//
+//	Errors
+//
+// ==================================================
+
+// Returns the string corresponding to the type
+static const char* typestring(Type* type) {
+	if (!type) {
+		return "Void";
 	}
-	free(type->id);
-	free(type);
+
+	switch (type->tag) {
+	case TYPE_ID:
+		return type->id->name;
+	case TYPE_ARRAY: {
+		unsigned int counter = 0;
+		for (; type->tag == TYPE_ARRAY; type = type->array, counter++);
+		const char* id = typestring(type);
+		char* str;
+		size_t len = 2 * counter + strlen(id);
+		MALLOC_ARRAY(str, char, len + 1);
+		strcpy(str + counter, id);
+		for (int i = 0; i < counter; i++) {
+			str[i] = '[';
+			str[len - i - 1] = ']';
+		}
+		str[len] = '\0';
+		return str;
+	}
+	case TYPE_MONITOR:
+		return type->monitor.id->name;
+	}
+	return assert(NULL), NULL; // unreachable
+}
+
+// Creates a formatted error with one dynamic string
+static const char* err1(const char* format, const char* name) {
+	char* err;
+	size_t len = strlen(format) - 2 + strlen(name); // -2 for '%s'
+	MALLOC_ARRAY(err, char, len + 1);
+	sprintf(err, format, name);
+	err[len] = '\0';
+	return err;
+}
+
+static void err_redeclaration(Id* id) {
+	sem_error(id->line, err1("redeclaration of name '%s'", id->name));
+}
+
+static void err_unkown_type_name(Id* id) {
+	sem_error(id->line, err1("unkown type name '%s'", id->name));
+}
+
+static void err_invalid_condition_type(Expression* expression) {
+	const char* err = typestring(expression->type);
+	err = err1("invalid type '%s' for condition (expecting Boolean)", err);
+	sem_error(expression->line, err);
 }

@@ -1,0 +1,4 @@
+// In 'while's
+function foo {
+	while "string" {}
+}

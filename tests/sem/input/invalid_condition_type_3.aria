@@ -1,0 +1,4 @@
+// In 'if-else's
+function foo {
+	if foo() {} else {}
+}
