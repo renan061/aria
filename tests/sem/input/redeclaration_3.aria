@@ -1,0 +1,8 @@
+// In type (monitor) definitions
+monitor Stack {
+	value x = 1;	
+}
+
+monitor Stack {
+	value y = 2;
+}

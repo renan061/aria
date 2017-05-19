@@ -20,19 +20,23 @@
 #include "parser.h" // for the tokens
 #include "symtable.h"
 
-#define ERR_REDECLARATION(id) "symbol redeclaration" // TODO: Use id
+#define ERRMSG1(format, mod, name, err)					\
+	size_t len = strlen(format) - mod + strlen(name);	\
+	MALLOC_ARRAY(err, char, len + 1);					\
+	sprintf(err, format, name);							\
+	err[len] = '\0';									\
 
-// TODO
+#define ERR_REDECLARATION(id)										\
+	{ 																\
+		char* err;													\
+		ERRMSG1("redeclaration of name '%s'", 2, id->name, err);	\
+		sem_error(id->line, err);									\
+	}																\
+
 #define ERR_UNKOWN_TYPE_NAME(id)							\
 	{ 														\
-		const char* format = "unkown type name '%s'";		\
-		int mod = 2;										\
-		const char* name = id->name;						\
 		char* err;											\
-		size_t len = strlen(format) - mod + strlen(name);	\
-		MALLOC_ARRAY(err, char, len + 1);					\
-		sprintf(err, format, name);							\
-		err[len] = '\0';									\
+		ERRMSG1("unkown type name '%s'", 2, id->name, err);	\
 		sem_error(id->line, err);							\
 	}														\
 
@@ -149,8 +153,7 @@ static void sem_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
 		if (!symtable_insert_declaration(ltable, declaration)) {
-			sem_error(declaration->variable->id->line,
-				ERR_REDECLARATION(declaration->variable->id->name));
+			ERR_REDECLARATION(declaration->variable->id);
 		}
 		if (declaration->variable->type) { // inferred declarations have no type
 			linktype(&declaration->variable->type);
@@ -159,8 +162,7 @@ static void sem_declaration(Declaration* declaration) {
 	case DECLARATION_FUNCTION:
 		if (declaration->function.id) { // constructors don't have an id
 			if (!symtable_insert_declaration(ltable, declaration)) {
-				sem_error(declaration->function.id->line,
-					ERR_REDECLARATION(declaration->function.id->name));
+				ERR_REDECLARATION(declaration->function.id);
 			}
 			if (declaration->function.type) { // some functions return nothing
 				linktype(&declaration->function.type);
@@ -169,6 +171,7 @@ static void sem_declaration(Declaration* declaration) {
 			assert(monitor);
 			declaration->function.type = monitor;
 		}
+		enterscope(); // should leave in sem_definition
 		for (Declaration* p = declaration->function.parameters; p;
 			sem_declaration(p), p = p->next);
 		break;
@@ -186,18 +189,16 @@ static void sem_definition(Definition* definition) {
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
 		sem_declaration(definition->function.declaration);
-		enterscope();
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
-		leavescope();
+		leavescope(); // entered in sem_declaration
 		break;
 	case DEFINITION_METHOD:
-		// TODO: semantics? (private)
 		sem_definition(definition->method.function);
 		break;
 	case DEFINITION_TYPE:
 		if (!symtable_insert_type(utable, definition->type)) {
-			todoerr("definition type: symbol redeclaration");
+			ERR_REDECLARATION(definition->type->monitor.id);
 		}
 		monitor = definition->type;
 		enterscope();
@@ -492,7 +493,10 @@ static void leavescope(void) {
 	symtable_leave_scope(utable);
 }
 
-// TODO
+/*
+ * Replaces an id-type for its declaration equivalent using the symbol table.
+ * Deals with errors internally.
+ */
 static void linktype(Type** pointer) {
 	assert(pointer && *pointer);
 

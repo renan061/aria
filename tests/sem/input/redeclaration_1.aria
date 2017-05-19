@@ -1,0 +1,4 @@
+// In variable declarations
+function foo(x: Integer) {
+	x := true;
+}

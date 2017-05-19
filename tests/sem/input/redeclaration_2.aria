@@ -1,0 +1,3 @@
+// In function declarations
+function foo {}
+function foo(x: Integer) {}

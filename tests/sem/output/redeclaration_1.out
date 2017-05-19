@@ -1,0 +1,2 @@
+line 3:
+	semantic error: redeclaration of name 'x'

@@ -1,0 +1,2 @@
+line 6:
+	semantic error: redeclaration of name 'Stack'
