@@ -1,0 +1,4 @@
+// In function calls to constructors
+function foo {
+	x := Id3();
+}

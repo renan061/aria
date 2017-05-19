@@ -12,13 +12,29 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h> // TODO: Remove
+#include <string.h>
 
+#include "alloc.h"
 #include "ast.h"
 #include "errs.h"
 #include "parser.h" // for the tokens
 #include "symtable.h"
 
 #define ERR_REDECLARATION(id) "symbol redeclaration" // TODO: Use id
+
+// TODO
+#define ERR_UNKOWN_TYPE_NAME(id)							\
+	{ 														\
+		const char* format = "unkown type name '%s'";		\
+		int mod = 2;										\
+		const char* name = id->name;						\
+		char* err;											\
+		size_t len = strlen(format) - mod + strlen(name);	\
+		MALLOC_ARRAY(err, char, len + 1);					\
+		sprintf(err, format, name);							\
+		err[len] = '\0';									\
+		sem_error(id->line, err);							\
+	}														\
 
 // TODO: 2000
 #define ERR(line, format, ...) {			\
@@ -33,9 +49,10 @@ static void todoerr(const char* err) {
 	exit(1);
 }
 
-// TODO: ltable and utable?
-// Symbol table for declarations and types
-static SymbolTable* table;
+/*
+ * Symbol table for declarations and types (TODO)
+ */
+static SymbolTable *ltable, *utable;
 
 /*
  * A monitor type instance if currently analysing a monitor's
@@ -49,7 +66,12 @@ static Type* integer_;
 static Type* float_;
 static Type* string_;
 
+// TODO: Scope
+static void enterscope(void);
+static void leavescope(void);
+
 // Auxiliary functions that deal with type analysis
+static void linktype(Type**);
 static void assignment(Variable*, Expression**);
 static void typecheck(Type*, Expression**);
 static Type* typecast(Expression**, Expression**);
@@ -57,6 +79,7 @@ static bool indextype(Type*);
 static bool numerictype(Type*);
 static bool conditiontype(Type*);
 static bool equatabletype(Type*);
+static void freetypeid(Type*);
 
 // Functions that analyse the abstract syntax tree recursively
 static void sem_body(Body*);
@@ -73,20 +96,25 @@ static void sem_function_call(FunctionCall*);
  */
 void sem_analyse(Program* program) {
 	// Setup
-	table = symtable_new();
+	ltable = symtable_new();
+	utable = symtable_new();
 	boolean_ = ast_type_boolean();
 	integer_ = ast_type_integer();
 	float_ = ast_type_float();
 	string_ = ast_type_string();
 
-	symtable_enter_scope(table);
-	symtable_insert_type(table, boolean_);
-	symtable_insert_type(table, integer_);
-	symtable_insert_type(table, float_);
-	symtable_insert_type(table, string_);
+	// Analysis
+	enterscope();
+	symtable_insert_type(utable, boolean_);
+	symtable_insert_type(utable, integer_);
+	symtable_insert_type(utable, float_);
+	symtable_insert_type(utable, string_);
 	sem_body(program->body);
-	symtable_leave_scope(table);
-	symtable_free(table);
+	leavescope();
+
+	// Teardown
+	symtable_free(ltable);
+	symtable_free(utable);
 }
 
 // ==================================================
@@ -120,21 +148,26 @@ static void sem_body(Body* body) {
 static void sem_declaration(Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
-		if (!symtable_insert_declaration(table, declaration)) {
+		if (!symtable_insert_declaration(ltable, declaration)) {
 			sem_error(declaration->variable->id->line,
 				ERR_REDECLARATION(declaration->variable->id->name));
+		}
+		if (declaration->variable->type) { // inferred declarations have no type
+			linktype(&declaration->variable->type);
 		}
 		break;
 	case DECLARATION_FUNCTION:
 		if (declaration->function.id) { // constructors don't have an id
-			if (!symtable_insert_declaration(table, declaration)) {
+			if (!symtable_insert_declaration(ltable, declaration)) {
 				sem_error(declaration->function.id->line,
 					ERR_REDECLARATION(declaration->function.id->name));
 			}
+			if (declaration->function.type) { // some functions return nothing
+				linktype(&declaration->function.type);
+			}
 		} else { // constructors need to be given a type
 			assert(monitor);
-			declaration->function.type =
-				symtable_find_type(table, monitor->monitor.id);
+			declaration->function.type = monitor;
 		}
 		for (Declaration* p = declaration->function.parameters; p;
 			sem_declaration(p), p = p->next);
@@ -153,24 +186,23 @@ static void sem_definition(Definition* definition) {
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
 		sem_declaration(definition->function.declaration);
-		symtable_enter_scope(table);
+		enterscope();
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
-		symtable_leave_scope(table);
+		leavescope();
 		break;
 	case DEFINITION_METHOD:
 		// TODO: semantics? (private)
 		sem_definition(definition->method.function);
 		break;
 	case DEFINITION_TYPE:
-		if (!symtable_insert_type(table, definition->type)) {
-			sem_error(definition->type->monitor.id->line,
-				ERR_REDECLARATION(definition->type->monitor.id->line));
+		if (!symtable_insert_type(utable, definition->type)) {
+			todoerr("definition type: symbol redeclaration");
 		}
 		monitor = definition->type;
-		symtable_enter_scope(table);
+		enterscope();
 		sem_body(definition->type->monitor.body);
-		symtable_leave_scope(table);
+		leavescope();
 		monitor = NULL;
 		break;
 	}
@@ -241,41 +273,41 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		if (!conditiontype(statement->if_.expression->type)) {
 			todoerr("invalid type for condition");
 		}
-		symtable_enter_scope(table);
+		enterscope();
 		sem_block(statement->if_.block, return_type);
-		symtable_leave_scope(table);
+		leavescope();
 		break;
 	case STATEMENT_IF_ELSE:
 		sem_expression(statement->if_else.expression);
 		if (!conditiontype(statement->if_else.expression->type)) {
 			todoerr("invalid type for condition");
 		}
-		symtable_enter_scope(table);
+		enterscope();
 		sem_block(statement->if_else.if_block, return_type);
-		symtable_leave_scope(table);
-		symtable_enter_scope(table);
+		leavescope();
+		enterscope();
 		sem_block(statement->if_else.else_block, return_type);
-		symtable_leave_scope(table);
+		leavescope();
 		break;
 	case STATEMENT_WHILE:
 		sem_expression(statement->while_.expression);
 		if (!conditiontype(statement->while_.expression->type)) {
 			todoerr("invalid type for condition");
 		}
-		symtable_enter_scope(table);
+		enterscope();
 		sem_block(statement->while_.block, return_type);
-		symtable_leave_scope(table);
+		leavescope();
 		break;
 	case STATEMENT_SPAWN:
-		symtable_enter_scope(table);
+		enterscope();
 		// TODO: Special semantics for spawn blocks
 		sem_block(statement->spawn, return_type);
-		symtable_leave_scope(table);
+		leavescope();
 		break;
 	case STATEMENT_BLOCK:
-		symtable_enter_scope(table);
+		enterscope();
 		sem_block(statement->block, return_type);
-		symtable_leave_scope(table);
+		leavescope();
 		break;
 	}
 }
@@ -284,7 +316,7 @@ static void sem_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID: {
 		Declaration* declaration =
-			declaration = symtable_find_declaration(table, variable->id);
+			declaration = symtable_find_declaration(ltable, variable->id);
 		if (!declaration) {
 			todoerr("variable not defined");
 		} else if (declaration->tag != DECLARATION_VARIABLE) {
@@ -410,7 +442,7 @@ static void sem_function_call(FunctionCall* function_call) {
 
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC:
-		declaration = symtable_find_declaration(table, function_call->basic);
+		declaration = symtable_find_declaration(ltable, function_call->basic);
 		if (!declaration) {
 			todoerr("function not defined");
 		} else if (declaration->tag != DECLARATION_FUNCTION) {
@@ -428,34 +460,10 @@ static void sem_function_call(FunctionCall* function_call) {
 		// check if arguments match parameters
 
 		break;
-	case FUNCTION_CALL_CONSTRUCTOR: {
-		Type* temp = function_call->constructor;
-
-		switch (temp->tag) {
-		case TYPE_ID: // monitor types
-			function_call->type = function_call->constructor =
-				symtable_find_type(table, temp->id);
-			if (!function_call->type) {
-				todoerr("type TODO does not exist");
-			}
-			free(temp->id);
-			free(temp);
-			break;
-		case TYPE_ARRAY:
-			function_call->type = temp;
-			for (; temp->tag == TYPE_ARRAY; temp = temp->array);
-			assert(temp->tag == TYPE_ID);
-			temp = symtable_find_type(table, temp->id);
-			if (!temp) {
-				todoerr("type TODO does not exist");
-			}
-			// TODO: Free temp? Won't work with monitor ids
-			break;
-		default:
-			assert(NULL); // unreachable
-		}
+	case FUNCTION_CALL_CONSTRUCTOR:
+		linktype(&function_call->constructor);
+		function_call->type = function_call->constructor;
 		break;
-	}
 	}
 
 	// TODO
@@ -471,6 +479,40 @@ static void sem_function_call(FunctionCall* function_call) {
 //	Auxiliary
 //
 // ==================================================
+
+// TODO
+static void enterscope(void) {
+	symtable_enter_scope(ltable);
+	symtable_enter_scope(utable);
+}
+
+// TODO
+static void leavescope(void) {
+	symtable_leave_scope(ltable);
+	symtable_leave_scope(utable);
+}
+
+// TODO
+static void linktype(Type** pointer) {
+	assert(pointer && *pointer);
+
+	switch ((*pointer)->tag) {
+	case TYPE_ID: {
+		Type* type = *pointer;
+		if (!(*pointer = symtable_find_type(utable, type->id))) {
+			ERR_UNKOWN_TYPE_NAME(type->id);
+		}
+		freetypeid(type);
+		break;
+	}
+	case TYPE_ARRAY:
+		for (; (*pointer)->tag == TYPE_ARRAY; pointer = &(*pointer)->array);
+		linktype(pointer);
+		break;
+	default:
+		assert(NULL); // unreachable
+	}
+}
 
 /*
  * Checks for type equivalence between variable and expression.
@@ -547,4 +589,13 @@ static bool conditiontype(Type* type) {
 
 static bool equatabletype(Type* type) { // TODO: Strings?
 	return type == boolean_ || type == integer_ || type == float_;
+}
+
+static void freetypeid(Type* type) {
+	assert(type->tag == TYPE_ID);
+	if (type->primitive) {
+		return;
+	}
+	free(type->id);
+	free(type);
 }

@@ -142,6 +142,11 @@ static void print_ast_id(Id* id) {
 }
 
 static void print_ast_type(Type* type) {
+	if (!type) { // TODO: TYPE_VOID
+		printf("Void");
+		return;
+	}
+
 	switch (type->tag) {
 	case TYPE_ID:
 		print_ast_id(type->id);
@@ -322,7 +327,7 @@ static void print_ast_expression(Expression* expression) {
 			assert(expression->tag != EXPRESSION_CAST);
 		}
 		print_ast_expression(expression->cast);
-		printf(" as ");
+		printf(" as");
 		printtype(expression->type);
 		break;
 	}
@@ -384,23 +389,6 @@ static void printtype(Type* type) {
 		return;
 	}
 
-	if (!type) { // void type (type for non-returning functions)
-		printf("[: Void]");
-		return;
-	}
-
-	const char* string;
-	switch (type->tag) {
-	case TYPE_ID:
-		string = type->id->name;
-		break;
-	case TYPE_MONITOR:
-		string = type->monitor.id->name;
-		break;
-	case TYPE_ARRAY:
-		// string = type->array;
-		string = "TODO";
-		break;
-	}
-	printf("[: %s]", string);
+	printf(": ");
+	print_ast_type(type);
 }

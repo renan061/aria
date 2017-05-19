@@ -24,6 +24,6 @@ void parser_error(unsigned int line, const char* err) {
 }
 
 void sem_error(unsigned int line, const char* err) {
-	fprintf(stderr, "line %d: semantic error\n\t %s\n", line, err);
+	fprintf(stderr, "line %d:\n\tsemantic error: %s\n", line, err);
 	exit(1);
 }
