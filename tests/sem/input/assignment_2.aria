@@ -1,0 +1,5 @@
+// Assigning with wrong type
+function foo {
+	variable x: Integer;
+	x = true;
+}

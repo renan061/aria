@@ -1,0 +1,4 @@
+// Assigning variable to expression of type Void
+function foo {
+	x := foo();
+}

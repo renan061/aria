@@ -1,0 +1,4 @@
+// Unknown (undeclared and undefined) variable beeing used
+function foo {
+	x := y;
+}

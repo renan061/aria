@@ -1,0 +1,2 @@
+line 3:
+	semantic error: can't assign a Void expression to a variable

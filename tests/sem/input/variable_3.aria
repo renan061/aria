@@ -1,0 +1,5 @@
+// Indexed variable with non-array type
+function foo {
+	x := false;
+	y := x[0];
+}

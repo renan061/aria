@@ -63,7 +63,12 @@ static void err_redeclaration(Id*);
 static void err_unkown_type_name(Id*);
 static void err_invalid_condition_type(Expression*);
 static void err_type(Line, Type*, Type*);
-static void err_empty_return(Line, Type*);
+static void err_assignment_void(Line);
+static void err_return_void(Line, Type*);
+static void err_variable_unknown(Id*);
+static void err_variable_misuse(Id*);
+static void err_variable_array_type(Variable*);
+static void err_variable_array_index_type(Variable*);
 
 /*
  * TODO
@@ -237,7 +242,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 			sem_expression(statement->return_);
 			typecheck(return_type, &statement->return_);
 		} else if (return_type) {
-			err_empty_return(statement->line, return_type);
+			err_return_void(statement->line, return_type);
 		}
 		break;
 	case STATEMENT_IF:
@@ -287,26 +292,25 @@ static void sem_statement(Statement* statement, Type* return_type) {
 static void sem_variable(Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID: {
-		Declaration* declaration =
-			declaration = symtable_find_declaration(ltable, variable->id);
-		if (!declaration) {
-			todoerr("variable not defined");
-		} else if (declaration->tag != DECLARATION_VARIABLE) {
-			todoerr("not a variable");
+		Declaration* dec = symtable_find_declaration(ltable, variable->id);
+		if (!dec) {
+			err_variable_unknown(variable->id);
+		} else if (dec->tag != DECLARATION_VARIABLE) {
+			err_variable_misuse(variable->id);
 		}
 		free(variable->id);
-		variable->id = declaration->variable->id;
-		variable->type = declaration->variable->type;
+		variable->id = dec->variable->id;
+		variable->type = dec->variable->type;
 		break;
 	}
 	case VARIABLE_INDEXED:
 		sem_expression(variable->indexed.array);
 		sem_expression(variable->indexed.index);
 		if (variable->indexed.array->type->tag != TYPE_ARRAY) {
-			todoerr("not array type");
+			err_variable_array_type(variable);
 		}
 		if (!indextype(variable->indexed.index->type)) {
-			todoerr("invalid index type for array");
+			err_variable_array_index_type(variable);
 		}
 		variable->type = variable->indexed.array->type->array;
 		break;
@@ -498,7 +502,7 @@ static void linktype(Type** pointer) {
  */
 static void assignment(Variable* variable, Expression** expression) {
 	if (!(*expression)->type) { // when defining with implicit type
-		todoerr("can't assign variable to type void");
+		err_assignment_void((*expression)->line);
 	}
 	if (variable->type) {
 		typecheck(variable->type, expression);
@@ -645,10 +649,35 @@ static void err_type(Line line, Type* type1, Type* type2) {
 	sem_error(line, err);
 }
 
-static void err_empty_return(Line line, Type* type) {
+static void err_assignment_void(Line line) {
+	sem_error(line, "can't assign a Void expression to a variable");
+}
+
+static void err_return_void(Line line, Type* type) {
 	const char* err = typestring(type);
 	err = err1("return can't be empty, "
 		"must return an expression of type '%s'", err);
 	sem_error(line, err);
 }
 
+static void err_variable_unknown(Id* id) {
+	const char* err = err1("unknown variable '%s' beeing used", id->name);
+	sem_error(id->line, err);
+}
+
+static void err_variable_misuse(Id* id) {
+	const char* err = err1("'%s' is not a variable", id->name);
+	sem_error(id->line, err);
+}
+
+static void err_variable_array_type(Variable* variable) {
+	const char* err = typestring(variable->indexed.array->type);
+	err = err1("type '%s' can't be used as an array", err);
+	sem_error(variable->line, err);
+}
+
+static void err_variable_array_index_type(Variable* variable) {
+	const char* err = typestring(variable->indexed.index->type);
+	err = err1("type '%s' can't be used as an array index", err);
+	sem_error(variable->line, err);
+}

@@ -1,0 +1,2 @@
+line 4:
+	semantic error: type error (expecting 'Integer', got 'Boolean')

@@ -1,0 +1,5 @@
+// Invalid type for array index
+function foo {
+	x := [String]();
+	y := x["string"];
+}
