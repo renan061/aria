@@ -49,28 +49,28 @@ sem:
 vector_test: errs vector
 	@- $(CC) $(CFLAGS) -o bin/vectortest	\
 	obj/errs.o obj/vector.o					\
-	src/test/vector_test.c -Isrc/
+	tests/src/vector_test.c -Isrc/
 	
 	@- ./bin/vectortest
 
 scanner_test: errs vector parser scanner ast
 	@- $(CC) $(CFLAGS) -o bin/scannertest							\
 	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
-	src/test/scanner_test.c -Isrc/
+	tests/src/scanner_test.c -Isrc/
 
 	@- sh tests/test.sh scanner
 
 parser_test: errs vector parser scanner ast
 	@- $(CC) $(CFLAGS) -o bin/parsertest							\
 	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
-	src/test/parser_test.c -Isrc/
+	tests/src/parser_test.c -Isrc/
 
 	@- sh tests/test.sh parser
 
 ast_test: errs vector parser scanner ast
 	@- $(CC) $(CFLAGS) -o bin/asttest								\
 	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
-	src/test/ast_test.c -Isrc/
+	tests/src/ast_test.c -Isrc/
 
 	@- sh tests/test.sh ast
 
@@ -78,7 +78,7 @@ sem_test: errs vector parser scanner ast sem
 	@- $(CC) $(CFLAGS) -o bin/semtest								\
 	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
 	obj/symtable.o obj/sem.o										\
-	src/test/sem_test.c -Isrc/
+	tests/src/sem_test.c -Isrc/
 
 	@- sh tests/test.sh sem
 
