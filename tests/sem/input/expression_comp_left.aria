@@ -1,0 +1,4 @@
+// Invalid left expression for '<='
+function foo {
+	x := [[[Boolean]]]() <= 1;
+}

@@ -1,0 +1,4 @@
+// Invalid right expression for '>'
+function foo {
+	if 1.0 > true {}
+}

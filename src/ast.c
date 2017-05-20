@@ -495,9 +495,9 @@ Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
 	Expression* unaryExpression;
 	MALLOC(unaryExpression, Expression);
 	unaryExpression->tag = EXPRESSION_UNARY;
-	expression->line = ln;
-	expression->next = NULL;
-	expression->type = NULL;
+	unaryExpression->line = ln;
+	unaryExpression->next = NULL;
+	unaryExpression->type = NULL;
 	unaryExpression->unary.token = token;
 	unaryExpression->unary.expression = expression;
 	return unaryExpression;

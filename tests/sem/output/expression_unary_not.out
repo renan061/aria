@@ -1,0 +1,2 @@
+line 3:
+	semantic error: invalid type 'Integer' for unary not (expecting Boolean)

@@ -1,0 +1,2 @@
+line 3:
+	semantic error: incompatible types 'Boolean' and 'Float' for '==' expression

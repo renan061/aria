@@ -1,0 +1,2 @@
+line 3:
+	semantic error: invalid type 'Void' for the right side of the 'and' expression

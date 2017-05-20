@@ -1,0 +1,2 @@
+line 8:
+	semantic error: invalid type for left side of the '==' ('Void' is not an equatable type)

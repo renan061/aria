@@ -1,0 +1,2 @@
+line 3:
+	semantic error: invalid type 'Boolean' for the right side of the '>' expression

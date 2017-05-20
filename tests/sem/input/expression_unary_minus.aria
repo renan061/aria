@@ -1,0 +1,4 @@
+// Invalid expression for unary minus
+function foo {
+	x := -true;
+}

@@ -1,0 +1,9 @@
+// Ok typecast from Integer to Float
+function foo {
+	x := 1 == 1.0;
+}
+
+// Invalid left expression for '=='
+function bar {
+	if foo() == false {}
+}

@@ -1,0 +1,4 @@
+// Invalid right expression for 'and'
+function foo {
+	while false and foo() {}
+}

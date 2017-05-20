@@ -1,0 +1,4 @@
+// Invalid right expression for '*'
+function foo {
+	x := 1.0 * [[Integer]]();
+}

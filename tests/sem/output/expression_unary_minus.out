@@ -1,0 +1,2 @@
+line 3:
+	semantic error: invalid type 'Boolean' for unary minus (expecting numeric type)

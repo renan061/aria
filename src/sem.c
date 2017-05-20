@@ -18,6 +18,9 @@
 #include "parser.h" // for the tokens
 #include "symtable.h"
 
+// TODO: Move this somewhere else and look for assert(NULL) in the code
+#define UNREACHABLE assert(NULL);
+
 // TODO: Remove and deal the with errors
 static void todoerr(const char* err) {
 	printf("%s\n", err);
@@ -51,8 +54,8 @@ static void enterscope(void);
 static void leavescope(void);
 static void linktype(Type**);
 static void assignment(Variable*, Expression**);
-static void typecheck(Type*, Expression**);
-static Type* typecast(Expression**, Expression**);
+static void typecheck1(Type*, Expression**);
+static Type* typecheck2(Expression**, Expression**);
 static bool indextype(Type*);
 static bool numerictype(Type*);
 static bool conditiontype(Type*);
@@ -69,6 +72,30 @@ static void err_variable_unknown(Id*);
 static void err_variable_misuse(Id*);
 static void err_variable_array_type(Variable*);
 static void err_variable_array_index_type(Variable*);
+
+// ==================================================
+//
+//	TODO: Experimental
+//
+// ==================================================
+
+typedef enum ErrorType {
+	ERR_EXPRESSION_MINUS = 0,
+	ERR_EXPRESSION_NOT,
+	ERR_EXPRESSION_LEFT,
+	ERR_EXPRESSION_RIGHT,
+	ERR_EXPRESSION_LEFT_EQUAL,
+	ERR_EXPRESSION_RIGHT_EQUAL,
+	ERR_EXPRESSION_TYPECHECK_EQUAL
+} ErrorType;
+
+static void err_expression(ErrorType, Expression*);
+
+// ==================================================
+//
+//	TODO: Experimental
+//
+// ==================================================
 
 /*
  * TODO
@@ -209,7 +236,6 @@ static void sem_block(Block* block, Type* return_type) {
 	}
 }
 
-// TODO: Line for literal expressions
 static void sem_statement(Statement* statement, Type* return_type) {
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
@@ -240,7 +266,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	case STATEMENT_RETURN:
 		if (statement->return_) {
 			sem_expression(statement->return_);
-			typecheck(return_type, &statement->return_);
+			typecheck1(return_type, &statement->return_);
 		} else if (return_type) {
 			err_return_void(statement->line, return_type);
 		}
@@ -344,13 +370,13 @@ static void sem_expression(Expression* expression) {
 		switch (expression->unary.token) {
 		case '-':
 			if (!numerictype(expression->unary.expression->type)) {
-				todoerr("invalid type for unary minus");
+				err_expression(ERR_EXPRESSION_MINUS, expression);
 			}
 			expression->type = expression->unary.expression->type;
 			break;
 		case TK_NOT:
 			if (!conditiontype(expression->unary.expression->type)) {
-				todoerr("invalid type for unary not");
+				err_expression(ERR_EXPRESSION_NOT, expression);
 			}
 			expression->type = boolean_;
 			break;
@@ -363,39 +389,45 @@ static void sem_expression(Expression* expression) {
 		sem_expression(*rp);
 		switch (expression->binary.token) {
 		case TK_OR: case TK_AND:
-			if (!conditiontype((*lp)->type) || !conditiontype((*rp)->type)) {
-				todoerr("invalid type for the left side of the or/and expression");
+			if (!conditiontype((*lp)->type)) {
+				err_expression(ERR_EXPRESSION_LEFT, expression);
+			}
+			if (!conditiontype((*rp)->type)) {
+				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
 			expression->type = boolean_;
 			break;
 		case TK_EQUAL:
 			if (!equatabletype((*lp)->type)) {
-				todoerr("invalid type for left comparison expression");
+				err_expression(ERR_EXPRESSION_LEFT_EQUAL, expression);
 			}
 			if (!equatabletype((*rp)->type)) {
-				todoerr("invalid type for right comparison expression");
+				err_expression(ERR_EXPRESSION_RIGHT_EQUAL, expression);
 			}
-			typecast(lp, rp); // TODO: Won't work
+			if (!typecheck2(lp, rp)) {
+				err_expression(ERR_EXPRESSION_TYPECHECK_EQUAL, expression);
+			}
 			expression->type = boolean_;
 			break;
 		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
 			if (!numerictype((*lp)->type)) {
-				todoerr("invalid type for left comparison expression");
+				err_expression(ERR_EXPRESSION_LEFT, expression);
 			}
 			if (!numerictype((*rp)->type)) {
-				todoerr("invalid type for right comparison expression");
+				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
-			typecast(lp, rp); // TODO: Won't work
+			assert(typecheck2(lp, rp));
 			expression->type = boolean_;
 			break;
 		case '+': case '-': case '*': case '/':
 			if (!numerictype((*lp)->type)) {
-				todoerr("invalid type for left arith expression");
+				err_expression(ERR_EXPRESSION_LEFT, expression);
 			}
 			if (!numerictype((*rp)->type)) {
-				todoerr("invalid type for right arith expression");
+				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
-			expression->type = typecast(lp, rp); // TODO: Won't work
+			expression->type = typecheck2(lp, rp);
+			assert(expression->type);
 			break;
 		}
 		break;
@@ -449,6 +481,30 @@ static void sem_function_call(FunctionCall* function_call) {
 //
 // ==================================================
 
+// TODO
+static bool typeequals(Type* type1, Type* type2) {
+	if ((type1 && !type2) || (!type1 && type2)) { // TODO: Remove when TYPE_VOID
+		return false;
+	}
+	if (!type1 && !type2) { // TODO: Remove when TYPE_VOID
+		return true;
+	}
+
+	if (type1 == type2) {
+		return true;
+	}
+
+	if (type1->tag != TYPE_ARRAY || type2->tag != TYPE_ARRAY) {
+		return false;
+	}
+
+	Type *t1, *t2;
+	int counter1 = 0, counter2 = 0;
+	for (t1 = type1; t1->tag == TYPE_ARRAY; t1 = t1->array, counter1++);
+	for (t2 = type2; t2->tag == TYPE_ARRAY; t2 = t2->array, counter2++);
+	return t1->tag == t2->tag && counter1 == counter2;
+}
+
 static void freetypeid(Type* type) {
 	assert(type->tag == TYPE_ID);
 	if (type->primitive) {
@@ -491,7 +547,7 @@ static void linktype(Type** pointer) {
 		linktype(pointer);
 		break;
 	default:
-		assert(NULL); // unreachable
+		UNREACHABLE;
 	}
 }
 
@@ -505,55 +561,60 @@ static void assignment(Variable* variable, Expression** expression) {
 		err_assignment_void((*expression)->line);
 	}
 	if (variable->type) {
-		typecheck(variable->type, expression);
+		typecheck1(variable->type, expression);
 	} else { // when defining with implicit type
 		variable->type = (*expression)->type;
 	}
 }
 
 /* 
- * Checks for type equivalence (performing casts if necessary).
+ * Checks for type equivalence of one expression.
+ * Performes casts if necessary.
  * Deals with errors internally.
  */
-static void typecheck(Type* type, Expression** expression) {
-	bool numeric1 = numerictype(type);
-	bool numeric2 = numerictype((*expression)->type);
+static void typecheck1(Type* type, Expression** expression) {
+	// Checks equality
+	if (typeequals(type, (*expression)->type)) {
+		return;
+	}
 
-	if ((numeric1 && !numeric2) || (!numeric1 && numeric2)) {
+	// Needs both to be numeric
+	if (!(numerictype(type) && numerictype((*expression)->type))) {
 		err_type((*expression)->line, type, (*expression)->type);
 	}
 
-	// Both types are not numeric and are different
-	if (!numeric1 && type != (*expression)->type) {
-		err_type((*expression)->line, type, (*expression)->type);
-	}
-
-	// Casting for when both are numeric types
-	if (type != (*expression)->type) {
-		*expression = ast_expression_cast(*expression, type);
-	}
+	// Performs casts
+	*expression = ast_expression_cast(*expression, type);
 }
 
-/*
- * Casts one of the expressions if they have mismatching types.
- * Casts always go from integer to float.
- * The expressions must be of number type.
+/* 
+ * Checks for type equivalence of two expressions.
+ * Performes casts if necessary.
+ * Returns NULL if types are incompatible.
  */
-static Type* typecast(Expression** le, Expression** re) {
-	assert(numerictype((*le)->type) && numerictype((*re)->type));
+static Type* typecheck2(Expression** l, Expression** r) {
+	Type* t1 = (*l)->type;
+	Type* t2 = (*r)->type;
 
-	if ((*le)->type == (*re)->type) {
-		return (*le)->type;
+	// Checks equality
+	if (typeequals(t1, t2)) {
+		return t1;
 	}
 
-	if ((*le)->type == float_) {
-		return (*re = ast_expression_cast(*re, float_))->type;
-	}
-	if ((*re)->type == float_) {
-		return (*le = ast_expression_cast(*le, float_))->type;
+	// Needs both to be numeric
+	if (!(numerictype(t1) && numerictype(t2))) {
+		return NULL;
 	}
 
-	return assert(NULL), NULL; // unreachable
+	// Performs casts
+	if (t1 == float_) {
+		return (*r = ast_expression_cast(*r, float_))->type;
+	}
+	if (t2 == float_) {
+		return (*l = ast_expression_cast(*l, float_))->type;
+	}
+
+	UNREACHABLE;
 }
 
 static bool indextype(Type* type) {
@@ -604,9 +665,31 @@ static const char* typestring(Type* type) {
 	}
 	case TYPE_MONITOR:
 		return type->monitor.id->name;
+	default:
+		UNREACHABLE;
 	}
-	return assert(NULL), NULL; // unreachable
 }
+
+static const char* tokenstring(Token token) {
+	switch (token) {
+    case TK_OR:		return "or";
+    case TK_AND:	return "and";
+    case TK_EQUAL:	return "==";
+    case TK_NEQUAL:	return "!=";
+    case TK_LEQUAL:	return "<=";
+    case TK_GEQUAL:	return ">=";
+    case '<':		return "<";
+    case '>':		return ">";
+    case '+':		return "+";
+    case '-':		return "-";
+    case '*':		return "*";
+    case '/':		return "/";
+    default:
+    	UNREACHABLE;
+	}
+}
+
+// TODO: This errs with variadic functions
 
 // Creates a formatted error with one dynamic string
 static const char* err1(const char* format, const char* name) {
@@ -624,6 +707,19 @@ static const char* err2(const char* format, const char* s1, const char* s2) {
 	size_t len = strlen(format) - 4 + strlen(s1) + strlen(s2); // -4 for '%s'
 	MALLOC_ARRAY(err, char, len + 1);
 	sprintf(err, format, s1, s2);
+	err[len] = '\0';
+	return err;
+}
+
+// Creates a formatted error with three dynamic strings
+static const char* err3(const char* format, const char* s1, const char* s2,
+	const char* s3) {
+
+	char* err;
+	// -6 for '%s'
+	size_t len = strlen(format) - 6 + strlen(s1) + strlen(s2) + strlen(s3);
+	MALLOC_ARRAY(err, char, len + 1);
+	sprintf(err, format, s1, s2, s3);
 	err[len] = '\0';
 	return err;
 }
@@ -680,4 +776,57 @@ static void err_variable_array_index_type(Variable* variable) {
 	const char* err = typestring(variable->indexed.index->type);
 	err = err1("type '%s' can't be used as an array index", err);
 	sem_error(variable->line, err);
+}
+
+// ==================================================
+//
+//	TODO: Experimental
+//
+// ==================================================
+
+static const char* errors[] = {
+	"invalid type '%s' for unary minus (expecting numeric type)",
+	"invalid type '%s' for unary not (expecting Boolean)",
+
+	"invalid type '%s' for the left side of the '%s' expression",
+	"invalid type '%s' for the right side of the '%s' expression",
+
+	"invalid type for left side of the '==' ('%s' is not an equatable type)",
+	"invalid type for right side of the '==' ('%s' is not an equatable type)",
+	"incompatible types '%s' and '%s' for '%s' expression"
+};
+
+static void err_expression(ErrorType type, Expression* e) {
+	Line line = e->line;
+	const char* err = NULL;
+
+	switch (type) {
+	case ERR_EXPRESSION_MINUS:
+	case ERR_EXPRESSION_NOT:
+		err = err1(errors[type], typestring(e->unary.expression->type));
+		break;
+	case ERR_EXPRESSION_LEFT:
+		err = err2(errors[type], typestring(e->binary.left_expression->type),
+			tokenstring(e->binary.token));
+		break;
+	case ERR_EXPRESSION_RIGHT:
+		err = err2(errors[type], typestring(e->binary.right_expression->type),
+			tokenstring(e->binary.token));
+		break;
+	case ERR_EXPRESSION_LEFT_EQUAL:
+		err = err1(errors[type], typestring(e->binary.left_expression->type));
+		break;
+	case ERR_EXPRESSION_RIGHT_EQUAL:
+		err = err1(errors[type], typestring(e->binary.right_expression->type));
+		break;
+	case ERR_EXPRESSION_TYPECHECK_EQUAL:
+		err = err3(errors[type], typestring(e->binary.left_expression->type),
+			typestring(e->binary.right_expression->type),
+			tokenstring(e->binary.token));
+		break;
+	default:
+		UNREACHABLE;
+	}
+
+	sem_error(line, err);
 }
