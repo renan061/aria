@@ -4,6 +4,7 @@
  *	- initializer(): Semântica? Pode ter mais de um?
  *		Pode ter mais de um com tipos / quantidade
  *		diferentes de parâmetros?
+ *	- Create TYPE_VOID and stop using NULL as Void
  */
 #include <assert.h>
 #include <stdbool.h>
@@ -23,15 +24,10 @@ static void todoerr(const char* err) {
 	exit(1);
 }
 
-/*
- * Symbol table for declarations and types (TODO)
- */
+// Symbol table for declarations (lowercase-table) and types (uppercase-table)
 static SymbolTable *ltable, *utable;
 
-/*
- * A monitor type instance if currently analysing a monitor's
- * body (NULL otherwise).
- */
+// A monitor type if currently analysing a monitor's body, NULL otherwise
 static Type* monitor = NULL;
 
 // Primitive types
@@ -66,6 +62,8 @@ static bool equatabletype(Type*);
 static void err_redeclaration(Id*);
 static void err_unkown_type_name(Id*);
 static void err_invalid_condition_type(Expression*);
+static void err_type(Line, Type*, Type*);
+static void err_empty_return(Line, Type*);
 
 /*
  * TODO
@@ -239,7 +237,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 			sem_expression(statement->return_);
 			typecheck(return_type, &statement->return_);
 		} else if (return_type) {
-			todoerr("invalid type for return");
+			err_empty_return(statement->line, return_type);
 		}
 		break;
 	case STATEMENT_IF:
@@ -518,12 +516,12 @@ static void typecheck(Type* type, Expression** expression) {
 	bool numeric2 = numerictype((*expression)->type);
 
 	if ((numeric1 && !numeric2) || (!numeric1 && numeric2)) {
-		todoerr("mismatching types");
+		err_type((*expression)->line, type, (*expression)->type);
 	}
 
 	// Both types are not numeric and are different
 	if (!numeric1 && type != (*expression)->type) {
-		todoerr("mismatching types");
+		err_type((*expression)->line, type, (*expression)->type);
 	}
 
 	// Casting for when both are numeric types
@@ -616,6 +614,16 @@ static const char* err1(const char* format, const char* name) {
 	return err;
 }
 
+// Creates a formatted error with two dynamic strings
+static const char* err2(const char* format, const char* s1, const char* s2) {
+	char* err;
+	size_t len = strlen(format) - 4 + strlen(s1) + strlen(s2); // -4 for '%s'
+	MALLOC_ARRAY(err, char, len + 1);
+	sprintf(err, format, s1, s2);
+	err[len] = '\0';
+	return err;
+}
+
 static void err_redeclaration(Id* id) {
 	sem_error(id->line, err1("redeclaration of name '%s'", id->name));
 }
@@ -629,3 +637,18 @@ static void err_invalid_condition_type(Expression* expression) {
 	err = err1("invalid type '%s' for condition (expecting Boolean)", err);
 	sem_error(expression->line, err);
 }
+
+static void err_type(Line line, Type* type1, Type* type2) {
+	const char* t1 = typestring(type1);
+	const char* t2 = typestring(type2);
+	const char* err = err2("type error (expecting '%s', got '%s')", t1, t2);
+	sem_error(line, err);
+}
+
+static void err_empty_return(Line line, Type* type) {
+	const char* err = typestring(type);
+	err = err1("return can't be empty, "
+		"must return an expression of type '%s'", err);
+	sem_error(line, err);
+}
+

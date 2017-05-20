@@ -46,13 +46,13 @@ int main(int argc, char* argv[]) {
 			printf("TK_UPPER_ID - %s", yylval.id->name);
 			break;
 		case TK_INTEGER:
-			printf("TK_INTEGER - %d", yylval.ival);
+			printf("TK_INTEGER - %d", yylval.literal.ival);
 			break;
 		case TK_FLOAT:
-			printf("TK_FLOAT - %f", yylval.fval);
+			printf("TK_FLOAT - %f", yylval.literal.fval);
 			break;
 		case TK_STRING:
-			printf("TK_STRING - %s", yylval.strval);
+			printf("TK_STRING - %s", yylval.literal.strval);
 			break;
 		case 0:
 			goto WHILE_END;

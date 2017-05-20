@@ -1,0 +1,9 @@
+// Can return a non-returning function
+function foo {
+	return foo();
+}
+
+// Without return type but non-empty return statement
+function bar {
+	return 1;
+}

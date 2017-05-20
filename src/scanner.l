@@ -121,20 +121,20 @@ string 		"\""(\\.|[^\\"])*"\""
 {upper-id}		return idaction(), TK_UPPER_ID;
 
 {integer}		{
-					yylval.ival = strtoul(yytext, NULL, 10);
+					yylval.literal.ival = strtoul(yytext, NULL, 10);
 					return TK_INTEGER;
 				}
 
 {float}			{
-					yylval.fval = strtod(yytext, NULL);
+					yylval.literal.fval = strtod(yytext, NULL);
 					return TK_FLOAT;
 				}
 
 {string}		{
 					const char* temp = convertescapes(yytext, yyleng);
-					yylval.strval = checkunique(temp);
-				    if (!yylval.strval) {
-				    	yylval.strval = temp;
+					yylval.literal.strval = checkunique(temp);
+				    if (!yylval.literal.strval) {
+				    	yylval.literal.strval = temp;
 				    	vector_append(strs, (void*)temp);
 				    } else {
 				    	free((char*)temp);
@@ -176,11 +176,11 @@ void scanner_clean(void) {
 
 // used by lower-id and upper-id
 static void idaction() {
-	yylval.strval = checkunique(yytext);
-    if (!yylval.strval) {
-		yylval.strval = copystr(yytext, yyleng);
+	const char* str = checkunique(yytext);
+    if (!str) {
+		str = copystr(yytext, yyleng);
     }
-    yylval.id = ast_id(line, yylval.strval);
+    yylval.id = ast_id(line, str);
 }
 
 // returns NULL if unique

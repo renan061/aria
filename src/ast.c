@@ -234,10 +234,11 @@ Type* ast_type_monitor(Id* id, Body* body) {
 //
 // ==================================================
 
-Block* ast_block(Block* block) {
+Block* ast_block(Line ln, Block* block) {
 	Block* base;
 	MALLOC(base, Block);
 	base->tag = BLOCK;
+	base->line = ln;
 	base->next = block;
 	return base;
 }
@@ -246,6 +247,7 @@ Block* ast_block_declaration(Declaration* declaration) {
 	Block* block;
 	MALLOC(block, Block);
 	block->tag = BLOCK_DECLARATION;
+	block->line = 0; // should not be accessed
 	block->next = NULL;
 	block->declaration = declaration;
 	return block;
@@ -255,6 +257,7 @@ Block* ast_block_definition(Definition* definition) {
 	Block* block;
 	MALLOC(block, Block);
 	block->tag = BLOCK_DEFINITION;
+	block->line = 0; // should not be accessed
 	block->next = NULL;
 	block->definition = definition;
 	return block;
@@ -264,6 +267,7 @@ Block* ast_block_statement(Statement* statement) {
 	Block* block;
 	MALLOC(block, Block);
 	block->tag = BLOCK_STATEMENT;
+	block->line = statement->line;
 	block->next = NULL;
 	block->statement = statement;
 	return block;
@@ -275,10 +279,11 @@ Block* ast_block_statement(Statement* statement) {
 //
 // ==================================================
 
-Statement* ast_statement_assignment(Variable* var, Expression* exp) {
+Statement* ast_statement_assignment(Line ln, Variable* var, Expression* exp) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_ASSIGNMENT;
+	statement->line = ln;
 	statement->assignment.variable = var;
 	statement->assignment.expression = exp;
 	return statement;
@@ -288,79 +293,89 @@ Statement* ast_statement_function_call(FunctionCall* function_call) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_FUNCTION_CALL;
+	statement->line = function_call->line;
 	statement->function_call = function_call;
 	return statement;
 }
 
-Statement* ast_statement_while_wait(Expression* exp, Variable* var) {
+Statement* ast_statement_while_wait(Line ln, Expression* exp, Variable* var) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_WHILE_WAIT;
+	statement->line = ln;
 	statement->while_wait.expression = exp;
 	statement->while_wait.variable = var;
 	return statement;
 }
 
-Statement* ast_statement_signal(Variable* variable) {
+Statement* ast_statement_signal(Line ln, Variable* variable) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SIGNAL;
+	statement->line = ln;
 	statement->signal = variable;
 	return statement;
 }
 
-Statement* ast_statement_broadcast(Variable* variable) {
+Statement* ast_statement_broadcast(Line ln, Variable* variable) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_BROADCAST;
+	statement->line = ln;
 	statement->broadcast = variable;
 	return statement;
 }
 
-Statement* ast_statement_return(Expression* expression) {
+Statement* ast_statement_return(Line ln, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_RETURN;
+	statement->line = ln;
 	statement->return_ = expression;
 	return statement;
 }
 
-Statement* ast_statement_if(Expression* expression, Block* block) {
+Statement* ast_statement_if(Line ln, Expression* expression, Block* block) {
 	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_IF;
+	statement->line = ln;
 	statement->if_.expression = expression;
 	statement->if_.block = block;
 	return statement;
 }
 
-Statement* ast_statement_if_else(Expression* exp, Block* if_, Block* else_) {
-	assert(if_->tag == BLOCK && else_->tag == BLOCK);
+// c -> condition, i -> if_block, e -> else_block
+Statement* ast_statement_if_else(Line ln, Expression* c, Block* i, Block* e) {
+	assert(i->tag == BLOCK && e->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_IF_ELSE;
-	statement->if_else.expression = exp;
-	statement->if_else.if_block = if_;
-	statement->if_else.else_block = else_;
+	statement->line = ln;
+	statement->if_else.expression = c;
+	statement->if_else.if_block = i;
+	statement->if_else.else_block = e;
 	return statement;
 }
 
-Statement* ast_statement_while(Expression* expression, Block* block) {
+Statement* ast_statement_while(Line ln, Expression* expression, Block* block) {
 	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_WHILE;
+	statement->line = ln;
 	statement->while_.expression = expression;
 	statement->while_.block = block;
 	return statement;
 }
 
-Statement* ast_statement_spawn(Block* block) {
+Statement* ast_statement_spawn(Line ln, Block* block) {
 	assert(block->tag == BLOCK);
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SPAWN;
+	statement->line = ln;
 	statement->spawn = block;
 	return statement;
 }
@@ -370,6 +385,7 @@ Statement* ast_statement_block(Block* block) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_BLOCK;
+	statement->line = 0; // TODO
 	statement->block = block;
 	return statement;
 }
@@ -384,16 +400,18 @@ Variable* ast_variable_id(Id* id) {
 	Variable* variable;
 	MALLOC(variable, Variable);
 	variable->tag = VARIABLE_ID;
+	variable->line = id->line;
 	variable->type = NULL;
 	variable->value = false;
 	variable->id = id;
 	return variable;
 }
 
-Variable* ast_variable_indexed(Expression* array, Expression* index) {
+Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
 	Variable* variable;
 	MALLOC(variable, Variable);
 	variable->tag = VARIABLE_INDEXED;
+	variable->line = ln;
 	variable->type = NULL;
 	variable->value = false;
 	variable->indexed.array = array;
@@ -451,22 +469,22 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	return expression;
 }
 
-Expression* ast_expression_variable(Line ln, Variable* variable) {
+Expression* ast_expression_variable(Variable* variable) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_VARIABLE;
-	expression->line = ln;
+	expression->line = variable->line;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->variable = variable;
 	return expression;
 }
 
-Expression* ast_expression_function_call(Line ln, FunctionCall* function_call) {
+Expression* ast_expression_function_call(FunctionCall* function_call) {
 	Expression* expression;
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_FUNCTION_CALL;
-	expression->line = ln;
+	expression->line = function_call->line;
 	expression->next = NULL;
 	expression->type = NULL;
 	expression->function_call = function_call;
@@ -522,20 +540,22 @@ Expression* ast_expression_cast(Expression* expression, Type* type) {
 //
 // ==================================================
 
-FunctionCall* ast_function_call_basic(Id* id, Expression* arguments) {
+FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_BASIC;
+	function_call->line = ln;
 	function_call->type = NULL;
 	function_call->arguments = arguments;
 	function_call->basic = id;
 	return function_call;
 }
 
-FunctionCall* ast_function_call_method(Expression* o, Id* n, Expression* args) {
+FunctionCall* ast_call_method(Line ln, Expression* o, Id* n, Expression* args) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_METHOD;
+	function_call->line = ln;
 	function_call->type = NULL;
 	function_call->arguments = args;
 	function_call->method.object = o;
@@ -543,12 +563,13 @@ FunctionCall* ast_function_call_method(Expression* o, Id* n, Expression* args) {
 	return function_call;
 }
 
-FunctionCall* ast_function_call_constructor(Type* type, Expression* arguments) {
+FunctionCall* ast_call_constructor(Line ln, Type* t, Expression* args) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_CONSTRUCTOR;
+	function_call->line = ln;
 	function_call->type = NULL;
-	function_call->arguments = arguments;
-	function_call->constructor = type;
+	function_call->arguments = args;
+	function_call->constructor = t;
 	return function_call;
 }

@@ -1,0 +1,9 @@
+// Returning types that can be casted to and from
+function foo: Float {
+	return 1;
+}
+
+// Without return type and invalid empty return statement expression
+function bar: Boolean {
+	return "not a boolean";
+}

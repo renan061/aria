@@ -40,8 +40,14 @@
 %union {
 	// Tokens
 	int ival;
-	double fval;
-	const char* strval;
+	struct {
+		Line line;
+		union {
+			int ival;
+			double fval;
+			const char* strval;
+		};
+	} literal;
 
 	// Nonterminals
 	Body* body;
@@ -63,9 +69,9 @@
 	TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE TK_FALSE
 	TK_MONITOR TK_PRIVATE TK_INITIALIZER
 
-%token <ival> TK_INTEGER
-%token <fval> TK_FLOAT
-%token <strval> TK_STRING
+%token <literal> TK_INTEGER
+%token <literal> TK_FLOAT
+%token <literal> TK_STRING
 %token <id> TK_LOWER_ID TK_UPPER_ID
 
 // Nonterminals
@@ -282,7 +288,7 @@ type
 block
 	: '{' block_content_list '}'
 		{
-			$$ = ast_block($2);
+			$$ = ast_block($1, $2);
 		}
 	;
 
@@ -332,7 +338,7 @@ statement
 simple_statement
 	: variable '=' expression
 		{
-			$$ = ast_statement_assignment($1, $3);
+			$$ = ast_statement_assignment($2, $1, $3);
 		}
 	| function_call
 		{
@@ -340,23 +346,23 @@ simple_statement
 		}
 	| TK_WHILE expression TK_WAIT TK_IN variable
 		{
-			$$ = ast_statement_while_wait($2, $5);
+			$$ = ast_statement_while_wait($1, $2, $5);
 		}
 	| TK_SIGNAL variable
 		{
-			$$ = ast_statement_signal($2);
+			$$ = ast_statement_signal($1, $2);
 		}
 	| TK_BROADCAST variable
 		{
-			$$ = ast_statement_broadcast($2);
+			$$ = ast_statement_broadcast($1, $2);
 		}
 	| TK_RETURN
 		{
-			$$ = ast_statement_return(NULL);
+			$$ = ast_statement_return($1, NULL);
 		}
 	| TK_RETURN expression
 		{
-			$$ = ast_statement_return($2);
+			$$ = ast_statement_return($1, $2);
 		}
 	;
 
@@ -364,18 +370,18 @@ compound_statement
 	: TK_IF expression block else
 		{
 			$$ = ($4)
-				? ast_statement_if_else($2, $3, $4)
-				: ast_statement_if($2, $3)
+				? ast_statement_if_else($1, $2, $3, $4)
+				: ast_statement_if($1, $2, $3)
 				;
 		}
 	| TK_WHILE expression block
 		{
-			$$ = ast_statement_while($2, $3);
+			$$ = ast_statement_while($1, $2, $3);
 		}
 	/* | TK_FOR [?] ';' expression ';' [?] block */
 	| TK_SPAWN block
 		{
-			$$ = ast_statement_spawn($2);
+			$$ = ast_statement_spawn($1, $2);
 		}
 	| block
 		{
@@ -407,10 +413,10 @@ else
 	| TK_ELSE TK_IF expression block else
 		{			
 			Statement* statement = ($5)
-				? ast_statement_if_else($3, $4, $5)
-				: ast_statement_if($3, $4)
+				? ast_statement_if_else($2, $3, $4, $5)
+				: ast_statement_if($2, $3, $4)
 				;
-			$$ = ast_block(ast_block_statement(statement));
+			$$ = ast_block(statement->line, ast_block_statement(statement));
 		}
 	| TK_ELSE block
 		{
@@ -431,7 +437,7 @@ variable
 		}
 	| primary_expression '[' expression ']'
 		{
-			$$ = ast_variable_indexed($1, $3);
+			$$ = ast_variable_indexed($2, $1, $3);
 		}
 	;
 
@@ -507,11 +513,11 @@ primary_expression
 		}
 	| variable
 		{
-			$$ = ast_expression_variable(0, $1); // TODO: Line
+			$$ = ast_expression_variable($1);
 		}
 	| function_call
 		{
-			$$ = ast_expression_function_call(0, $1); // TODO: Line
+			$$ = ast_expression_function_call($1);
 		}
 	| '(' expression ')'
 		{
@@ -530,15 +536,15 @@ literal
 		}
 	| TK_INTEGER
 		{
-			$$ = ast_expression_literal_integer(0, $1); // TODO: Line
+			$$ = ast_expression_literal_integer($1.line, $1.ival);
 		}
 	| TK_FLOAT
 		{
-			$$ = ast_expression_literal_float(0, $1); // TODO: Line
+			$$ = ast_expression_literal_float($1.line, $1.fval);
 		}
 	| TK_STRING
 		{
-			$$ = ast_expression_literal_string(0, $1); // TODO: Line
+			$$ = ast_expression_literal_string($1.line, $1.strval);
 		}
 	;
 
@@ -549,28 +555,29 @@ literal
 // ==================================================
 
 function_call
-	: TK_LOWER_ID argument_list
+	: TK_LOWER_ID '(' argument_list ')'
 		{
-			$$ = ast_function_call_basic($1, $2);
+			$$ = ast_call($2, $1, $3);
 		}
-	| primary_expression '.' TK_LOWER_ID argument_list
+	| primary_expression '.' TK_LOWER_ID '(' argument_list ')'
 		{
-			$$ = ast_function_call_method($1, $3, $4);
+			$$ = ast_call_method($4, $1, $3, $5);
 		}
-	| type argument_list
+	| type '(' argument_list ')'
 		{
-			$$ = ast_function_call_constructor($1, $2);
+			$$ = ast_call_constructor($2, $1, $3);
 		}
 	;
 
+// '(' and ')' are in function_call because of line numbers
 argument_list
-	: '(' ')'
+	: /* empty */
 		{
 			$$ = NULL;
 		}
-	| '(' arguments ')'
+	| arguments
 		{
-			$$ = $2;
+			$$ = $1;
 		}
 	;
 

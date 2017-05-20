@@ -1,6 +1,12 @@
 #if !defined(ast_h)
 #define ast_h
 
+/*
+ * TODO:
+ *
+ *	- Put line numbers in all structures (except for declarations and types)
+ */
+
 #include <stdbool.h>
 
 #include "scanner.h"
@@ -181,6 +187,7 @@ struct Type {
 
 struct Block {
 	BlockTag tag;
+	Line line;
 	Block* next;
 
 	union {
@@ -192,6 +199,7 @@ struct Block {
 
 struct Statement {
 	StatementTag tag;
+	Line line;
 
 	union {
 		// StatementAssignment
@@ -237,6 +245,7 @@ struct Statement {
 
 struct Variable {
 	VariableTag tag;
+	Line line;
 	Type* type;
 	bool value; // default false
 
@@ -288,6 +297,7 @@ struct Expression {
 
 struct FunctionCall {
 	FunctionCallTag tag;
+	Line line;
 	Type* type; // TODO: use for array and monitor constructors
 	Expression* arguments;
 
@@ -336,38 +346,38 @@ extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
 extern Type* ast_type_monitor(Id*, Body*);
 
-extern Block* ast_block(Block*);
+extern Block* ast_block(Line, Block*);
 extern Block* ast_block_declaration(Declaration*);
 extern Block* ast_block_definition(Definition*);
 extern Block* ast_block_statement(Statement*);
 
-extern Statement* ast_statement_assignment(Variable*, Expression*);
+extern Statement* ast_statement_assignment(Line, Variable*, Expression*);
 extern Statement* ast_statement_function_call(FunctionCall*);
-extern Statement* ast_statement_while_wait(Expression*, Variable*);
-extern Statement* ast_statement_signal(Variable*);
-extern Statement* ast_statement_broadcast(Variable*);
-extern Statement* ast_statement_return(Expression*);
-extern Statement* ast_statement_if(Expression*, Block*);
-extern Statement* ast_statement_if_else(Expression*, Block*, Block*);
-extern Statement* ast_statement_while(Expression*, Block*);
-extern Statement* ast_statement_spawn(Block*);
+extern Statement* ast_statement_while_wait(Line, Expression*, Variable*);
+extern Statement* ast_statement_signal(Line, Variable*);
+extern Statement* ast_statement_broadcast(Line, Variable*);
+extern Statement* ast_statement_return(Line, Expression*);
+extern Statement* ast_statement_if(Line, Expression*, Block*);
+extern Statement* ast_statement_if_else(Line, Expression*, Block*, Block*);
+extern Statement* ast_statement_while(Line, Expression*, Block*);
+extern Statement* ast_statement_spawn(Line, Block*);
 extern Statement* ast_statement_block(Block*);
 
 extern Variable* ast_variable_id(Id*);
-extern Variable* ast_variable_indexed(Expression*, Expression*);
+extern Variable* ast_variable_indexed(Line, Expression*, Expression*);
 
 extern Expression* ast_expression_literal_boolean(Line, bool);
 extern Expression* ast_expression_literal_integer(Line, int);
 extern Expression* ast_expression_literal_float(Line, double);
 extern Expression* ast_expression_literal_string(Line, const char*);
-extern Expression* ast_expression_variable(Line, Variable*);
-extern Expression* ast_expression_function_call(Line, FunctionCall*);
+extern Expression* ast_expression_variable(Variable*);
+extern Expression* ast_expression_function_call(FunctionCall*);
 extern Expression* ast_expression_unary(Line, Token, Expression*);
 extern Expression* ast_expression_binary(Line, Token, Expression*, Expression*);
 extern Expression* ast_expression_cast(Expression*, Type*);
 
-extern FunctionCall* ast_function_call_basic(Id*, Expression*);
-extern FunctionCall* ast_function_call_method(Expression*, Id*, Expression*);
-extern FunctionCall* ast_function_call_constructor(Type*, Expression*);
+extern FunctionCall* ast_call(Line, Id*, Expression*);
+extern FunctionCall* ast_call_method(Line, Expression*, Id*, Expression*);
+extern FunctionCall* ast_call_constructor(Line, Type*, Expression*);
 
 #endif

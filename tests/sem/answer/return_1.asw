@@ -1,0 +1,2 @@
+line 3:
+	semantic error: return can't be empty, must return an expression of type 'Integer'
