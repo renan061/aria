@@ -7,6 +7,22 @@
 
 - a := 1 é um statement ou um block_variable_definition?
 
+- foo() = 1 é erro do parser, mas foo()[1] = 1 é erro semântico, inconsistência?
+	var x []int
+
+	func foo() []int {
+		x = []int{10, 20, 30}
+		return x
+	}
+
+	func main() {
+		foo()
+		println(x) // [10 20 30]
+		foo()[1] = 77
+		println(x) // [10 77 30]
+	}
+
+
 // ==================================================
 //
 //	Thinking

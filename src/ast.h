@@ -40,7 +40,7 @@ typedef enum DefinitionTag {
 } DefinitionTag;
 
 typedef enum TypeTag {
-	// TYPE_VOID / TYPE_NIL -> TODO
+	TYPE_VOID,
 	TYPE_ID,
 	TYPE_ARRAY,
 	TYPE_MONITOR
@@ -338,6 +338,7 @@ extern Definition* ast_definition_type(Type*);
 
 extern Id* ast_id(unsigned int, const char*);
 
+extern Type* ast_type_void(void);
 extern Type* ast_type_boolean(void);
 extern Type* ast_type_integer(void);
 extern Type* ast_type_float(void);

@@ -168,6 +168,17 @@ Id* ast_id(unsigned int line, const char* name) {
 	}											\
 	return v;									\
 
+Type* ast_type_void(void) {
+	static Type* type_void = NULL;
+	if (!type_void) {
+		MALLOC(type_void, Type);
+		type_void->tag = TYPE_VOID;
+		type_void->primitive = true;
+		type_void->id = NULL; // just in case
+	}
+	return type_void;
+}
+
 Type* ast_type_boolean(void) {
 	PRIMITIVE_TYPE(type_boolean, SCANNER_BOOLEAN);
 }
@@ -216,7 +227,7 @@ Type* ast_type_array(Type* type) {
 	arrayType->tag = TYPE_ARRAY;
 	arrayType->primitive = false;
 	arrayType->array = type;
-	return arrayType;	
+	return arrayType;
 }
 
 Type* ast_type_monitor(Id* id, Body* body) {

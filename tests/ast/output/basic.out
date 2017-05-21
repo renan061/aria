@@ -8,13 +8,13 @@
 	}
 	function foo: Integer {
 	}
-	function foo(variable a: Byte) {
+	function foo(variable a: Byte): Void {
 	}
-	function foo(variable a: Byte, variable b: Byte, variable c: Byte) {
+	function foo(variable a: Byte, variable b: Byte, variable c: Byte): Void {
 	}
-	function foo(variable a: Byte, variable b: Byte, variable c: Byte) {
+	function foo(variable a: Byte, variable b: Byte, variable c: Byte): Void {
 	}
-	function foo {
+	function foo: Void {
 	}
 	monitor Monitor {
 		variable a: Integer
@@ -31,16 +31,16 @@
 		variable a: ? = (1)
 		value a: Integer = (1)
 		value a: ? = (1)
-		function foo {
+		function foo: Void {
 		}
-		private function foo {
+		private function foo: Void {
 		}
 		initializer {
 		}
 	}
 	monitor Monitor {
 	}
-	function foo {
+	function foo: Void {
 		variable type: Integer
 		variable type: [Integer]
 		variable type: [[[Integer]]]

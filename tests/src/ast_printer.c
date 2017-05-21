@@ -148,6 +148,9 @@ static void print_ast_type(Type* type) {
 	}
 
 	switch (type->tag) {
+	case TYPE_VOID:
+		printf("Void");
+		break;
 	case TYPE_ID:
 		print_ast_id(type->id);
 		break;

@@ -1,0 +1,2 @@
+line 15:
+	semantic error: can't assign to 'x' since it was declared as a value

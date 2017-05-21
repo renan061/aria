@@ -250,7 +250,8 @@ function_definition
 		}
 	| TK_FUNCTION TK_LOWER_ID parameter_list block
 		{
-			Declaration* declaration = ast_declaration_function($2, $3, NULL);
+			Type* void_ = ast_type_void();
+			Declaration* declaration = ast_declaration_function($2, $3, void_);
 			$$ = ast_definition_function(declaration, $4);
 		}
 	;

@@ -1,0 +1,16 @@
+// Assigning to a indexed expression that is not a variable expression is ok
+function foo: [Integer] {
+	foo()[0] = 1;
+}
+
+// Assigning to an array value's index is ok
+function bar {
+	value x = [Integer]();
+	x[0] = 1;
+}
+
+// Assigning to a value is not ok
+function baz {
+	value x = 1;
+	x = 2;
+}

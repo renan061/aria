@@ -34,6 +34,7 @@ static SymbolTable *ltable, *utable;
 static Type* monitor = NULL;
 
 // Primitive types
+static Type* void_;
 static Type* boolean_;
 static Type* integer_;
 static Type* float_;
@@ -66,7 +67,7 @@ static void err_redeclaration(Id*);
 static void err_unkown_type_name(Id*);
 static void err_invalid_condition_type(Expression*);
 static void err_type(Line, Type*, Type*);
-static void err_assignment_void(Line);
+static void err_assignment_value(Statement*);
 static void err_return_void(Line, Type*);
 static void err_variable_unknown(Id*);
 static void err_variable_misuse(Id*);
@@ -104,6 +105,7 @@ void sem_analyse(Program* program) {
 	// Setup
 	ltable = symtable_new();
 	utable = symtable_new();
+	void_ = ast_type_void();
 	boolean_ = ast_type_boolean();
 	integer_ = ast_type_integer();
 	float_ = ast_type_float();
@@ -240,6 +242,9 @@ static void sem_statement(Statement* statement, Type* return_type) {
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
 		sem_variable(statement->assignment.variable);
+		if (statement->assignment.variable->value) { // can't be reassigned
+			err_assignment_value(statement);
+		}
 		sem_expression(statement->assignment.expression);
 		assignment(statement->assignment.variable,
 			&statement->assignment.expression);
@@ -324,6 +329,7 @@ static void sem_variable(Variable* variable) {
 		} else if (dec->tag != DECLARATION_VARIABLE) {
 			err_variable_misuse(variable->id);
 		}
+		variable->value = dec->variable->value;
 		free(variable->id);
 		variable->id = dec->variable->id;
 		variable->type = dec->variable->type;
@@ -483,13 +489,7 @@ static void sem_function_call(FunctionCall* function_call) {
 
 // TODO
 static bool typeequals(Type* type1, Type* type2) {
-	if ((type1 && !type2) || (!type1 && type2)) { // TODO: Remove when TYPE_VOID
-		return false;
-	}
-	if (!type1 && !type2) { // TODO: Remove when TYPE_VOID
-		return true;
-	}
-
+	// TODO: Test TYPE_VOID
 	if (type1 == type2) {
 		return true;
 	}
@@ -498,11 +498,7 @@ static bool typeequals(Type* type1, Type* type2) {
 		return false;
 	}
 
-	Type *t1, *t2;
-	int counter1 = 0, counter2 = 0;
-	for (t1 = type1; t1->tag == TYPE_ARRAY; t1 = t1->array, counter1++);
-	for (t2 = type2; t2->tag == TYPE_ARRAY; t2 = t2->array, counter2++);
-	return t1->tag == t2->tag && counter1 == counter2;
+	return typeequals(type1->array, type2->array);
 }
 
 static void freetypeid(Type* type) {
@@ -534,6 +530,9 @@ static void linktype(Type** pointer) {
 	assert(pointer && *pointer);
 
 	switch ((*pointer)->tag) {
+	case TYPE_VOID:
+
+		break;
 	case TYPE_ID: {
 		Type* type = *pointer;
 		if (!(*pointer = symtable_find_type(utable, type->id))) {
@@ -557,9 +556,6 @@ static void linktype(Type** pointer) {
  * Deals with errors internally.
  */
 static void assignment(Variable* variable, Expression** expression) {
-	if (!(*expression)->type) { // when defining with implicit type
-		err_assignment_void((*expression)->line);
-	}
 	if (variable->type) {
 		typecheck1(variable->type, expression);
 	} else { // when defining with implicit type
@@ -641,11 +637,11 @@ static bool equatabletype(Type* type) { // TODO: Strings?
 
 // Returns the string corresponding to the type
 static const char* typestring(Type* type) {
-	if (!type) {
-		return "Void";
-	}
+	assert(type);
 
 	switch (type->tag) {
+	case TYPE_VOID:
+		return "Void";
 	case TYPE_ID:
 		return type->id->name;
 	case TYPE_ARRAY: {
@@ -745,8 +741,11 @@ static void err_type(Line line, Type* type1, Type* type2) {
 	sem_error(line, err);
 }
 
-static void err_assignment_void(Line line) {
-	sem_error(line, "can't assign a Void expression to a variable");
+static void err_assignment_value(Statement* statement) {
+	const char* err =
+		err1("can't assign to '%s' since it was declared as a value",
+			statement->assignment.variable->id->name);
+	sem_error(statement->line, err);
 }
 
 static void err_return_void(Line line, Type* type) {
