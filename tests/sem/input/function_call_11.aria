@@ -1,0 +1,9 @@
+// Trying to call method that does not exist
+monitor M {
+	initializer {}
+	private function foo {}
+}
+
+function bar {
+	M().baz();
+}

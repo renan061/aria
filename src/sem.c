@@ -73,6 +73,8 @@ static void err_function_call_array_constructor(Line, unsigned int);
 static void err_function_call_no_constructor(Line, Id*);
 static void err_function_call_few_args(Line);
 static void err_function_call_excess_args(Line);
+static void err_function_call_private(Line, Id*, Type*);
+static void err_function_call_no_method(Line, Type*, Id*);
 
 // ==================================================
 //
@@ -461,15 +463,32 @@ static void sem_function_call(FunctionCall* function_call) {
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(function_call->method.object);
-		// Type* type = *pointer;
-		// if (!(*pointer = symtable_find_type(utable, type->id))) {
-		// 	err_unkown_type_name(type->id);
-		// }
-		// Body* body = function_call->method.object->type->monitor->monitor.body;
-
-		// check if function_call->method.name is inside the class
-		// check if arguments match parameters
-
+		// Object expression type is already linked
+		for (Body* b = function_call->method.object->type->monitor.body; b;
+			b = b->next) {
+			if (b->tag == BODY_DEFINITION &&
+				b->definition->tag == DEFINITION_METHOD) {
+				Declaration* d = // TODO: Ugly
+					b->definition->method.function->function.declaration;
+				if (d->function.id->name == function_call->method.name->name) {
+					// TODO: Currently no overloading
+					if (b->definition->method.private) {
+						err_function_call_private(function_call->line,
+							function_call->method.name,
+							function_call->method.object->type);
+					}
+					declaration =
+						b->definition->method.function->function.declaration;
+				}
+				break;
+			}
+		}
+		
+		if (!declaration) {
+			err_function_call_no_method(function_call->line,
+				function_call->method.object->type,
+				function_call->method.name);
+		}
 		break;
 	case FUNCTION_CALL_CONSTRUCTOR: // monitors and arrays
 		linktype(&function_call->constructor);
@@ -491,7 +510,7 @@ static void sem_function_call(FunctionCall* function_call) {
 			return;
 		}
 
-		// Monitor constructor parameters
+		// Finding the monitor's constructor parameters
 		for (Body* b = function_call->type->monitor.body; b; b = b->next) {
 			if (b->tag == BODY_DEFINITION &&
 				b->definition->tag == DEFINITION_CONSTRUCTOR) {
@@ -854,6 +873,18 @@ static void err_function_call_few_args(Line line) {
 
 static void err_function_call_excess_args(Line line) {
 	sem_error(line, "function call has too many arguments");
+}
+
+static void err_function_call_private(Line line, Id* id, Type* type) {
+	const char* err = err2("method '%s' from monitor '%s' is private",
+		id->name, typestring(type));
+	sem_error(line, err);
+}
+
+static void err_function_call_no_method(Line line, Type* type, Id* id) {
+	const char* err = err2("monitor '%s' has no defined method '%s'",
+		typestring(type), id->name);
+	sem_error(line, err);
 }
 
 // ==================================================
