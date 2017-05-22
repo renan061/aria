@@ -263,7 +263,7 @@ struct Variable {
 struct Expression {
 	ExpressionTag tag;
 	Line line;
-	Expression* next;
+	Expression *previous, *next;
 	Type* type;
 	
 	union {

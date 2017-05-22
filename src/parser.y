@@ -14,15 +14,14 @@
 	#include "scanner.h"
 
 	// Auxiliary macro to use with lists
-	#define APPEND(type, assignable, list, elem);	\
-		if (!list) {								\
-			assignable = elem;						\
-		} else {									\
-			type* e;								\
-			for (e = list; e->next; e = e->next);	\
-			e->next = elem;							\
-			assignable = list;						\
-		}											\
+	#define APPEND(type, assignable, list, elem);				\
+		if (!list) {											\
+			assignable = elem;									\
+		} else {												\
+			type* e;											\
+			for (e = assignable = list; e->next; e = e->next);	\
+			e->next = elem;										\
+		}														\
 
 	// Auxiliary macro to wrap a list of declarations in the
 	// appropriate Body or Block type
@@ -589,7 +588,9 @@ arguments
 		}
 	| arguments ',' expression
 		{
-			APPEND(Expression, $$, $1, $3);
+			Expression* e;
+			for (e = $$ = $1; e->next; e = e->next);
+			($3->previous = e)->next = $3; // linking
 		}
 	;
 

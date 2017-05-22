@@ -71,6 +71,8 @@ static void err_function_call_unknown(Id*);
 static void err_function_call_misuse(Id*);
 static void err_function_call_array_constructor(Line, unsigned int);
 static void err_function_call_no_constructor(Line, Id*);
+static void err_function_call_few_args(Line);
+static void err_function_call_excess_args(Line);
 
 // ==================================================
 //
@@ -507,23 +509,21 @@ static void sem_function_call(FunctionCall* function_call) {
 
 	Declaration* parameter = declaration->function.parameters;
 	Expression* argument = function_call->arguments;
-	Expression** pointer = &function_call->arguments; // TODO: ?
+	Expression** pointer = &function_call->arguments;
 
-	// TODO: Needs to be tested (TESTS) better, but apparently it's working
 	// Comparing the arguments with the parameters
 	while (parameter || argument) {
 		if (parameter && !argument) {
-			printf("missing arguments\n"); exit(1); // TODO
+			err_function_call_few_args(function_call->line);
 		}
 		if (!parameter && argument) {
-			printf("too many arguments\n"); exit(1); // TODO
+			err_function_call_excess_args(function_call->line);
 		}
 
 		sem_expression(argument);
-		typecheck1(parameter->variable->type, pointer); // cast is not working
-		// TODO: needs double direction list in Expression for cast to work with
+		typecheck1(parameter->variable->type, pointer);
 		parameter = parameter->next;
-		argument = argument->next;
+		argument = (*pointer)->next;
 		pointer = &argument;
 	}
 }
@@ -846,6 +846,14 @@ static void err_function_call_array_constructor(Line line, unsigned int n) {
 static void err_function_call_no_constructor(Line line, Id* id) {
 	const char* err = err1("monitor '%s' has no defined initializer", id->name);
 	sem_error(line, err);
+}
+
+static void err_function_call_few_args(Line line) {
+	sem_error(line, "function call has too few arguments");
+}
+
+static void err_function_call_excess_args(Line line) {
+	sem_error(line, "function call has too many arguments");
 }
 
 // ==================================================

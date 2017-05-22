@@ -22,6 +22,14 @@
 		println(x) // [10 77 30]
 	}
 
+- monitor retornando só immutables?
+	monitor M {
+		variable list: [Integer];
+		function get: [Integer] {
+			return list; // Deu ruim
+		}
+	}
+
 
 // ==================================================
 //

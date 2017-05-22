@@ -441,7 +441,7 @@ Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_BOOLEAN;
 	expression->line = ln;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_boolean = literal_boolean;
 	return expression;
@@ -452,7 +452,7 @@ Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_INTEGER;
 	expression->line = ln;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_integer = literal_integer;
 	return expression;
@@ -463,7 +463,7 @@ Expression* ast_expression_literal_float(Line ln, double literal_float) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_FLOAT;
 	expression->line = ln;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_float = literal_float;
 	return expression;
@@ -474,7 +474,7 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_LITERAL_STRING;
 	expression->line = ln;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->literal_string = literal_string;
 	return expression;
@@ -485,7 +485,7 @@ Expression* ast_expression_variable(Variable* variable) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_VARIABLE;
 	expression->line = variable->line;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->variable = variable;
 	return expression;
@@ -496,7 +496,7 @@ Expression* ast_expression_function_call(FunctionCall* function_call) {
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_FUNCTION_CALL;
 	expression->line = function_call->line;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->function_call = function_call;
 	return expression;
@@ -507,7 +507,7 @@ Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
 	MALLOC(unaryExpression, Expression);
 	unaryExpression->tag = EXPRESSION_UNARY;
 	unaryExpression->line = ln;
-	unaryExpression->next = NULL;
+	unaryExpression->previous = unaryExpression->next = NULL;
 	unaryExpression->type = NULL;
 	unaryExpression->unary.token = token;
 	unaryExpression->unary.expression = expression;
@@ -519,7 +519,7 @@ Expression* ast_expression_binary(Line ln, Token t, Expression* l, Expression* r
 	MALLOC(expression, Expression);
 	expression->tag = EXPRESSION_BINARY;
 	expression->line = ln;
-	expression->next = NULL;
+	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->binary.token = t;
 	expression->binary.left_expression = l;
@@ -535,13 +535,21 @@ Expression* ast_expression_cast(Expression* expression, Type* type) {
 	MALLOC(castExpression, Expression);
 	castExpression->tag = EXPRESSION_CAST;
 	castExpression->line = expression->line;
-
-	// TODO: Test this with arguments in function calls (think it won't work)
-	castExpression->next = expression->next;
-	expression->next = NULL;
-
 	castExpression->type = type;
 	castExpression->cast = expression;
+
+	// Rearranging the list (only for arguments)
+	castExpression->previous = expression->previous;
+	expression->previous = NULL;
+	castExpression->next = expression->next;
+	expression->next = NULL;
+	if (castExpression->previous) {
+		castExpression->previous->next = castExpression;
+	}
+	if (castExpression->next) {
+		castExpression->next->previous = castExpression;
+	}
+
 	return castExpression;
 }
 
