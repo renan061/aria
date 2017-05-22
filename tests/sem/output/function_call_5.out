@@ -1,0 +1,2 @@
+line 3:
+	semantic error: an array constructor must have zero or one arguments, not 3

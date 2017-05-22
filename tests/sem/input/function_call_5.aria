@@ -1,0 +1,4 @@
+// Call to an array initializer with too many arguments
+function foo {
+	x := [Boolean](1, 2, 3);
+}

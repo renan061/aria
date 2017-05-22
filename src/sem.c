@@ -21,12 +21,6 @@
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL);
 
-// TODO: Remove and deal the with errors
-static void todoerr(const char* err) {
-	printf("%s\n", err);
-	exit(1);
-}
-
 // Symbol table for declarations (lowercase-table) and types (uppercase-table)
 static SymbolTable *ltable, *utable;
 
@@ -73,6 +67,10 @@ static void err_variable_unknown(Id*);
 static void err_variable_misuse(Id*);
 static void err_variable_array_type(Variable*);
 static void err_variable_array_index_type(Variable*);
+static void err_function_call_unknown(Id*);
+static void err_function_call_misuse(Id*);
+static void err_function_call_array_constructor(Line, unsigned int);
+static void err_function_call_no_constructor(Line, Id*);
 
 // ==================================================
 //
@@ -422,7 +420,7 @@ static void sem_expression(Expression* expression) {
 			if (!numerictype((*rp)->type)) {
 				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
-			assert(typecheck2(lp, rp));
+			assert(typecheck2(lp, rp)); // for casting, if necessary
 			expression->type = boolean_;
 			break;
 		case '+': case '-': case '*': case '/':
@@ -432,7 +430,7 @@ static void sem_expression(Expression* expression) {
 			if (!numerictype((*rp)->type)) {
 				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
-			expression->type = typecheck2(lp, rp);
+			expression->type = typecheck2(lp, rp); // for casting, if necessary
 			assert(expression->type);
 			break;
 		}
@@ -445,39 +443,88 @@ static void sem_expression(Expression* expression) {
 }
 
 static void sem_function_call(FunctionCall* function_call) {
-	Declaration* declaration;
+	Declaration* declaration = NULL;
 
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC:
 		declaration = symtable_find_declaration(ltable, function_call->basic);
 		if (!declaration) {
-			todoerr("function not defined");
+			err_function_call_unknown(function_call->basic);
 		} else if (declaration->tag != DECLARATION_FUNCTION) {
-			todoerr("not a function");
-		}
+			err_function_call_misuse(function_call->basic);
+		}	
 		free(function_call->basic);
 		function_call->type = declaration->function.type;
 		function_call->basic = declaration->function.id;
 		break;
 	case FUNCTION_CALL_METHOD:
-		// sem_expression(function_call->method.object);
+		sem_expression(function_call->method.object);
+		// Type* type = *pointer;
+		// if (!(*pointer = symtable_find_type(utable, type->id))) {
+		// 	err_unkown_type_name(type->id);
+		// }
 		// Body* body = function_call->method.object->type->monitor->monitor.body;
 
 		// check if function_call->method.name is inside the class
 		// check if arguments match parameters
 
 		break;
-	case FUNCTION_CALL_CONSTRUCTOR:
+	case FUNCTION_CALL_CONSTRUCTOR: // monitors and arrays
 		linktype(&function_call->constructor);
 		function_call->type = function_call->constructor;
+
+		// Array constructors must have no parameters or one numeric parameter
+		if (function_call->type->tag == TYPE_ARRAY) {
+			unsigned int n = 0;
+			for (Expression* e = function_call->arguments; e; e = e->next, n++);
+			if (n == 0) { // defaults to 10 if there are no arguments
+				function_call->arguments =
+					ast_expression_literal_integer(function_call->line, 10);
+			} else if (n == 1) {
+				sem_expression(function_call->arguments);
+				typecheck1(integer_, &function_call->arguments);
+			} else {
+				err_function_call_array_constructor(function_call->line, n);
+			}
+			return;
+		}
+
+		// Monitor constructor parameters
+		for (Body* b = function_call->type->monitor.body; b; b = b->next) {
+			if (b->tag == BODY_DEFINITION &&
+				b->definition->tag == DEFINITION_CONSTRUCTOR) {
+				// TODO: Currently checking with only one constructor
+				declaration = b->definition->function.declaration;
+				break;
+			}
+		}
+		if (!declaration) {
+			err_function_call_no_constructor(function_call->line,
+				function_call->type->monitor.id);
+		}
 		break;
 	}
 
-	// TODO
-	// Checking the arguments with the parameters
-	for (Expression* e = function_call->arguments; e; e = e->next) {
-		// TODO
-		sem_expression(e);
+	Declaration* parameter = declaration->function.parameters;
+	Expression* argument = function_call->arguments;
+	Expression** pointer = &function_call->arguments; // TODO: ?
+
+	// TODO: Needs to be tested (TESTS) better, but apparently it's working
+	// Comparing the arguments with the parameters
+	while (parameter || argument) {
+		if (parameter && !argument) {
+			printf("missing arguments\n"); exit(1); // TODO
+		}
+		if (!parameter && argument) {
+			printf("too many arguments\n"); exit(1); // TODO
+		}
+
+		sem_expression(argument);
+		typecheck1(parameter->variable->type, pointer); // cast is not working
+		// TODO: needs double direction list in Expression for cast to work with
+		parameter = parameter->next;
+		argument = argument->next;
+		pointer = &argument;
 	}
 }
 
@@ -531,7 +578,8 @@ static void linktype(Type** pointer) {
 
 	switch ((*pointer)->tag) {
 	case TYPE_VOID:
-
+		// Not necessary to look for in the symbol table because
+		// TypeVoid instance is not provided by the user as an id
 		break;
 	case TYPE_ID: {
 		Type* type = *pointer;
@@ -614,7 +662,7 @@ static Type* typecheck2(Expression** l, Expression** r) {
 }
 
 static bool indextype(Type* type) {
-	return type == integer_;
+	return type == integer_; // TODO: Float also
 }
 
 static bool numerictype(Type* type) {
@@ -775,6 +823,29 @@ static void err_variable_array_index_type(Variable* variable) {
 	const char* err = typestring(variable->indexed.index->type);
 	err = err1("type '%s' can't be used as an array index", err);
 	sem_error(variable->line, err);
+}
+
+static void err_function_call_unknown(Id* id) {
+	const char* err = err1("unknown function '%s' beeing called", id->name);
+	sem_error(id->line, err);
+}
+
+static void err_function_call_misuse(Id* id) {
+	const char* err = err1("'%s' is not a function", id->name);
+	sem_error(id->line, err);
+}
+
+static void err_function_call_array_constructor(Line line, unsigned int n) {
+	char num[15];
+	sprintf(num, "%d", n);
+	const char* err = err1("an array constructor must have "
+		"zero or one arguments, not %s", num);
+	sem_error(line, err);
+}
+
+static void err_function_call_no_constructor(Line line, Id* id) {
+	const char* err = err1("monitor '%s' has no defined initializer", id->name);
+	sem_error(line, err);
 }
 
 // ==================================================

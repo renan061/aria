@@ -1,0 +1,4 @@
+// Unknown (undeclared and undefined) function beeing called
+function foo {
+	x := bar();
+}

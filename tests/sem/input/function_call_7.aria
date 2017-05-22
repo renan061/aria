@@ -1,0 +1,6 @@
+monitor Stack {}
+
+// Call to an monitor initializer with no defined initializers
+function foo {
+	x := Stack();
+}
