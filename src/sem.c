@@ -274,7 +274,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		if (statement->return_) {
 			sem_expression(statement->return_);
 			typecheck1(return_type, &statement->return_);
-		} else if (return_type) {
+		} else if (return_type->tag != TYPE_VOID) {
 			err_return_void(statement->line, return_type);
 		}
 		break;
@@ -501,6 +501,7 @@ static void sem_function_call(FunctionCall* function_call) {
 			if (n == 0) { // defaults to 10 if there are no arguments
 				function_call->arguments =
 					ast_expression_literal_integer(function_call->line, 10);
+				function_call->arguments->type = integer_;
 			} else if (n == 1) {
 				sem_expression(function_call->arguments);
 				typecheck1(integer_, &function_call->arguments);

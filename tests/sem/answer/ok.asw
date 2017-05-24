@@ -1,0 +1,55 @@
+{
+	value topValue1: Boolean = (true: Boolean)
+	value topValue2: String = ("string": String)
+	value topValue3: Integer = ((3.000000: Float) as: Integer)
+	value topValue4: Float = ((4: Integer) as: Float)
+	function topFunction1: Void {
+	}
+	function topFunction2: Boolean {
+	}
+	function topFunction3(variable a: Boolean): Void {
+	}
+	function topFunction4(variable a: Integer): Float {
+	}
+	function topFunction5(variable a: String, variable b: Boolean, variable c: Integer): Void {
+	}
+	function topFunction6(variable topA: Float, variable topB: String, variable topC: Boolean): Integer {
+	}
+	function topFunction7(variable a: Float, variable b: Float, variable c: Float): Void {
+	}
+	function topFunction8(variable a: String, variable b: Boolean, variable c: Boolean, variable d: Boolean): Integer {
+	}
+	function topFunction9(variable a: Float, variable b: String, variable c: String, variable d: Boolean): Void {
+	}
+	function foo: Void {
+		variable variable1: Boolean
+		variable variable2: Integer
+		variable variable3: Integer
+		variable variable4: Float
+		variable variable5: Float
+		variable variable6: Float
+		value syntacticSugarDefinition1: Boolean = (false: Boolean)
+		value syntacticSugarDefinition2: Void = (foo(): Void)
+		value value1: Integer = (1: Integer)
+		value value2: Integer = (1: Integer)
+		value value3: Float = ((1: Integer) as: Float)
+		value value4: Integer = (1: Integer)
+		variable variable7: Float = (1.000000: Float)
+		variable variable8: Float = (1.000000: Float)
+		variable variable9: Float = ((1: Integer) as: Float)
+		variable variable10: Integer = (1: Integer)
+		variable variable11: Void = (foo(): Void)
+		variable variable12: String = (topValue2: String)
+		variable1: Boolean = ((value3: Float) >: Boolean ((2: Integer) as: Float))
+		variable11: Void = (foo(): Void)
+		foo(): Void
+		topFunction3((((42: Integer) as: Float) ==: Boolean (1.000000: Float))): Void
+		topFunction6(((1: Integer) as: Float), (variable12: String), ((syntacticSugarDefinition1: Boolean) or: Boolean (topFunction2(): Boolean))): Integer
+		topFunction7(((1: Integer) as: Float), ((2: Integer) as: Float), ((3: Integer) as: Float)): Void
+		topFunction7((1.000000: Float), (2.000000: Float), (topFunction4(((3.000000: Float) as: Integer)): Float)): Void
+		return
+	}
+	function bar: String {
+		return ("string": String)
+	}
+}

@@ -142,11 +142,6 @@ static void print_ast_id(Id* id) {
 }
 
 static void print_ast_type(Type* type) {
-	if (!type) { // TODO: TYPE_VOID
-		printf("Void");
-		return;
-	}
-
 	switch (type->tag) {
 	case TYPE_VOID:
 		printf("Void");

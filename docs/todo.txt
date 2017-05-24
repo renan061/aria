@@ -1,4 +1,7 @@
 
+- Test operator precedence and expressions inside parenthesis precedence in
+	the parser (only after test script is refactored)
+
 // ==================================================
 //
 //	Ask

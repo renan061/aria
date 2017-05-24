@@ -1,0 +1,210 @@
+// Global value definition
+value topValue1 = true;
+value topValue2: String = "string";
+value topValue3: Integer = 3.0;
+value topValue4: Float = 4;
+
+// Global function definition
+function topFunction1 {}
+function topFunction2: Boolean {}
+function topFunction3(a: Boolean) {}
+function topFunction4(a: Integer): Float {}
+function topFunction5(a: String, b: Boolean, c: Integer) {}
+function topFunction6(topA: Float, topB: String, topC: Boolean): Integer {}
+function topFunction7(a, b, c: Float) {}
+function topFunction8(a: String, b, c, d: Boolean): Integer {}
+function topFunction9(a: Float, b, c: String, d: Boolean) {}
+
+// Inside a common top level function
+function foo {
+	// Declaration of variables
+	variable variable1: Boolean;
+	variable variable2, variable3: Integer;
+	variable variable4, variable5, variable6: Float;
+
+	// Definition of variables and values (specific to blocks)
+	syntacticSugarDefinition1 := false;
+	syntacticSugarDefinition2 := foo(); // TODO: Should this be possible?
+	value value1: Integer = 1;
+	value value2 = 1;
+	value value3: Float = 1;
+	value value4 = 1;
+	variable variable7: Float = 1.0;
+	variable variable8 = 1.0;
+	variable variable9: Float = 1;
+	variable variable10 = 1;
+	variable variable11 = foo();
+	variable variable12: String = topValue2;
+
+	// Simple statements
+
+	// Assignment
+	variable1 = value3 > 2;
+	variable11 = foo(); // TODO: Should this be possible?
+
+	// Function call
+	foo();
+	topFunction3(42 == 1.0);
+	topFunction6(1, variable12, syntacticSugarDefinition1 or topFunction2());
+	topFunction7(1, 2, 3);
+	topFunction7(1.0, 2.0, topFunction4(3.0));
+
+	// while-wait (TODO)
+	// signal (TODO)
+	// broadcast (TODO)
+
+	// Return
+	return;
+
+	// Compound statements (TODO)
+	// if
+	// if else
+	// while
+	// spawn (TODO)
+	// block
+
+	// Scoping (TODO)
+}
+
+function bar: String {
+	// Return with expression
+	return "string";
+}
+
+// 	// TypeId
+// 	variable type: Integer;
+
+// 	// TypeArray
+// 	variable type: [Integer];
+// 	variable type: [[[Integer]]];
+
+// 	// ==================================================
+// 	//
+// 	//	Variable Declarations & Definitions
+// 	//
+// 	// ==================================================
+
+// 	variable a: Integer;
+// 	variable x, y: Integer;
+// 	variable i, j, k, l, m, n, o: Integer;
+// 	variable a: Integer = 1;
+// 	variable a = 1;
+// 	value a: Integer = 1;
+// 	value a = 1;
+
+// 	// ==================================================
+// 	//
+// 	//	Statements
+// 	//
+// 	// ==================================================
+
+// 	// StatementAssignment
+// 	a = 1;
+
+// 	// StatementDefinition
+// 	a := 1;
+
+// 	// StatementFunctionCall
+// 	// Function
+// 	foo();
+// 	foo(a);
+// 	foo(a, b, c);
+// 	// Method
+// 	m.foo();
+// 	m.foo(a);
+// 	m.foo(a, b, c);
+// 	// Constructor
+// 	Monitor();
+// 	Monitor(a);
+// 	Monitor(a, b, c);
+
+// 	// StatementWhileWait
+// 	while true wait in a;
+
+// 	// StatementSignal
+// 	signal a;
+
+// 	// StatementBroadcast
+// 	broadcast a;
+
+// 	// StatementReturn
+// 	return true;	// + expression
+// 	return;			// - expression
+
+// 	// StatementIf
+// 	if true {}
+
+// 	// StatementIfElse
+// 	if true {} else {}
+
+// 	// StatementWhile
+// 	while true {}
+
+// 	// StatementSpawn
+// 	spawn {}
+
+// 	// StatementBlock
+// 	{}
+
+// 	// ==================================================
+// 	//
+// 	//	Variables
+// 	//
+// 	// ==================================================
+
+// 	// VariableId
+// 	var = a;
+
+// 	// VariableIndexed
+// 	var = a[1];
+// 	var = a[1][1][1];
+// 	var = foo()[1][1][1];
+
+// 	// ==================================================
+// 	//
+// 	//	Expressions
+// 	//
+// 	// ==================================================
+
+// 	// ExpressionLiteralBoolean
+// 	a = true;
+// 	a = false;
+
+// 	// ExpressionLiteralInteger
+// 	a = 0;
+// 	a = 1;
+// 	a = 1000;
+
+// 	// ExpressionLiteralFloat
+// 	a = 0.0;
+// 	a = 1.123;
+// 	a = 1000.123;
+
+// 	// ExpressionLiteralString
+// 	a = "c";
+// 	a = "string";
+// 	a = "s p a c e d s t r i n g";
+
+// 	// ExpressionVariable
+// 	a = a;
+
+// 	// ExpressionFunctionCall
+// 	a = foo();
+
+// 	// ExpressionUnary
+// 	a = not true;
+// 	a = -1;
+
+// 	// ExpressionBinary
+// 	a = true or false;
+// 	a = true and false;
+// 	a = 1 == 1;
+// 	a = 1 <= 1;
+// 	a = 1 >= 1;
+// 	a = 1 < 1;
+// 	a = 1 > 1;
+// 	a = 1 + 1;
+// 	a = 1 - 1;
+// 	a = 1 * 1;
+// 	a = 1 / 1;
+// }
