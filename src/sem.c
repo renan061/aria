@@ -71,6 +71,7 @@ static void err_unkown_type_name(Id*);
 static void err_invalid_condition_type(Expression*);
 static void err_type(Line, Type*, Type*);
 static void err_assignment_value(Statement*);
+static void err_return_initializer(Line);
 static void err_return_void(Line, Type*);
 static void err_variable_unknown(Id*);
 static void err_variable_misuse(Id*);
@@ -316,8 +317,12 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		sem_variable(state, statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
-		// TODO: Return inside initializers
 		if (statement->return_) {
+			// can't return expression inside initializer
+			if (state->insideInitializer) {
+				err_return_initializer(statement->line);
+			}
+
 			sem_expression(state, statement->return_);
 			typecheck1(state->returnType, &statement->return_);
 		} else if (state->returnType->tag != TYPE_VOID) {
@@ -534,9 +539,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 		}
 		
 		if (!declaration) {
-			// TODO
-			err_function_call_no_method(call->line,
-				call->method.object->type,
+			err_function_call_no_method(call->line, call->method.object->type,
 				call->method.name);
 		}
 		call->type = declaration->function.type;
@@ -607,7 +610,6 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 
 // TODO
 static bool typeequals(Type* type1, Type* type2) {
-	// TODO: Test TYPE_VOID
 	if (type1 == type2) {
 		return true;
 	}
@@ -865,6 +867,10 @@ static void err_assignment_value(Statement* statement) {
 		err1("can't assign to '%s' since it was declared as a value",
 			statement->assignment.variable->id->name);
 	sem_error(statement->line, err);
+}
+
+static void err_return_initializer(Line line) {
+	sem_error(line, "can't return expression inside initializer");
 }
 
 static void err_return_void(Line line, Type* type) {
