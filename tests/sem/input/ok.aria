@@ -42,33 +42,140 @@ function foo {
 	variable1 = value3 > 2;
 	variable11 = foo(); // TODO: Should this be possible?
 
-	// Function call
+	// Basic function call
 	foo();
 	topFunction3(42 == 1.0);
 	topFunction6(1, variable12, syntacticSugarDefinition1 or topFunction2());
 	topFunction7(1, 2, 3);
 	topFunction7(1.0, 2.0, topFunction4(3.0));
 
-	// while-wait (TODO)
-	// signal (TODO)
-	// broadcast (TODO)
-
 	// Return
 	return;
 
-	// Compound statements (TODO)
-	// if
-	// if else
-	// while
-	// spawn (TODO)
-	// block
+	// Compound statements
 
-	// Scoping (TODO)
+	// If
+	if true {}
+
+	// If Else
+	if false {} else {}
+
+	// While
+	while 1 > 2 {}
+
+	// Spawn (TODO)
+
+	// Block
+	{
+		a := 1;
+		b := 2;
+		variable c: Float;
+		if a > b {
+			c = a;
+		} else {
+			c = b;
+		}
+	}
 }
 
-function bar: String {
-	// Return with expression
-	return "string";
+// Others (monitor's and return) simple statements
+monitor Monitor1 {
+	value queue = "TODO"; // TODO: Condition Variables
+
+	initializer {}
+
+	function foo: String {
+		// Return with expression
+		return "string";
+	}
+
+	function bar {
+		// While Wait
+		while true wait in queue;
+
+		// Signal
+		signal queue;
+
+		// Broadcast
+		broadcast queue;
+	}
+}
+
+monitor Monitor2 {
+	initializer(n1, n2: Integer) {}
+
+	function foo(n1, n2: Integer) {}
+}
+
+monitor Monitor3 {
+	initializer(boolean: Boolean, float: Float, string: String) {}
+
+	function foo(boolean: Boolean, float: Float, string: String) {}
+}
+
+function newMonitor3: Monitor3 {}
+
+// Other function calls
+function bar {
+	// Constructor
+	m1 := Monitor1();
+	m2 := Monitor2(1, 2);
+	m3 := Monitor3(true, 1.0, "aria");
+
+	// Method
+	m1.foo();
+	m2.foo(1, 2.0);
+	Monitor2(1, 2).foo(1.0, 0);
+	m3.foo(false, 1, "aria-lang");
+	newMonitor3().foo(true, 1.0, "aria language");
+}
+
+function expressions {
+	// Literal Boolean
+	variable a = true;
+	a = false;
+
+	// Literal Integer
+	variable b = 0.0;
+	b = 1000;
+
+	// Literal Float
+	value c = 0.0;
+
+	// Literal String
+	string1 := "c";
+	string2 := "string";
+	string3 := "s p a c e d s t r i n g";
+
+	// Variable
+	var := string1;
+
+	// Function Call
+	functionCall := newMonitor3();
+
+	// Unary
+	a = not true;
+	b = -1;
+
+	// Binary
+	a = true or false;
+	a = true and false;
+	a = 1 == 1;
+	a = 1 <= 1;
+	a = 1 >= 1;
+	a = 1 < 1;
+	a = 1 > 1;
+
+	// TODO: Casts and stuff
+	// b = 1 + 1;
+	// b = 1 - 1;
+	// b = 1 * 1;
+	// b = 1 / 1;
+}
+
+// Scoping (TODO)
+function scoping {
+
 }
 
 // 	// TypeId
@@ -78,133 +185,7 @@ function bar: String {
 // 	variable type: [Integer];
 // 	variable type: [[[Integer]]];
 
-// 	// ==================================================
-// 	//
-// 	//	Variable Declarations & Definitions
-// 	//
-// 	// ==================================================
-
-// 	variable a: Integer;
-// 	variable x, y: Integer;
-// 	variable i, j, k, l, m, n, o: Integer;
-// 	variable a: Integer = 1;
-// 	variable a = 1;
-// 	value a: Integer = 1;
-// 	value a = 1;
-
-// 	// ==================================================
-// 	//
-// 	//	Statements
-// 	//
-// 	// ==================================================
-
-// 	// StatementAssignment
-// 	a = 1;
-
-// 	// StatementDefinition
-// 	a := 1;
-
-// 	// StatementFunctionCall
-// 	// Function
-// 	foo();
-// 	foo(a);
-// 	foo(a, b, c);
-// 	// Method
-// 	m.foo();
-// 	m.foo(a);
-// 	m.foo(a, b, c);
-// 	// Constructor
-// 	Monitor();
-// 	Monitor(a);
-// 	Monitor(a, b, c);
-
-// 	// StatementWhileWait
-// 	while true wait in a;
-
-// 	// StatementSignal
-// 	signal a;
-
-// 	// StatementBroadcast
-// 	broadcast a;
-
-// 	// StatementReturn
-// 	return true;	// + expression
-// 	return;			// - expression
-
-// 	// StatementIf
-// 	if true {}
-
-// 	// StatementIfElse
-// 	if true {} else {}
-
-// 	// StatementWhile
-// 	while true {}
-
-// 	// StatementSpawn
-// 	spawn {}
-
-// 	// StatementBlock
-// 	{}
-
-// 	// ==================================================
-// 	//
-// 	//	Variables
-// 	//
-// 	// ==================================================
-
-// 	// VariableId
-// 	var = a;
-
 // 	// VariableIndexed
 // 	var = a[1];
 // 	var = a[1][1][1];
 // 	var = foo()[1][1][1];
-
-// 	// ==================================================
-// 	//
-// 	//	Expressions
-// 	//
-// 	// ==================================================
-
-// 	// ExpressionLiteralBoolean
-// 	a = true;
-// 	a = false;
-
-// 	// ExpressionLiteralInteger
-// 	a = 0;
-// 	a = 1;
-// 	a = 1000;
-
-// 	// ExpressionLiteralFloat
-// 	a = 0.0;
-// 	a = 1.123;
-// 	a = 1000.123;
-
-// 	// ExpressionLiteralString
-// 	a = "c";
-// 	a = "string";
-// 	a = "s p a c e d s t r i n g";
-
-// 	// ExpressionVariable
-// 	a = a;
-
-// 	// ExpressionFunctionCall
-// 	a = foo();
-
-// 	// ExpressionUnary
-// 	a = not true;
-// 	a = -1;
-
-// 	// ExpressionBinary
-// 	a = true or false;
-// 	a = true and false;
-// 	a = 1 == 1;
-// 	a = 1 <= 1;
-// 	a = 1 >= 1;
-// 	a = 1 < 1;
-// 	a = 1 > 1;
-// 	a = 1 + 1;
-// 	a = 1 - 1;
-// 	a = 1 * 1;
-// 	a = 1 / 1;
-// }

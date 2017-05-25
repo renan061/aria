@@ -24,6 +24,11 @@
 // Symbol table for declarations (lowercase-table) and types (uppercase-table)
 static SymbolTable *ltable, *utable;
 
+// TODO: Remove this(below) and create an AriaState struct with these
+// values the single AriaState instance should be created at sem_analyse
+// and passed around as a parameter (also contains the return information
+// currently beeing analysed by parameter -> return_type).
+
 // A monitor type if currently analysing a monitor's body, NULL otherwise
 static Type* monitor = NULL;
 // True if currently analysing a monitor's initializer, false otherwise
@@ -75,6 +80,7 @@ static void err_function_call_array_constructor(Line, unsigned int);
 static void err_function_call_no_constructor(Line, Id*);
 static void err_function_call_few_args(Line);
 static void err_function_call_excess_args(Line);
+static void err_function_call_no_monitor(Line);
 static void err_function_call_private(Line, Id*, Type*);
 static void err_function_call_no_method(Line, Type*, Id*);
 static void err_monitor_statements(Line, const char*);
@@ -196,9 +202,10 @@ static void sem_definition(Definition* definition) {
 		assignment(definition->variable.declaration->variable,
 			&definition->variable.expression);
 		break;
-	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
-		constructor = definition->tag == DEFINITION_CONSTRUCTOR;
+		constructor = true;
+		/* fallthrough */
+	case DEFINITION_FUNCTION:
 		sem_declaration(definition->function.declaration);
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
@@ -295,6 +302,7 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		sem_variable(statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
+		// TODO: Return inside initializers
 		if (statement->return_) {
 			sem_expression(statement->return_);
 			typecheck1(return_type, &statement->return_);
@@ -487,6 +495,9 @@ static void sem_function_call(FunctionCall* function_call) {
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(function_call->method.object);
+		if (function_call->method.object->type->tag != TYPE_MONITOR) {
+			err_function_call_no_monitor(function_call->line);
+		}
 		// Object expression type is already linked
 		for (Body* b = function_call->method.object->type->monitor.body; b;
 			b = b->next) {
@@ -509,6 +520,7 @@ static void sem_function_call(FunctionCall* function_call) {
 		}
 		
 		if (!declaration) {
+			// TODO
 			err_function_call_no_method(function_call->line,
 				function_call->method.object->type,
 				function_call->method.name);
@@ -899,6 +911,10 @@ static void err_function_call_few_args(Line line) {
 
 static void err_function_call_excess_args(Line line) {
 	sem_error(line, "function call has too many arguments");
+}
+
+static void err_function_call_no_monitor(Line line) {
+	sem_error(line, "trying to call a method on a type that is not a monitor");
 }
 
 static void err_function_call_private(Line line, Id* id, Type* type) {

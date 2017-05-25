@@ -48,8 +48,82 @@
 		topFunction7(((1: Integer) as: Float), ((2: Integer) as: Float), ((3: Integer) as: Float)): Void
 		topFunction7((1.000000: Float), (2.000000: Float), (topFunction4(((3.000000: Float) as: Integer)): Float)): Void
 		return
+		if (true: Boolean) {
+		}
+		if (false: Boolean) {
+		} else {
+		}
+		while ((1: Integer) >: Boolean (2: Integer)) {
+		}
+		{
+			value a: Integer = (1: Integer)
+			value b: Integer = (2: Integer)
+			variable c: Float
+			if ((a: Integer) >: Boolean (b: Integer)) {
+				c: Float = ((a: Integer) as: Float)
+			} else {
+				c: Float = ((b: Integer) as: Float)
+			}
+		}
 	}
-	function bar: String {
-		return ("string": String)
+	monitor Monitor1 {
+		value queue: String = ("TODO": String)
+		initializer: Monitor1 {
+		}
+		function foo: String {
+			return ("string": String)
+		}
+		function bar: Void {
+			while (true: Boolean) wait in queue: String
+			signal queue: String
+			broadcast queue: String
+		}
+	}
+	monitor Monitor2 {
+		initializer(variable n1: Integer, variable n2: Integer): Monitor2 {
+		}
+		function foo(variable n1: Integer, variable n2: Integer): Void {
+		}
+	}
+	monitor Monitor3 {
+		initializer(variable boolean: Boolean, variable float: Float, variable string: String): Monitor3 {
+		}
+		function foo(variable boolean: Boolean, variable float: Float, variable string: String): Void {
+		}
+	}
+	function newMonitor3: Monitor3 {
+	}
+	function bar: Void {
+		value m1: Monitor1 = (Monitor1(): Monitor1)
+		value m2: Monitor2 = (Monitor2((1: Integer), (2: Integer)): Monitor2)
+		value m3: Monitor3 = (Monitor3((true: Boolean), (1.000000: Float), ("aria": String)): Monitor3)
+		(m1: Monitor1).foo(): String
+		(m2: Monitor2).foo((1: Integer), ((2.000000: Float) as: Integer)): Void
+		(Monitor2((1: Integer), (2: Integer)): Monitor2).foo(((1.000000: Float) as: Integer), (0: Integer)): Void
+		(m3: Monitor3).foo((false: Boolean), ((1: Integer) as: Float), ("aria-lang": String)): Void
+		(newMonitor3(): Monitor3).foo((true: Boolean), (1.000000: Float), ("aria language": String)): Void
+	}
+	function expressions: Void {
+		variable a: Boolean = (true: Boolean)
+		a: Boolean = (false: Boolean)
+		variable b: Float = (0.000000: Float)
+		b: Float = ((1000: Integer) as: Float)
+		value c: Float = (0.000000: Float)
+		value string1: String = ("c": String)
+		value string2: String = ("string": String)
+		value string3: String = ("s p a c e d s t r i n g": String)
+		value var: String = (string1: String)
+		value functionCall: Monitor3 = (newMonitor3(): Monitor3)
+		a: Boolean = (not(true: Boolean): Boolean)
+		b: Float = ((-(1: Integer): Integer) as: Float)
+		a: Boolean = ((true: Boolean) or: Boolean (false: Boolean))
+		a: Boolean = ((true: Boolean) and: Boolean (false: Boolean))
+		a: Boolean = ((1: Integer) ==: Boolean (1: Integer))
+		a: Boolean = ((1: Integer) <=: Boolean (1: Integer))
+		a: Boolean = ((1: Integer) >=: Boolean (1: Integer))
+		a: Boolean = ((1: Integer) <: Boolean (1: Integer))
+		a: Boolean = ((1: Integer) >: Boolean (1: Integer))
+	}
+	function scoping: Void {
 	}
 }

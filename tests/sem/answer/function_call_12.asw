@@ -1,0 +1,2 @@
+line 3:
+	semantic error: trying to call a method on a type that is not a monitor
