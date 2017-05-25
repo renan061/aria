@@ -1,0 +1,2 @@
+line 4:
+	semantic error: invalid use of 'while-wait' statement outside a monitor's body

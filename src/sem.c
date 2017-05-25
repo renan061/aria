@@ -26,6 +26,8 @@ static SymbolTable *ltable, *utable;
 
 // A monitor type if currently analysing a monitor's body, NULL otherwise
 static Type* monitor = NULL;
+// True if currently analysing a monitor's initializer, false otherwise
+static bool constructor = false;
 
 // Primitive types
 static Type* void_;
@@ -75,6 +77,8 @@ static void err_function_call_few_args(Line);
 static void err_function_call_excess_args(Line);
 static void err_function_call_private(Line, Id*, Type*);
 static void err_function_call_no_method(Line, Type*, Id*);
+static void err_monitor_statements(Line, const char*);
+static void err_monitor_statements_constructor(Line, const char*);
 
 // ==================================================
 //
@@ -194,10 +198,12 @@ static void sem_definition(Definition* definition) {
 		break;
 	case DEFINITION_FUNCTION:
 	case DEFINITION_CONSTRUCTOR:
+		constructor = definition->tag == DEFINITION_CONSTRUCTOR;
 		sem_declaration(definition->function.declaration);
 		sem_block(definition->function.block,
 			definition->function.declaration->function.type);
 		leavescope(); // entered in sem_declaration
+		constructor = false;
 		break;
 	case DEFINITION_METHOD:
 		sem_definition(definition->method.function);
@@ -255,6 +261,12 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		sem_function_call(statement->function_call);
 		break;
 	case STATEMENT_WHILE_WAIT:
+		if (!monitor) {
+			err_monitor_statements(statement->line, "while-wait");
+		}
+		if (constructor) {
+			err_monitor_statements_constructor(statement->line, "while-wait");
+		}
 		sem_expression(statement->while_wait.expression);
 		if (!conditiontype(statement->while_wait.expression->type)) {
 			err_invalid_condition_type(statement->while_wait.expression);
@@ -263,10 +275,22 @@ static void sem_statement(Statement* statement, Type* return_type) {
 		sem_variable(statement->while_wait.variable);
 		break;
 	case STATEMENT_SIGNAL:
+		if (!monitor) {
+			err_monitor_statements(statement->line, "signal");
+		}
+		if (constructor) {
+			err_monitor_statements_constructor(statement->line, "signal");
+		}
 		// TODO: Special semantics for condition variables?
 		sem_variable(statement->signal);
 		break;
 	case STATEMENT_BROADCAST:
+		if (!monitor) {
+			err_monitor_statements(statement->line, "broadcast");
+		}
+		if (constructor) {
+			err_monitor_statements_constructor(statement->line, "broadcast");
+		}
 		// TODO: Special semantics for condition variables?
 		sem_variable(statement->broadcast);
 		break;
@@ -457,9 +481,9 @@ static void sem_function_call(FunctionCall* function_call) {
 		} else if (declaration->tag != DECLARATION_FUNCTION) {
 			err_function_call_misuse(function_call->basic);
 		}	
-		free(function_call->basic);
 		function_call->type = declaration->function.type;
-		function_call->basic = declaration->function.id;
+		free(function_call->basic);
+		function_call->basic = declaration->function.id; // TODO: Necessary?
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(function_call->method.object);
@@ -489,6 +513,7 @@ static void sem_function_call(FunctionCall* function_call) {
 				function_call->method.object->type,
 				function_call->method.name);
 		}
+		function_call->type = declaration->function.type;
 		break;
 	case FUNCTION_CALL_CONSTRUCTOR: // monitors and arrays
 		linktype(&function_call->constructor);
@@ -885,6 +910,18 @@ static void err_function_call_private(Line line, Id* id, Type* type) {
 static void err_function_call_no_method(Line line, Type* type, Id* id) {
 	const char* err = err2("monitor '%s' has no defined method '%s'",
 		typestring(type), id->name);
+	sem_error(line, err);
+}
+
+static void err_monitor_statements(Line line, const char* statement) {
+	const char* err = err1("invalid use of '%s' statement "
+		"outside a monitor's body", statement);
+	sem_error(line, err);
+}
+
+static void err_monitor_statements_constructor(Line line, const char* stmt) {
+	const char* err = err1("invalid use of '%s' statement "
+		"inside a monitor's initializer", stmt);
 	sem_error(line, err);
 }
 

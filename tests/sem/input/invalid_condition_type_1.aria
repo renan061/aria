@@ -1,4 +1,7 @@
 // In 'while-wait's
-function foo {
-	while 1 wait in x;
+monitor M {
+	function foo {
+		x := "TODO"; // TODO: Condition Variables
+		while 1 wait in x;
+	}
 }

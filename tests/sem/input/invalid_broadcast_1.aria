@@ -1,0 +1,5 @@
+// Outside a monitor
+function foo {
+	a := 1; // TODO: Condition Variable
+	broadcast a;
+}

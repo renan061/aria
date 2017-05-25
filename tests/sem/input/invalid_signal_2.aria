@@ -1,0 +1,7 @@
+// Inside a monitor's initializer
+monitor M {
+	initializer {
+		a := 1; // TODO: Condition Variable
+		signal a;
+	}
+}
