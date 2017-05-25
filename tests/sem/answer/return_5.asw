@@ -1,0 +1,2 @@
+line 4:
+	semantic error: can't return inside a spawn block

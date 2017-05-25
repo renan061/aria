@@ -91,6 +91,7 @@ string 		"\""(\\.|[^\\"])*"\""
 {space} 		; /* empty */
 {newline}		line++;
 
+"Immutable"		return yylval.ival = line, TK_IMMUTABLE;
 "value"			return yylval.ival = line, TK_VALUE;
 "variable"		return yylval.ival = line, TK_VARIABLE;
 "function"		return yylval.ival = line, TK_FUNCTION;

@@ -80,6 +80,10 @@ function foo(a, b: [Array]) {
 
 	// Nested arrays
 	variable d: [[[Integer]]];
+
+	// With Immutable
+	variable c: Immutable Type;
+	variable d: Immutable [[[Integer]]];
 }
 
 // ==================================================

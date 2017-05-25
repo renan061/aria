@@ -1,10 +1,14 @@
 /*
- * TODO:
+ * TODO
  *
  *	- initializer(): Semântica? Pode ter mais de um?
  *		Pode ter mais de um com tipos / quantidade
  *		diferentes de parâmetros?
- *	- Create TYPE_VOID and stop using NULL as Void
+ *	- Can a monitor type be declared Immutable? Immutable Monitor1?
+ *		Redundant? Find a better name (Safe?)?
+ *	- Tests with spawn and values/immutables
+ *	- Monitor functions can only return safe types
+ *
  */
 #include <assert.h>
 #include <stdbool.h>
@@ -21,7 +25,7 @@
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL);
 
-// TODO
+// Stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
 	// Symbols for declarations (lowercase-table) and types (uppercase-table)
 	SymbolTable *ltable, *utable;
@@ -34,6 +38,9 @@ typedef struct SemanticState {
 
 	// <true> if currently analysing a monitor's initializer, <false> otherwise
 	bool insideInitializer;
+
+	// <true> if currently analysing a spawn statement block, <false> otherwise
+	bool insideSpawn;
 } SemanticState;
 
 // Primitive types
@@ -64,6 +71,7 @@ static bool indextype(Type*);
 static bool numerictype(Type*);
 static bool conditiontype(Type*);
 static bool equatabletype(Type*);
+static bool safetype(Type*);
 
 // Auxiliary functions that deal with errors
 static void err_redeclaration(Id*);
@@ -71,6 +79,7 @@ static void err_unkown_type_name(Id*);
 static void err_invalid_condition_type(Expression*);
 static void err_type(Line, Type*, Type*);
 static void err_assignment_value(Statement*);
+static void err_return_inside_spawn(Line);
 static void err_return_initializer(Line);
 static void err_return_void(Line, Type*);
 static void err_variable_unknown(Id*);
@@ -89,12 +98,7 @@ static void err_function_call_no_method(Line, Type*, Id*);
 static void err_monitor_statements(Line, const char*);
 static void err_monitor_statements_constructor(Line, const char*);
 
-// ==================================================
-//
-//	TODO: Experimental
-//
-// ==================================================
-
+// TODO: Experimental
 typedef enum ErrorType {
 	ERR_EXPRESSION_MINUS = 0,
 	ERR_EXPRESSION_NOT,
@@ -104,14 +108,7 @@ typedef enum ErrorType {
 	ERR_EXPRESSION_RIGHT_EQUAL,
 	ERR_EXPRESSION_TYPECHECK_EQUAL
 } ErrorType;
-
 static void err_expression(ErrorType, Expression*);
-
-// ==================================================
-//
-//	TODO: Experimental
-//
-// ==================================================
 
 /*
  * TODO
@@ -129,7 +126,8 @@ void sem_analyse(Program* program) {
 		symtable_new(),	// uppercase symbol table
 		NULL,			// current monitor
 		NULL,			// return type
-		false			// inside initializer
+		false,			// inside initializer
+		false			// inside spawn
 	};
 	SemanticState* state = &_state;
 
@@ -149,6 +147,7 @@ void sem_analyse(Program* program) {
 	assert(!state->currentMonitor);
 	assert(!state->returnType);
 	assert(!state->insideInitializer);
+	assert(!state->insideSpawn);
 }
 
 // ==================================================
@@ -163,7 +162,7 @@ static void sem_body(SemanticState* state, Body* body) {
 			sem_body(state, body->next);
 		}
 		return;
-	}
+}
 
 	for (Body* b = body; b; b = b->next) {
 		switch (b->tag) {
@@ -317,6 +316,10 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		sem_variable(state, statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
+		if (state->insideSpawn) {
+			err_return_inside_spawn(statement->line);
+		}
+
 		if (statement->return_) {
 			// can't return expression inside initializer
 			if (state->insideInitializer) {
@@ -360,9 +363,11 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		leavescope(state);
 		break;
 	case STATEMENT_SPAWN:
+		// TODO: Should be able to spawn inside a monitor (and initializer)?
 		enterscope(state);
-		// TODO: Special semantics for spawn blocks
+		state->insideSpawn = true;
 		sem_block(state, statement->spawn);
+		state->insideSpawn = false;
 		leavescope(state);
 		break;
 	case STATEMENT_BLOCK:
@@ -386,6 +391,25 @@ static void sem_variable(SemanticState* state, Variable* variable) {
 		free(variable->id);
 		variable->id = d->variable->id;
 		variable->type = d->variable->type;
+
+		// TODO: Find a better way to do this
+		if (state->insideSpawn &&
+			!symtable_contains_in_current_scope(state->ltable, variable->id)) {
+			if (!variable->value) {
+				printf("todoerr: line %d: "
+					"can't access a variable inside a spawn block "
+					"(only values)\n", variable->line);
+				exit(1);
+			}
+
+			if (!safetype(variable->type)) {
+				printf("todoerr: line %d: "
+					"can't access a value of unsafe type inside a spawn block "
+					"(only immutables and monitors)\n",
+					variable->line);
+				exit(1);
+			}
+		}
 		break;
 	}
 	case VARIABLE_INDEXED:
@@ -509,8 +533,6 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			err_function_call_misuse(call->basic);
 		}	
 		call->type = declaration->function.type;
-		free(call->basic);
-		call->basic = declaration->function.id; // TODO: Necessary?
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(state, call->method.object);
@@ -750,6 +772,19 @@ static bool equatabletype(Type* type) { // TODO: Strings?
 	return type == boolean_ || type == integer_ || type == float_;
 }
 
+static bool safetype(Type *type) {
+	switch (type->tag) {
+		case TYPE_VOID:
+		case TYPE_ID:
+			return type->immutable;
+		case TYPE_ARRAY:
+			return type->immutable && safetype(type->array);
+		case TYPE_MONITOR:
+			return true;
+	}
+	UNREACHABLE;
+}
+
 // ==================================================
 //
 //	Errors
@@ -867,6 +902,10 @@ static void err_assignment_value(Statement* statement) {
 		err1("can't assign to '%s' since it was declared as a value",
 			statement->assignment.variable->id->name);
 	sem_error(statement->line, err);
+}
+
+static void err_return_inside_spawn(Line line) {
+	sem_error(line, "can't return inside a spawn block");
 }
 
 static void err_return_initializer(Line line) {

@@ -1,0 +1,6 @@
+// Returning inside a spawn block
+function foo {
+	spawn {
+		return;
+	}
+}

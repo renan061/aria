@@ -14,9 +14,16 @@ function topFunction6(topA: Float, topB: String, topC: Boolean): Integer {}
 function topFunction7(a, b, c: Float) {}
 function topFunction8(a: String, b, c, d: Boolean): Integer {}
 function topFunction9(a: Float, b, c: String, d: Boolean) {}
+function topFunction10: [[[String]]] {}
 
 // Inside a common top level function
 function foo {
+	// Indexed types
+	variable indexed: [[[Integer]]];
+	x := indexed[0];
+	y := indexed[0][0];
+	z := topFunction10()[0][0][0];
+
 	// Declaration of variables
 	variable variable1: Boolean;
 	variable variable2, variable3: Integer;
@@ -24,7 +31,7 @@ function foo {
 
 	// Definition of variables and values (specific to blocks)
 	syntacticSugarDefinition1 := false;
-	syntacticSugarDefinition2 := foo(); // TODO: Should this be possible?
+	syntacticSugarDefinition2 := foo(); // FIXME: Should this be possible?
 	value value1: Integer = 1;
 	value value2 = 1;
 	value value3: Float = 1;
@@ -40,7 +47,7 @@ function foo {
 
 	// Assignment
 	variable1 = value3 > 2;
-	variable11 = foo(); // TODO: Should this be possible?
+	variable11 = foo(); // FIXME: Should this be possible?
 
 	// Basic function call
 	foo();
@@ -80,7 +87,7 @@ function foo {
 
 // Others (monitor's and return) simple statements
 monitor Monitor1 {
-	value queue = "TODO"; // TODO: Condition Variables
+	value queue = "FIXME"; // FIXME: Condition Variables
 
 	initializer {}
 
@@ -165,27 +172,32 @@ function expressions {
 	a = 1 >= 1;
 	a = 1 < 1;
 	a = 1 > 1;
-
-	// TODO: Casts and stuff
-	// b = 1 + 1;
-	// b = 1 - 1;
-	// b = 1 * 1;
-	// b = 1 / 1;
+	b = 1 + 1;
+	b = 1.0 - 1;
+	b = 1 * 1.0;
+	b = 1.0 / 1.0;
 }
 
-// Scoping (TODO)
-function scoping {
+// Scoping
+function scoping {}
 
+monitor Scoping1 {
+	value a = [Integer]();
+
+	private function scoping(a: Float): Float {
+		return a * 2;
+	}
+
+	function bar {
+		b := a[0];
+		{
+			b := scoping(1.0);
+		}
+	}
 }
 
-// 	// TypeId
-// 	variable type: Integer;
-
-// 	// TypeArray
-// 	variable type: [Integer];
-// 	variable type: [[[Integer]]];
-
-// 	// VariableIndexed
-// 	var = a[1];
-// 	var = a[1][1][1];
-// 	var = foo()[1][1][1];
+monitor Scoping2 {
+	function foo {
+		a := scoping();
+	}
+}

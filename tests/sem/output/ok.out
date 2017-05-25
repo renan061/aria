@@ -21,7 +21,13 @@
 	}
 	function topFunction9(variable a: Float, variable b: String, variable c: String, variable d: Boolean): Void {
 	}
+	function topFunction10: [[[String]]] {
+	}
 	function foo: Void {
+		variable indexed: [[[Integer]]]
+		value x: [[Integer]] = (((indexed: [[[Integer]]])[(0: Integer)]: [[Integer]]))
+		value y: [Integer] = (((((indexed: [[[Integer]]])[(0: Integer)]: [[Integer]]))[(0: Integer)]: [Integer]))
+		value z: String = (((((((topFunction10(): [[[String]]])[(0: Integer)]: [[String]]))[(0: Integer)]: [String]))[(0: Integer)]: String))
 		variable variable1: Boolean
 		variable variable2: Integer
 		variable variable3: Integer
@@ -67,7 +73,7 @@
 		}
 	}
 	monitor Monitor1 {
-		value queue: String = ("TODO": String)
+		value queue: String = ("FIXME": String)
 		initializer: Monitor1 {
 		}
 		function foo: String {
@@ -123,7 +129,28 @@
 		a: Boolean = ((1: Integer) >=: Boolean (1: Integer))
 		a: Boolean = ((1: Integer) <: Boolean (1: Integer))
 		a: Boolean = ((1: Integer) >: Boolean (1: Integer))
+		b: Float = (((1: Integer) +: Integer (1: Integer)) as: Float)
+		b: Float = ((1.000000: Float) -: Float ((1: Integer) as: Float))
+		b: Float = (((1: Integer) as: Float) *: Float (1.000000: Float))
+		b: Float = ((1.000000: Float) /: Float (1.000000: Float))
 	}
 	function scoping: Void {
+	}
+	monitor Scoping1 {
+		value a: [Integer] = ([Integer]((10: Integer)): [Integer])
+		private function scoping(variable a: Float): Float {
+			return ((a: Float) *: Float ((2: Integer) as: Float))
+		}
+		function bar: Void {
+			value b: Integer = (((a: [Integer])[(0: Integer)]: Integer))
+			{
+				value b: Float = (scoping((1.000000: Float)): Float)
+			}
+		}
+	}
+	monitor Scoping2 {
+		function foo: Void {
+			value a: Void = (scoping(): Void)
+		}
 	}
 }

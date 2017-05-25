@@ -171,6 +171,7 @@ struct Id {
 struct Type {
 	TypeTag tag;
 	bool primitive;
+	bool immutable; // default false
 
 	union {
 		// TypeID

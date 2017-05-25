@@ -61,6 +61,11 @@ function foo {
 	variable type: [Integer];
 	variable type: [[[Integer]]];
 
+	// Immutable
+	variable type: Immutable Integer;
+	variable type: Immutable [Integer];
+	variable type: Immutable Monitor; // Ok for the AST, but semantic error
+
 	// ==================================================
 	//
 	//	Variable Declarations & Definitions

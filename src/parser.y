@@ -64,9 +64,9 @@
 // Tokens
 %token <ival>
 	'{' '}' '[' ']' '(' ')' '=' ';'
-	TK_VALUE TK_VARIABLE TK_FUNCTION TK_DEFINE TK_WHILE TK_WAIT TK_IN TK_SIGNAL
-	TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE TK_FALSE
-	TK_MONITOR TK_PRIVATE TK_INITIALIZER
+	TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_DEFINE TK_WHILE TK_WAIT
+	TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
+	TK_FALSE TK_MONITOR TK_PRIVATE TK_INITIALIZER
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -273,9 +273,19 @@ type
 		{
 			$$ = ast_type_id($1);
 		}
+	| TK_IMMUTABLE TK_UPPER_ID
+		{
+			$$ = ast_type_id($2);
+			$$->immutable = true;
+		}
 	| '[' type ']'
 		{
 			$$ = ast_type_array($2);
+		}
+	| TK_IMMUTABLE '[' type ']'
+		{
+			$$ = ast_type_array($3);
+			$$->immutable = true;
 		}
 	;
 

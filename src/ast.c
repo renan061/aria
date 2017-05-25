@@ -164,6 +164,7 @@ Id* ast_id(unsigned int line, const char* name) {
 		MALLOC(v, Type);						\
 		v->tag = TYPE_ID;						\
 		v->primitive = true;					\
+		v->immutable = true;					\
 		v->id = ast_id(-1, primitive_types[i]);	\
 	}											\
 	return v;									\
@@ -174,6 +175,7 @@ Type* ast_type_void(void) {
 		MALLOC(type_void, Type);
 		type_void->tag = TYPE_VOID;
 		type_void->primitive = true;
+		type_void->immutable = true;
 		type_void->id = NULL; // just in case
 	}
 	return type_void;
@@ -217,6 +219,7 @@ Type* ast_type_id(Id* id) {
 	MALLOC(type, Type);
 	type->tag = TYPE_ID;
 	type->primitive = false;
+	type->immutable = false;
 	type->id = id;
 	return type;
 }
@@ -226,6 +229,7 @@ Type* ast_type_array(Type* type) {
 	MALLOC(arrayType, Type);
 	arrayType->tag = TYPE_ARRAY;
 	arrayType->primitive = false;
+	arrayType->immutable = false;
 	arrayType->array = type;
 	return arrayType;
 }
@@ -234,6 +238,8 @@ Type* ast_type_monitor(Id* id, Body* body) {
 	Type* type;
 	MALLOC(type, Type);
 	type->tag = TYPE_MONITOR;
+	type->primitive = false;
+	type->immutable = false;
 	type->monitor.id = id;
 	type->monitor.body = body;
 	return type;

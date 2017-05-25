@@ -129,6 +129,10 @@ void symtable_leave_scope(SymbolTable* table) {
 	free(scope);
 }
 
+bool symtable_contains_in_current_scope(SymbolTable* tb, Id* id) {
+	return finddeclaration(tb->top_scope, id->name) != NULL;
+}
+
 Declaration* symtable_find_declaration(SymbolTable* table, Id* id) {
 	Declaration* found = NULL;
 	for (Scope* s = table->top_scope; s && !found; s = s->next) {

@@ -14,6 +14,7 @@ int main(int argc, char* argv[]) {
 	do {
 		token = yylex();
 		switch (token) {
+		case TK_IMMUTABLE:		printf("TK_IMMUTABLE");		break;
 		case TK_VALUE:			printf("TK_VALUE");			break;
 		case TK_VARIABLE:		printf("TK_VARIABLE");		break;
 		case TK_FUNCTION:		printf("TK_FUNCTION");		break;
