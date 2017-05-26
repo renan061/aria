@@ -1,0 +1,2 @@
+line 6:
+	semantic error: can't access a value of unsafe type inside a spawn block (only immutables and monitors)

@@ -16,6 +16,10 @@ function topFunction8(a: String, b, c, d: Boolean): Integer {}
 function topFunction9(a: Float, b, c: String, d: Boolean) {}
 function topFunction10: [[[String]]] {}
 
+monitor SpawnMonitor {
+	initializer {}
+}
+
 // Inside a common top level function
 function foo {
 	// Indexed types
@@ -70,7 +74,17 @@ function foo {
 	// While
 	while 1 > 2 {}
 
-	// Spawn (TODO)
+	// Spawn
+	spawnMonitor := SpawnMonitor();
+	nestedSafeType := Immutable[Immutable[Immutable[Integer]]]();
+	spawn {
+		variable a = spawnMonitor;
+		b := value1;
+		c := nestedSafeType;
+		variable x = 1;
+		variable y = 2;
+		x = y * 2 + value1;
+	}
 
 	// Block
 	{
@@ -89,7 +103,9 @@ function foo {
 monitor Monitor1 {
 	value queue = "FIXME"; // FIXME: Condition Variables
 
-	initializer {}
+	initializer {
+		return;
+	}
 
 	function foo: String {
 		// Return with expression

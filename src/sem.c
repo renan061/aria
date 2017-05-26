@@ -6,8 +6,9 @@
  *		diferentes de parâmetros?
  *	- Can a monitor type be declared Immutable? Immutable Monitor1?
  *		Redundant? Find a better name (Safe?)?
- *	- Tests with spawn and values/immutables
- *	- Monitor functions can only return safe types
+ *	- Function that return nothing should be represented with type
+ *		Void, not NULL pointers. And return statements with no expressions
+ *		should return the 'nil' expression.
  *
  */
 #include <assert.h>
@@ -97,6 +98,9 @@ static void err_function_call_private(Line, Id*, Type*);
 static void err_function_call_no_method(Line, Type*, Id*);
 static void err_monitor_statements(Line, const char*);
 static void err_monitor_statements_constructor(Line, const char*);
+static void err_monitor_function_type(Line);
+static void err_spawn_variable(Line);
+static void err_spawn_unsafe(Line);
 
 // TODO: Experimental
 typedef enum ErrorType {
@@ -193,7 +197,11 @@ static void sem_declaration(SemanticState* state, Declaration* declaration) {
 			if (!symtable_insert_declaration(state->ltable, declaration)) {
 				err_redeclaration(declaration->function.id);
 			}
-			if (declaration->function.type) { // some functions return nothing
+			Type* functionType = declaration->function.type; // FIXME: Ugly
+			if (functionType) { // avoides functions that return nothing
+				if (state->currentMonitor && !safetype(functionType)) {
+					err_monitor_function_type(declaration->function.id->line);
+				}
 				linktype(state->utable, &declaration->function.type);
 			}
 		} else { // constructors need to be given a type
@@ -316,20 +324,26 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		sem_variable(state, statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
+		// Can't return inside a spawn block
 		if (state->insideSpawn) {
 			err_return_inside_spawn(statement->line);
 		}
+		// Can't return an expression inside an initializer
+		if (state->insideInitializer) {
+			if (statement->return_) {
+				err_return_initializer(statement->line);
+			} else {
+				break;
+			}
+		}
+		// Can't return empty when the function expects a return type
+		if (state->returnType != void_ && !statement->return_) {	
+			err_return_void(statement->line, state->returnType);
+		}
 
 		if (statement->return_) {
-			// can't return expression inside initializer
-			if (state->insideInitializer) {
-				err_return_initializer(statement->line);
-			}
-
 			sem_expression(state, statement->return_);
 			typecheck1(state->returnType, &statement->return_);
-		} else if (state->returnType->tag != TYPE_VOID) {
-			err_return_void(statement->line, state->returnType);
 		}
 		break;
 	case STATEMENT_IF:
@@ -396,20 +410,13 @@ static void sem_variable(SemanticState* state, Variable* variable) {
 		if (state->insideSpawn &&
 			!symtable_contains_in_current_scope(state->ltable, variable->id)) {
 			if (!variable->value) {
-				printf("todoerr: line %d: "
-					"can't access a variable inside a spawn block "
-					"(only values)\n", variable->line);
-				exit(1);
+				err_spawn_variable(variable->line);
 			}
-
 			if (!safetype(variable->type)) {
-				printf("todoerr: line %d: "
-					"can't access a value of unsafe type inside a spawn block "
-					"(only immutables and monitors)\n",
-					variable->line);
-				exit(1);
+				err_spawn_unsafe(variable->line);
 			}
 		}
+
 		break;
 	}
 	case VARIABLE_INDEXED:
@@ -998,6 +1005,21 @@ static void err_monitor_statements_constructor(Line line, const char* stmt) {
 	const char* err = err1("invalid use of '%s' statement "
 		"inside a monitor's initializer", stmt);
 	sem_error(line, err);
+}
+
+static void err_monitor_function_type(Line line) {
+	sem_error(line, "a monitor's function can only return "
+		"immutable or monitor types");
+}
+
+static void err_spawn_variable(Line line) {
+	sem_error(line, "can't access a variable inside a spawn block "
+		"(only values)");
+}
+
+static void err_spawn_unsafe(Line line) {
+	sem_error(line, "can't access a value of unsafe type "
+		"inside a spawn block (only immutables and monitors)");
 }
 
 // ==================================================

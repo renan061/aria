@@ -1,0 +1,7 @@
+// Spawn trying to access a non-value
+function foo {
+	variable a: Integer;
+	spawn {
+		b := a;
+	}
+}

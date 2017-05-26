@@ -1,0 +1,11 @@
+// Monitor functions can only return Immutable types or Monitors
+monitor M {
+	// Initializer has return type 'M'
+	initializer {
+		return;
+	}
+
+	function foo: [String] {
+		return [String]();
+	}
+}

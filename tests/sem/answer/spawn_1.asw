@@ -1,0 +1,2 @@
+line 5:
+	semantic error: can't access a variable inside a spawn block (only values)

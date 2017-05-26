@@ -23,6 +23,10 @@
 	}
 	function topFunction10: [[[String]]] {
 	}
+	monitor SpawnMonitor {
+		initializer: SpawnMonitor {
+		}
+	}
 	function foo: Void {
 		variable indexed: [[[Integer]]]
 		value x: [[Integer]] = (((indexed: [[[Integer]]])[(0: Integer)]: [[Integer]]))
@@ -61,6 +65,16 @@
 		}
 		while ((1: Integer) >: Boolean (2: Integer)) {
 		}
+		value spawnMonitor: SpawnMonitor = (SpawnMonitor(): SpawnMonitor)
+		value nestedSafeType: Immutable [Immutable [Immutable [Integer]]] = (Immutable [Immutable [Immutable [Integer]]]((10: Integer)): Immutable [Immutable [Immutable [Integer]]])
+		spawn {
+			variable a: SpawnMonitor = (spawnMonitor: SpawnMonitor)
+			value b: Integer = (value1: Integer)
+			value c: Immutable [Immutable [Immutable [Integer]]] = (nestedSafeType: Immutable [Immutable [Immutable [Integer]]])
+			variable x: Integer = (1: Integer)
+			variable y: Integer = (2: Integer)
+			x: Integer = (((y: Integer) *: Integer (2: Integer)) +: Integer (value1: Integer))
+		}
 		{
 			value a: Integer = (1: Integer)
 			value b: Integer = (2: Integer)
@@ -75,6 +89,7 @@
 	monitor Monitor1 {
 		value queue: String = ("FIXME": String)
 		initializer: Monitor1 {
+			return
 		}
 		function foo: String {
 			return ("string": String)
