@@ -26,6 +26,10 @@
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL);
 
+// TODO
+#define TODOERR(line, err) \
+	printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
+
 // Stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
 	// Symbols for declarations (lowercase-table) and types (uppercase-table)
@@ -166,7 +170,7 @@ static void sem_body(SemanticState* state, Body* body) {
 			sem_body(state, body->next);
 		}
 		return;
-}
+	}
 
 	for (Body* b = body; b; b = b->next) {
 		switch (b->tag) {
@@ -208,9 +212,16 @@ static void sem_declaration(SemanticState* state, Declaration* declaration) {
 			assert(state->currentMonitor);
 			declaration->function.type = state->currentMonitor;
 		}
+
+		// Parameters
 		enterscope(state); // should leave in sem_definition
-		for (Declaration* p = declaration->function.parameters; p;
-			sem_declaration(state, p), p = p->next);
+		for (Declaration* p = declaration->function.parameters; p; p = p->next) {
+			sem_declaration(state, p);
+			if (state->currentMonitor && !safetype(p->variable->type)) {
+				TODOERR(p->variable->line, "the parameters of monitor "
+					"functions need to have safe types");
+			}
+		}
 		break;
 	}
 }
@@ -222,6 +233,13 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		sem_declaration(state, definition->variable.declaration);
 		assignment(definition->variable.declaration->variable,
 			&definition->variable.expression);
+		{
+			Variable* variable = definition->variable.declaration->variable;
+			if (variable->global && !safetype(variable->type)) {
+				TODOERR(variable->line, "global variables need to have "
+					"Immutable types");
+			}
+		}
 		break;
 	case DEFINITION_CONSTRUCTOR:
 		state->insideInitializer = true;
@@ -639,10 +657,12 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 
 // TODO
 static bool typeequals(Type* type1, Type* type2) {
+	if (type1->immutable != type2->immutable) {
+		return false;
+	}
 	if (type1 == type2) {
 		return true;
 	}
-
 	if (type1->tag != TYPE_ARRAY || type2->tag != TYPE_ARRAY) {
 		return false;
 	}
@@ -801,17 +821,20 @@ static bool safetype(Type *type) {
 // Returns the string corresponding to the type
 static const char* typestring(Type* type) {
 	assert(type);
+	char* str;
 
 	switch (type->tag) {
 	case TYPE_VOID:
-		return "Void";
+		str = "Void";
+		break;
 	case TYPE_ID:
-		return type->id->name;
+		str = (char*) type->id->name;
+		break;
 	case TYPE_ARRAY: {
 		unsigned int counter = 0;
-		for (; type->tag == TYPE_ARRAY; type = type->array, counter++);
-		const char* id = typestring(type);
-		char* str;
+		Type* t = type;
+		for (; t->tag == TYPE_ARRAY; t = t->array, counter++);
+		const char* id = typestring(t);
 		size_t len = 2 * counter + strlen(id);
 		MALLOC_ARRAY(str, char, len + 1);
 		strcpy(str + counter, id);
@@ -820,13 +843,28 @@ static const char* typestring(Type* type) {
 			str[len - i - 1] = ']';
 		}
 		str[len] = '\0';
-		return str;
+		break;
 	}
 	case TYPE_MONITOR:
-		return type->monitor.id->name;
+		str = (char*) type->monitor.id->name;
+		break;
 	default:
 		UNREACHABLE;
 	}
+
+	if (!type->primitive && type->immutable) {
+		const char* immutable = "Immutable ";
+		size_t lenImmut = strlen(immutable), lenStr = strlen(str);
+		size_t len = lenImmut + lenStr;
+		char *str2;
+		MALLOC_ARRAY(str2, char, len + 1);
+		str2[len] = '\0';
+		strcpy(str2, immutable);
+		strcpy(&str2[lenImmut], str);
+		str = str2;
+	}
+
+	return str;
 }
 
 static const char* tokenstring(Token token) {

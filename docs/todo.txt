@@ -8,9 +8,9 @@
 //
 // ==================================================
 
-- a := 1 é um statement ou um block_variable_definition?
-
 - foo() = 1 é erro do parser, mas foo()[1] = 1 é erro semântico, inconsistência?
+
+- This
 	var x []int
 
 	func foo() []int {
@@ -24,15 +24,6 @@
 		foo()[1] = 77
 		println(x) // [10 77 30]
 	}
-
-- monitor retornando só immutables?
-	monitor M {
-		variable list: [Integer];
-		function get: [Integer] {
-			return list; // Deu ruim
-		}
-	}
-
 
 // ==================================================
 //

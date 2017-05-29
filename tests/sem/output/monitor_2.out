@@ -1,0 +1,2 @@
+line 3:
+	semantic error: the parameters of monitor functions need to have safe types

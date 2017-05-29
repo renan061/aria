@@ -13,7 +13,8 @@ Sobre variáveis globais:
 		'value' TK_LOWER_ID [':' [TK_IMMUTABLE] type] '=' expression
 
 	- Variáveis globais devem ser declaradas como 'value'. Ou seja, variáveis
-	globais nunca são reatribuídas valores em nenhuma parte do programa.
+	globais nunca são reatribuídas valores em nenhuma parte do programa. Logo,
+	variáveis globais sempre possuem um valor.
 
 	- O tipo das variáveis globais deve seguir uma das seguintes regras:
 
@@ -21,8 +22,5 @@ Sobre variáveis globais:
 
 		- Variáveis globais devem ser declaradas com o qualificador de tipo
 		'Immutable', a menos que o tipo da variável já seja implicitamente
-		imutável ('Byte', 'Integer', 'Float' e 'String' são implicitamente
+		imutável ('Boolean', 'Integer', 'Float' e 'String' são implicitamente
 		imutáveis e não necessitam do identificador 'Immutable').
-
-	- Variáveis globais devem ser definidas no momento de sua declaração. Ou
-	seja, variáveis globais são sempre inicializadas com um valor passado.

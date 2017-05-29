@@ -1,0 +1,15 @@
+// Monitor functions need to be called with immutable types
+monitor M {
+	initializer {
+		return;
+	}
+
+	function foo(num: Integer, array: Immutable [String]) {
+		return;
+	}
+}
+
+function foo {
+	m := M();
+	m.foo(1, [String]());
+}

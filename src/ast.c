@@ -419,6 +419,7 @@ Variable* ast_variable_id(Id* id) {
 	variable->tag = VARIABLE_ID;
 	variable->line = id->line;
 	variable->type = NULL;
+	variable->global = false;
 	variable->value = false;
 	variable->id = id;
 	return variable;
@@ -430,6 +431,7 @@ Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
 	variable->tag = VARIABLE_INDEXED;
 	variable->line = ln;
 	variable->type = NULL;
+	variable->global = false;
 	variable->value = false;
 	variable->indexed.array = array;
 	variable->indexed.index = index;

@@ -139,6 +139,7 @@ body_list
 body
 	: variable_definition_value ';'
 		{
+			$1->variable.declaration->variable->global = true;
 			$$ = ast_body_definition($1);
 		}
 	| function_definition

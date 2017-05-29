@@ -1,4 +1,4 @@
-// Monitor functions can only return Immutable types or Monitors
+// Monitor functions can only return safe types
 monitor M {
 	// Initializer has return type 'M'
 	initializer {

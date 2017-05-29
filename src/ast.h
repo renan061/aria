@@ -248,6 +248,7 @@ struct Variable {
 	VariableTag tag;
 	Line line;
 	Type* type;
+	bool global; // default false
 	bool value; // default false
 
 	union {

@@ -1,0 +1,6 @@
+// Monitor initializers can only have parameters with safe types
+monitor M {
+	initializer(array: [Integer]) {
+		return;
+	}
+}
