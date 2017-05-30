@@ -1,3 +1,7 @@
+Sobre tipos:
+
+	Existem quatro tipos primitivos na linguagem: Boolean, Integer, Float, String
+
 Um arquivo pode conter:
 
 	global-variable-definition
