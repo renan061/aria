@@ -3,11 +3,15 @@
 #
 
 # TODO: gnu11 / c11
-CC := gcc-5 -std=gnu11 -Wall
+CC := gcc-7 -std=gnu11 -Wall
 
 main: objs
+	@- $(CC) $(CFLAGS) -o bin/aria									\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
+	obj/symtable.o obj/sem.o obj/backend.o							\
+	src/aria.c -Isrc/
 
-objs: errs vector scanner parser ast sem
+objs: errs vector scanner parser ast sem backend
 
 # ==================================================
 # 
@@ -39,6 +43,9 @@ ast:
 sem:
 	@- $(CC) $(CFLAGS) -c src/symtable.c -o obj/symtable.o
 	@- $(CC) $(CFLAGS) -c src/sem.c -o obj/sem.o
+
+backend:
+	@- $(CC) $(CFLAGS) -c src/backend.c -o obj/backend.o
 
 # ==================================================
 # 
@@ -82,7 +89,15 @@ sem_test: errs vector parser scanner ast sem
 
 	@- sh tests/test.sh sem
 
-test: clean vector_test scanner_test parser_test ast_test sem_test
+backend_test: errs vector parser scanner ast sem backend
+	@- $(CC) $(CFLAGS) -o bin/backendtest							\
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
+	obj/symtable.o obj/sem.o obj/backend.o							\
+	src/aria.c -Isrc/
+
+	@- sh tests/test.sh backend
+
+test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
 
 # ==================================================
 # 
