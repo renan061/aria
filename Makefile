@@ -3,15 +3,22 @@
 #
 
 # TODO: gnu11 / c11
-CC := gcc-7 -std=gnu11 -Wall
+# TODO: llvm include
+CC := gcc-7 
+CFLAGS := -I/usr/local/opt/llvm/include -std=gnu11 -Wall
 
-main: objs
-	@- $(CC) $(CFLAGS) -o bin/aria									\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
-	obj/symtable.o obj/sem.o obj/backend.o							\
-	src/aria.c -Isrc/
+CPPFLAGS := `llvm-config --cxxflags --ldflags --system-libs`
+CPPFLAGS += `llvm-config --libs analysis bitwriter core executionengine target mcjit native`
 
-objs: errs vector scanner parser ast sem backend
+main: clean objs
+	@- $(CC) $(CFLAGS) -c src/aria.c -o obj/aria.o
+
+	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o	\
+	obj/scanner.o obj/parser.o obj/ast.o			\
+	obj/symtable.o obj/sem.o obj/backend.o			\
+	obj/aria.o -o bin/aria
+
+objs: errs vector parser scanner ast sem backend
 
 # ==================================================
 # 
@@ -27,8 +34,8 @@ vector:
 
 scanner:
 	@- flex src/scanner.l
-	@- mv lex.yy.c src/lex.c
-	@- $(CC) $(CFLAGS) -c src/lex.c -o obj/scanner.o -Isrc/
+	@- mv lex.yy.c src/flex.c
+	@- $(CC) $(CFLAGS) -c src/flex.c -o obj/scanner.o -Isrc/
 
 parser:
 	@- bison -v --defines=src/bison.h src/parser.y
@@ -106,9 +113,8 @@ test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
 # ==================================================
 
 clean:
-	@- rm -f src/lex.c
-	@- rm -f src/bison.c
-	@- rm -f src/bison.h
+	@- rm -f src/flex.c
+	@- rm -f src/bison.*
 	@- rm -rf temp
-	@- rm -f obj/*.o
+	@- rm -f obj/*
 	@- rm -f bin/*
