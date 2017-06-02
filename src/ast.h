@@ -9,6 +9,8 @@
 
 #include <stdbool.h>
 
+#include <llvm-c/Core.h>
+
 #include "scanner.h"
 
 // TODO
@@ -267,6 +269,8 @@ struct Expression {
 	Line line;
 	Expression *previous, *next;
 	Type* type;
+
+	LLVMValueRef temp;
 	
 	union {
 		// ExpressionLiteralBoolean
@@ -322,7 +326,7 @@ struct FunctionCall {
 //
 // ==================================================
 
-extern Program* program;
+extern Program* program; // TODO: This variable should be called ast
 extern Program* ast_program(Body*);
 
 extern Body* ast_body(Body*);

@@ -551,6 +551,15 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 
 	switch (call->tag) {
 	case FUNCTION_CALL_BASIC:
+		// MEGA TODO: Fix this master gambiarra
+		if (!strcmp(call->basic->name, "printf")) {
+			for (Expression* a = call->arguments; a; a = a->next) {
+				sem_expression(state, a);
+			}
+			call->type = integer_;
+			return;
+		}
+
 		declaration = symtable_find_declaration(state->ltable, call->basic);
 		if (!declaration) {
 			err_function_call_unknown(call->basic);
