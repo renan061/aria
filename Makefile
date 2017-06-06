@@ -118,3 +118,5 @@ clean:
 	@- rm -rf temp
 	@- rm -f obj/*
 	@- rm -f bin/*
+	@- rm -f *.bc
+	@- rm -f *.ll

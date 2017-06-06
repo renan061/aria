@@ -68,6 +68,7 @@ static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(LLVMBuilderRef, LLVMValueRef);
 
 // Auxiliary
+static void invariantreturn(IRState*, Type*);
 static LLVMValueRef typezerovalue(Type*);
 
 // TODO
@@ -135,6 +136,18 @@ static void backend_body(IRState* state, Body* body) {
 	}
 }
 
+static void backend_declaration(IRState* state, Declaration* declaration) {
+	switch (declaration->tag) {
+	case DECLARATION_VARIABLE:
+		TODO;
+	case DECLARATION_FUNCTION:
+		state->function = llvm_function_declaration(state->module, declaration);
+		break;
+	default:
+		UNREACHABLE;
+	}
+}
+
 static void backend_definition(IRState* state, Definition* definition) {
 	switch (definition->tag) {
 	case DEFINITION_VARIABLE:
@@ -144,20 +157,11 @@ static void backend_definition(IRState* state, Definition* definition) {
 		TODO;
 		break;
 	case DEFINITION_FUNCTION:
-		// TODO: Move to backend_declaration
-		{
-			Declaration* d = definition->function.declaration;
-			state->function = llvm_function_declaration(state->module, d);
-		}
-
-		// backend_declaration(definition->function.declaration);
+		// `backed_declaration` sets state->function internally
+		backend_declaration(state, definition->function.declaration);
 		backend_block(state, definition->function.block);
-		LLVMPositionBuilderAtEnd(
-			/* Builder	*/ state->builder,
-			/* Block	*/ LLVMAppendBasicBlock(state->function, "end")
-		);
-		llvm_return(state->builder,
-			typezerovalue(definition->function.declaration->function.type));
+		// returns with the zero value of the function's return type
+		invariantreturn(state, definition->function.declaration->function.type);
 		break;
 	case DEFINITION_METHOD:
 		TODO;
@@ -332,6 +336,15 @@ static void llvm_return(LLVMBuilderRef builder, LLVMValueRef temp) {
 //	Auxiliary
 //
 // ==================================================
+
+// Inserts a default return statement at the end of the function using the
+// function's return type zero value. Should only be called after calling
+// `backend_body` for the function's body.
+static void invariantreturn(IRState* s, Type* t) {
+	LLVMBasicBlockRef b = LLVMAppendBasicBlock(s->function, "invariant-return");
+	LLVMPositionBuilderAtEnd(s->builder, b);
+	llvm_return(s->builder, typezerovalue(t));
+}
 
 // TODO: Find a better way to write this...
 static LLVMValueRef typezerovalue(Type* type) {
