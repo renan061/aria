@@ -7,12 +7,15 @@
 
 #include "alloc.h"
 #include "ast.h"
+#include "parser.h" // for the tokens
 
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL);
 
 // TODO: Remove
 #define TODO assert(NULL);
+
+#define TEMP "_t"
 
 #define LLVM_APPEND_BLOCK(state, name) \
 	LLVMPositionBuilderAtEnd( \
@@ -273,30 +276,87 @@ static void backend_variable(IRState* state, Variable* variable) {
 static void backend_expression(IRState* state, Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		expression->temp = LLVMConstInt(
-			/* Type			*/ llvm_type(expression->type),
-			/* Value		*/ expression->literal_boolean,
-			/* SignExtend	*/ false // TODO: Deveria?
-		);
+		expression->temp = LLVMConstInt(llvm_type(expression->type),
+			expression->literal_boolean, false /* TODO */);
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		expression->temp = LLVMConstInt(
-			/* Type			*/ llvm_type(expression->type),
-			/* Value		*/ expression->literal_integer,
-			/* SignExtend	*/ false // TODO: Deveria?
-		);
+		expression->temp = LLVMConstInt(llvm_type(expression->type),
+			expression->literal_integer, false /* TODO */);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->temp = LLVMConstReal(
-			/* Type		*/ llvm_type(expression->type),
-			/* Value	*/ expression->literal_float
-		);
+		expression->temp = LLVMConstReal(llvm_type(expression->type),
+			expression->literal_float);
 		break;
 	// case EXPRESSION_LITERAL_STRING:
-	// case EXPRESSION_VARIABLE:
+	case EXPRESSION_VARIABLE:
+		expression->temp = LLVMBuildLoad(state->builder,
+			expression->variable->temp, TEMP);
+		break;
 	// case EXPRESSION_FUNCTION_CALL:
-	// case EXPRESSION_UNARY:
-	// case EXPRESSION_BINARY:
+	case EXPRESSION_UNARY:
+		switch (expression->unary.token) {
+		case '-':
+			backend_expression(state, expression->unary.expression);
+			if (expression->type == integer_) {
+				expression->temp = LLVMBuildNeg(state->builder,
+					expression->unary.expression->temp, TEMP);
+			} else if (expression->type == float_) {
+				expression->temp = LLVMBuildFNeg(state->builder,
+					expression->unary.expression->temp, TEMP);
+			} else {
+				UNREACHABLE;
+			}
+			break;
+		case TK_NOT:
+			TODO;
+			break;
+		}
+		break;
+	case EXPRESSION_BINARY:
+		// Macro to be used by the [+, -, *, /] operations
+		#define BINARY_ARITHMETICS(e, s, ifunc, ffunc) \
+			if (e->type == integer_) { \
+				e->temp = ifunc(s->builder, e->binary.left_expression->temp, \
+					e->binary.right_expression->temp, TEMP); \
+			} else if (e->type == float_) { \
+				e->temp = ffunc(s->builder, e->binary.left_expression->temp, \
+					e->binary.right_expression->temp, TEMP); \
+			} else { \
+				UNREACHABLE; \
+			} \
+		// End macro
+
+		switch (expression->binary.token) {
+		case TK_OR:
+		case TK_AND:
+		case TK_EQUAL:
+		case TK_LEQUAL:
+		case TK_GEQUAL:
+		case '<':
+		case '>':
+			TODO; // goto DEFAULT_EXPRESSION;
+		case '+':
+			backend_expression(state, expression->binary.left_expression);
+			backend_expression(state, expression->binary.right_expression);
+			BINARY_ARITHMETICS(expression, state, LLVMBuildAdd, LLVMBuildFAdd);
+			break;
+		case '-':
+			backend_expression(state, expression->binary.left_expression);
+			backend_expression(state, expression->binary.right_expression);
+			BINARY_ARITHMETICS(expression, state, LLVMBuildSub, LLVMBuildFSub);
+			break;
+		case '*':
+			backend_expression(state, expression->binary.left_expression);
+			backend_expression(state, expression->binary.right_expression);
+			BINARY_ARITHMETICS(expression, state, LLVMBuildMul, LLVMBuildFMul);
+			break;
+		case '/':
+			backend_expression(state, expression->binary.left_expression);
+			backend_expression(state, expression->binary.right_expression);
+			BINARY_ARITHMETICS(expression, state, LLVMBuildSDiv, LLVMBuildFDiv);
+			break;
+		}
+		break;
 	// case EXPRESSION_CAST:
 	default:
 		UNREACHABLE;
