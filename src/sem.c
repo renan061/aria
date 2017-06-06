@@ -551,6 +551,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 		break;
 	}
 	case EXPRESSION_CAST:
+		// TODO: What?
 		assert(expression->tag != EXPRESSION_CAST);
 		break;
 	}
@@ -577,6 +578,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			err_function_call_misuse(call->basic);
 		}	
 		call->type = declaration->function.type;
+		// free(call->basic); // TODO: Avaliar
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(state, call->method.object);
@@ -646,6 +648,8 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 		}
 		break;
 	}
+
+	call->declaration = declaration;
 
 	Declaration* parameter = declaration->function.parameters;
 	Expression* argument = call->arguments;

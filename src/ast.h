@@ -128,6 +128,8 @@ struct Declaration {
 	DeclarationTag tag;
 	Declaration* next; // parameters
 
+	LLVMValueRef llvm_value; // for functions only
+
 	union {
 		// DeclarationVariable
 		Variable* variable;
@@ -272,7 +274,7 @@ struct Expression {
 	Expression *previous, *next;
 	Type* type;
 
-	LLVMValueRef temp;
+	LLVMValueRef temp; // rename to llvm_value
 	
 	union {
 		// ExpressionLiteralBoolean
@@ -308,6 +310,8 @@ struct FunctionCall {
 	Line line;
 	Type* type; // TODO: use for array and monitor constructors
 	Expression* arguments;
+
+	Declaration* declaration;
 
 	union {
 		// FunctionCallBasic

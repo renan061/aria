@@ -65,6 +65,7 @@ Declaration* ast_declaration_variable(Variable* variable) {
 	MALLOC(declaration, Declaration);
 	declaration->tag = DECLARATION_VARIABLE;
 	declaration->next = NULL;
+	declaration->llvm_value = NULL;
 	declaration->variable = variable;
 	return declaration;
 }
@@ -74,6 +75,7 @@ Declaration* ast_declaration_function(Id* id, Declaration* params, Type* type) {
 	MALLOC(declaration, Declaration);
 	declaration->tag = DECLARATION_FUNCTION;
 	declaration->next = NULL;
+	declaration->llvm_value = NULL;
 	declaration->function.id = id;
 	declaration->function.parameters = params;
 	declaration->function.type = type;
@@ -583,6 +585,7 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
 	function_call->line = ln;
 	function_call->type = NULL;
 	function_call->arguments = arguments;
+	function_call->declaration = NULL;
 	function_call->basic = id;
 	return function_call;
 }
@@ -594,6 +597,7 @@ FunctionCall* ast_call_method(Line ln, Expression* o, Id* n, Expression* args) {
 	function_call->line = ln;
 	function_call->type = NULL;
 	function_call->arguments = args;
+	function_call->declaration = NULL;
 	function_call->method.object = o;
 	function_call->method.name = n;
 	return function_call;
@@ -606,6 +610,7 @@ FunctionCall* ast_call_constructor(Line ln, Type* t, Expression* args) {
 	function_call->line = ln;
 	function_call->type = NULL;
 	function_call->arguments = args;
+	function_call->declaration = NULL;
 	function_call->constructor = t;
 	return function_call;
 }

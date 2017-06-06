@@ -72,7 +72,7 @@ typedef struct IRState {
 
 // LLVM (TODO: New Module)
 static LLVMTypeRef llvm_printf(void);
-static LLVMValueRef llvm_function_declaration(LLVMModuleRef, Declaration*);
+static void llvm_function_declaration(LLVMModuleRef, Declaration*);
 static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(LLVMBuilderRef, LLVMValueRef);
 
@@ -86,6 +86,7 @@ static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
 static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
+static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // ==================================================
 //
@@ -151,7 +152,8 @@ static void backend_declaration(IRState* state, Declaration* declaration) {
 	case DECLARATION_VARIABLE:
 		TODO;
 	case DECLARATION_FUNCTION:
-		state->function = llvm_function_declaration(state->module, declaration);
+		llvm_function_declaration(state->module, declaration);
+		state->function = declaration->llvm_value;
 		break;
 	default:
 		UNREACHABLE;
@@ -237,7 +239,9 @@ static void backend_statement(IRState* state, Statement* statement) {
 			statement->assignment.variable->temp
 		);
 		break;
-	// case STATEMENT_FUNCTION_CALL:
+	case STATEMENT_FUNCTION_CALL:
+		backend_function_call(state, statement->function_call);
+		break;
 	// case STATEMENT_WHILE_WAIT:
 	// case STATEMENT_SIGNAL:
 	// case STATEMENT_BROADCAST:
@@ -292,7 +296,10 @@ static void backend_expression(IRState* state, Expression* expression) {
 		expression->temp = LLVMBuildLoad(state->builder,
 			expression->variable->temp, TEMP);
 		break;
-	// case EXPRESSION_FUNCTION_CALL:
+	case EXPRESSION_FUNCTION_CALL:
+		expression->temp =
+			backend_function_call(state, expression->function_call);
+		break;
 	case EXPRESSION_UNARY:
 		switch (expression->unary.token) {
 		case '-':
@@ -308,8 +315,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 			}
 			break;
 		case TK_NOT:
-			TODO;
-			break;
+			goto CONDITION_EXPRESSION;
 		}
 		break;
 	case EXPRESSION_BINARY:
@@ -334,7 +340,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 		case TK_GEQUAL:
 		case '<':
 		case '>':
-			TODO; // goto DEFAULT_EXPRESSION;
+			goto CONDITION_EXPRESSION;
 		case '+':
 			backend_expression(state, expression->binary.left_expression);
 			backend_expression(state, expression->binary.right_expression);
@@ -357,10 +363,50 @@ static void backend_expression(IRState* state, Expression* expression) {
 			break;
 		}
 		break;
-	// case EXPRESSION_CAST:
+	case EXPRESSION_CAST:
+		backend_expression(state, expression->cast);
+		if (expression->cast->type == integer_ &&
+			expression->type == float_) {
+			// Integer to Float
+			expression->temp = LLVMBuildSIToFP(state->builder,
+				expression->cast->temp, llvm_type(expression->type), TEMP);
+		} else if (expression->cast->type == float_ &&
+			expression->type == integer_) {
+			// Float to Integer
+			expression->temp = LLVMBuildFPToSI(state->builder,
+				expression->cast->temp, llvm_type(expression->type), TEMP);
+		} else {
+			UNREACHABLE;
+		}
+		break;
 	default:
 		UNREACHABLE;
 	}
+
+	return;
+
+	CONDITION_EXPRESSION: {
+		TODO;
+	}
+}
+
+static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
+	Expression* arg;
+	int n = 0;
+
+	for (arg = call->arguments; arg; arg = arg->next, n++) {
+		backend_expression(state, arg);
+	}
+
+	LLVMValueRef arguments[n];
+
+	arg = call->arguments;
+	for (int i = 0; i < n; arg = arg->next, i++) {
+		arguments[i] = arg->temp;
+	}
+
+	return LLVMBuildCall(state->builder, call->declaration->llvm_value,
+		arguments, n, "");
 }
 
 // ==================================================
@@ -374,32 +420,32 @@ static LLVMTypeRef llvm_printf(void) {
 	return LLVMFunctionType(LLVMInt32Type(), paramTypes, 1, true); 
 }
 
-// returns the value reference for the function prototype
-static LLVMValueRef llvm_function_declaration(LLVMModuleRef module,
-	Declaration* prototype) {
+// sets the value reference for the function prototype inside declaration
+static void llvm_function_declaration(LLVMModuleRef module,
+	Declaration* declaration) {
 
-	assert(prototype->tag == DECLARATION_FUNCTION);
-	assert(prototype->function.id);
-	assert(prototype->function.type);
+	assert(declaration->tag == DECLARATION_FUNCTION);
+	assert(declaration->function.id);
+	assert(declaration->function.type);
 	
 	// Counting the number of parameters
-	Declaration* parameter = prototype->function.parameters;
+	Declaration* parameter = declaration->function.parameters;
 	unsigned int paramCount = 0;
 	for (Declaration* p = parameter; p; p = p->next, paramCount++);
 
 	// Creating a list of parameters
 	LLVMTypeRef paramTypes[paramCount]; // TODO: Won't this be destroyed?
-	parameter = prototype->function.parameters;
+	parameter = declaration->function.parameters;
 	for (int i = 0; parameter; parameter = parameter->next, i++) {
 		paramTypes[i] = llvm_type(parameter->variable->type);
 	}
 
 	// Creating the function prototype and setting it as the current function
-	LLVMValueRef function = LLVMAddFunction(
+	declaration->llvm_value = LLVMAddFunction(
 		/* Module		*/ module,
-		/* FunctionName	*/ prototype->function.id->name,
+		/* FunctionName	*/ declaration->function.id->name,
 		/* FunctionRef	*/ LLVMFunctionType(
-			/* ReturnType	*/ llvm_type(prototype->function.type),
+			/* ReturnType	*/ llvm_type(declaration->function.type),
 			/* ParamTypes	*/ paramTypes,
 			/* ParamCount	*/ paramCount,
 			/* IsVarArg		*/ false
@@ -407,16 +453,14 @@ static LLVMValueRef llvm_function_declaration(LLVMModuleRef module,
 	);
 
 	// Setting the names for the parameters
-	parameter = prototype->function.parameters;
+	parameter = declaration->function.parameters;
 	for (int i = 0; parameter; parameter = parameter->next, i++) {
-		parameter->variable->temp = LLVMGetParam(function, i);
+		parameter->variable->temp = LLVMGetParam(declaration->llvm_value, i);
 		LLVMSetValueName(
 			/* Value	*/ parameter->variable->temp,
 			/* Name		*/ parameter->variable->id->name
 		);
 	}
-
-	return function;
 }
 
 static LLVMTypeRef llvm_type(Type* type) {
