@@ -14,6 +14,12 @@
 // TODO: Remove
 #define TODO assert(NULL);
 
+#define LLVM_APPEND_BLOCK(state, name) \
+	LLVMPositionBuilderAtEnd( \
+		state->builder, \
+		LLVMAppendBasicBlock(state->function, name) \
+	); \
+
 // Sum
 
 // define i32 @sum(i32, i32) #0 {
@@ -68,7 +74,6 @@ static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(LLVMBuilderRef, LLVMValueRef);
 
 // Auxiliary
-static void invariantreturn(IRState*, Type*);
 static LLVMValueRef typezerovalue(Type*);
 
 // TODO
@@ -76,6 +81,7 @@ static void backend_body(IRState*, Body*);
 static void backend_definition(IRState*, Definition*);
 static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
+static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
 
 // ==================================================
@@ -136,6 +142,7 @@ static void backend_body(IRState* state, Body* body) {
 	}
 }
 
+// TODO: Maybe remove?
 static void backend_declaration(IRState* state, Declaration* declaration) {
 	switch (declaration->tag) {
 	case DECLARATION_VARIABLE:
@@ -150,9 +157,23 @@ static void backend_declaration(IRState* state, Declaration* declaration) {
 
 static void backend_definition(IRState* state, Definition* definition) {
 	switch (definition->tag) {
-	case DEFINITION_VARIABLE:
-		TODO;
+	case DEFINITION_VARIABLE: {
+		Variable* variable = definition->variable.declaration->variable;
+		Expression* expression = definition->variable.expression;
+
+		if (variable->global) {
+			TODO;
+		} else {
+			variable->temp = LLVMBuildAlloca(
+				state->builder,
+				llvm_type(variable->type),
+				variable->id->name
+			);
+			backend_expression(state, expression);
+			LLVMBuildStore(state->builder, expression->temp, variable->temp);
+		}
 		break;
+	}
 	case DEFINITION_CONSTRUCTOR:
 		TODO;
 		break;
@@ -161,7 +182,9 @@ static void backend_definition(IRState* state, Definition* definition) {
 		backend_declaration(state, definition->function.declaration);
 		backend_block(state, definition->function.block);
 		// returns with the zero value of the function's return type
-		invariantreturn(state, definition->function.declaration->function.type);
+		LLVM_APPEND_BLOCK(state, "invariant-return");
+		llvm_return(state->builder,
+			typezerovalue(definition->function.declaration->function.type));
 		break;
 	case DEFINITION_METHOD:
 		TODO;
@@ -177,10 +200,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 static void backend_block(IRState* state, Block* block) {
 	if (block->tag == BLOCK) {
 		if (block->next) {
-			LLVMPositionBuilderAtEnd(
-				/* Builder	*/ state->builder,
-				/* Block	*/ LLVMAppendBasicBlock(state->function, "entry")
-			);
+			LLVM_APPEND_BLOCK(state, "entry");
 			backend_block(state, block->next);
 		}
 		return;
@@ -205,7 +225,15 @@ static void backend_block(IRState* state, Block* block) {
 
 static void backend_statement(IRState* state, Statement* statement) {
 	switch (statement->tag) {
-	// case STATEMENT_ASSIGNMENT:
+	case STATEMENT_ASSIGNMENT:
+		backend_variable(state, statement->assignment.variable);
+		backend_expression(state, statement->assignment.expression);
+		LLVMBuildStore(
+			state->builder,
+			statement->assignment.expression->temp,
+			statement->assignment.variable->temp
+		);
+		break;
 	// case STATEMENT_FUNCTION_CALL:
 	// case STATEMENT_WHILE_WAIT:
 	// case STATEMENT_SIGNAL:
@@ -228,9 +256,29 @@ static void backend_statement(IRState* state, Statement* statement) {
 	}
 }
 
+static void backend_variable(IRState* state, Variable* variable) {
+	switch (variable->tag) {
+	case VARIABLE_ID:
+		if (variable->global) {
+			TODO;
+		}
+		break;
+	case VARIABLE_INDEXED:
+		TODO;
+	default:
+		UNREACHABLE;
+	}
+}
+
 static void backend_expression(IRState* state, Expression* expression) {
 	switch (expression->tag) {
-	// case EXPRESSION_LITERAL_BOOLEAN:
+	case EXPRESSION_LITERAL_BOOLEAN:
+		expression->temp = LLVMConstInt(
+			/* Type			*/ llvm_type(expression->type),
+			/* Value		*/ expression->literal_boolean,
+			/* SignExtend	*/ false // TODO: Deveria?
+		);
+		break;
 	case EXPRESSION_LITERAL_INTEGER:
 		expression->temp = LLVMConstInt(
 			/* Type			*/ llvm_type(expression->type),
@@ -238,7 +286,12 @@ static void backend_expression(IRState* state, Expression* expression) {
 			/* SignExtend	*/ false // TODO: Deveria?
 		);
 		break;
-	// case EXPRESSION_LITERAL_FLOAT:
+	case EXPRESSION_LITERAL_FLOAT:
+		expression->temp = LLVMConstReal(
+			/* Type		*/ llvm_type(expression->type),
+			/* Value	*/ expression->literal_float
+		);
+		break;
 	// case EXPRESSION_LITERAL_STRING:
 	// case EXPRESSION_VARIABLE:
 	// case EXPRESSION_FUNCTION_CALL:
@@ -296,8 +349,9 @@ static LLVMValueRef llvm_function_declaration(LLVMModuleRef module,
 	// Setting the names for the parameters
 	parameter = prototype->function.parameters;
 	for (int i = 0; parameter; parameter = parameter->next, i++) {
+		parameter->variable->temp = LLVMGetParam(function, i);
 		LLVMSetValueName(
-			/* Value	*/ LLVMGetParam(function, i),
+			/* Value	*/ parameter->variable->temp,
 			/* Name		*/ parameter->variable->id->name
 		);
 	}
@@ -315,6 +369,9 @@ static LLVMTypeRef llvm_type(Type* type) {
 			}
 			if (type == integer_) {
 				return LLVMInt32Type();
+			}
+			if (type == float_) {
+				return LLVMDoubleType();
 			}
 			TODO;
 			break; // TODO
@@ -336,15 +393,6 @@ static void llvm_return(LLVMBuilderRef builder, LLVMValueRef temp) {
 //	Auxiliary
 //
 // ==================================================
-
-// Inserts a default return statement at the end of the function using the
-// function's return type zero value. Should only be called after calling
-// `backend_body` for the function's body.
-static void invariantreturn(IRState* s, Type* t) {
-	LLVMBasicBlockRef b = LLVMAppendBasicBlock(s->function, "invariant-return");
-	LLVMPositionBuilderAtEnd(s->builder, b);
-	llvm_return(s->builder, typezerovalue(t));
-}
 
 // TODO: Find a better way to write this...
 static LLVMValueRef typezerovalue(Type* type) {

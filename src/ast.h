@@ -253,6 +253,8 @@ struct Variable {
 	bool global; // default false
 	bool value; // default false
 
+	LLVMValueRef temp;
+
 	union {
 		// VariableId
 		Id* id;

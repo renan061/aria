@@ -9,6 +9,7 @@
  *	- Function that return nothing should be represented with type
  *		Void, not NULL pointers. And return statements with no expressions
  *		should return the 'nil' expression.
+ *	- Change parameters to 'value' instead of 'variable'.
  *
  */
 #include <assert.h>
@@ -61,7 +62,7 @@ static void sem_declaration(SemanticState*, Declaration*);
 static void sem_definition(SemanticState*, Definition*);
 static void sem_block(SemanticState*, Block*);
 static void sem_statement(SemanticState*, Statement*);
-static void sem_variable(SemanticState*, Variable*);
+static void sem_variable(SemanticState*, Variable**);
 static void sem_expression(SemanticState*, Expression*);
 static void sem_function_call(SemanticState*, FunctionCall*);
 
@@ -77,6 +78,11 @@ static bool numerictype(Type*);
 static bool conditiontype(Type*);
 static bool equatabletype(Type*);
 static bool safetype(Type*);
+
+// TODO
+// static void freetype(Type*);
+static void freetypeid(Type*);
+// static void freetypearray(Type*);
 
 // Auxiliary functions that deal with errors
 static void err_redeclaration(Id*);
@@ -296,7 +302,7 @@ static void sem_block(SemanticState* state, Block* block) {
 static void sem_statement(SemanticState* state, Statement* statement) {
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
-		sem_variable(state, statement->assignment.variable);
+		sem_variable(state, &statement->assignment.variable);
 		if (statement->assignment.variable->value) { // can't be reassigned
 			err_assignment_value(statement);
 		}
@@ -319,7 +325,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 			err_invalid_condition_type(statement->while_wait.expression);
 		}
 		// TODO: Special semantics for condition variables?
-		sem_variable(state, statement->while_wait.variable);
+		sem_variable(state, &statement->while_wait.variable);
 		break;
 	case STATEMENT_SIGNAL:
 		if (!state->currentMonitor) {
@@ -329,7 +335,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 			err_monitor_statements_constructor(statement->line, "signal");
 		}
 		// TODO: Special semantics for condition variables?
-		sem_variable(state, statement->signal);
+		sem_variable(state, &statement->signal);
 		break;
 	case STATEMENT_BROADCAST:
 		if (!state->currentMonitor) {
@@ -339,7 +345,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 			err_monitor_statements_constructor(statement->line, "broadcast");
 		}
 		// TODO: Special semantics for condition variables?
-		sem_variable(state, statement->broadcast);
+		sem_variable(state, &statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
 		// Can't return inside a spawn block
@@ -410,7 +416,9 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 	}
 }
 
-static void sem_variable(SemanticState* state, Variable* variable) {
+static void sem_variable(SemanticState* state, Variable** variablePointer) {
+	Variable* variable = *variablePointer;
+
 	switch (variable->tag) {
 	case VARIABLE_ID: {
 		Declaration* d = symtable_find_declaration(state->ltable, variable->id);
@@ -419,19 +427,21 @@ static void sem_variable(SemanticState* state, Variable* variable) {
 		} else if (d->tag != DECLARATION_VARIABLE) {
 			err_variable_misuse(variable->id);
 		}
-		variable->value = d->variable->value;
+
+		unsigned int line = variable->line;
+		assert(variable->type == NULL);
 		free(variable->id);
-		variable->id = d->variable->id;
-		variable->type = d->variable->type;
+		free(variable);
+		*variablePointer = variable = d->variable;
 
 		// TODO: Find a better way to do this
 		if (state->insideSpawn &&
 			!symtable_contains_in_current_scope(state->ltable, variable->id)) {
 			if (!variable->value) {
-				err_spawn_variable(variable->line);
+				err_spawn_variable(line);
 			}
 			if (!safetype(variable->type)) {
-				err_spawn_unsafe(variable->line);
+				err_spawn_unsafe(line);
 			}
 		}
 
@@ -466,7 +476,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 		expression->type = string_;
 		break;
 	case EXPRESSION_VARIABLE:
-		sem_variable(state, expression->variable);
+		sem_variable(state, &expression->variable);
 		expression->type = expression->variable->type;
 		break;
 	case EXPRESSION_FUNCTION_CALL:
@@ -679,6 +689,19 @@ static bool typeequals(Type* type1, Type* type2) {
 	return typeequals(type1->array, type2->array);
 }
 
+// static void freetype(Type* type) {
+// 	switch (type->tag) {
+// 	case TYPE_ID:
+// 		freetypeid(type);
+// 		break;
+// 	case TYPE_ARRAY:
+// 		freetypearray(type);
+// 		break;
+// 	default:
+// 		UNREACHABLE;
+// 	}
+// }
+
 static void freetypeid(Type* type) {
 	assert(type->tag == TYPE_ID);
 	if (type->primitive) {
@@ -687,6 +710,17 @@ static void freetypeid(Type* type) {
 	free(type->id);
 	free(type);
 }
+
+// static void freetypearray(Type* type) {
+// 	if (type->tag == TYPE_ID) {
+// 		freetypeid(type);
+// 		return;
+// 	}
+
+// 	assert(type->tag == TYPE_ARRAY);
+// 	freetypearray(type->array);
+// 	free(type);
+// }
 
 // TODO
 static void enterscope(SemanticState* state) {
