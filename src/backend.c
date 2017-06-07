@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h> // TODO: Remove
+#include <strings.h> // TODO: Remove
 
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
@@ -15,46 +16,15 @@
 // TODO: Remove
 #define TODO assert(NULL);
 
+// TODO
 #define TEMP "_t"
+#define STR "_str"
 
 #define LLVM_APPEND_BLOCK(state, name) \
 	LLVMPositionBuilderAtEnd( \
 		state->builder, \
 		LLVMAppendBasicBlock(state->function, name) \
 	); \
-
-// Sum
-
-// define i32 @sum(i32, i32) #0 {
-// 	%3 = alloca i32, align 4
-// 	%4 = alloca i32, align 4
-// 	store i32 %0, i32* %3, align 4
-// 	store i32 %1, i32* %4, align 4
-// 	%5 = load i32, i32* %3, align 4
-// 	%6 = load i32, i32* %4, align 4
-// 	%7 = add nsw i32 %5, %6
-// 	ret i32 %7
-// }
-
-// static void sum() {
-// 	// Creating the prototype
-// 	LLVMTypeRef params[] = {LLVMInt32Type(), LLVMInt32Type()};
-// 	LLVMTypeRef function = LLVMFunctionType(LLVMInt32Type(), params, 2, false);
-// 	LLVMValueRef prototype = LLVMAddFunction(module, "sum", function);
-
-// 	// Basic blocks
-// 	LLVMBasicBlockRef entry = LLVMAppendBasicBlock(prototype, "entry");
-
-// 	LLVMBuilderRef builder = LLVMCreateBuilder();
-// 	LLVMPositionBuilderAtEnd(builder, entry);
-
-// 	LLVMValueRef temp = LLVMBuildAdd(builder,
-// 		LLVMGetParam(prototype, 0),
-// 		LLVMGetParam(prototype, 1),
-// 		"tmp"
-// 	);
-// 	LLVMBuildRet(builder, temp);
-// }
 
 // Primitive types
 static Type* boolean_;
@@ -66,12 +36,14 @@ typedef struct IRState {
 	LLVMModuleRef module;
 	LLVMBuilderRef builder;
 
+	// TODO
+	LLVMValueRef printf;
+
 	// Current function
     LLVMValueRef function;
 } IRState;
 
 // LLVM (TODO: New Module)
-static LLVMTypeRef llvm_printf(void);
 static void llvm_function_declaration(LLVMModuleRef, Declaration*);
 static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(LLVMBuilderRef, LLVMValueRef);
@@ -109,7 +81,11 @@ LLVMModuleRef backend_compile(Program* program) {
 	};
 
 	// Includes
-	LLVMAddFunction(state.module, "printf", llvm_printf());
+	// TODO: Should declare something like `extern printf` in the code...
+	LLVMTypeRef printf_param_types[] = {LLVMPointerType(LLVMInt8Type(), 0)};
+	LLVMTypeRef printf_type = LLVMFunctionType(LLVMInt32Type(),
+		printf_param_types, 1, true); 
+	state.printf = LLVMAddFunction(state.module, "printf", printf_type);
 
 	backend_body(&state, program->body);
 
@@ -291,7 +267,21 @@ static void backend_expression(IRState* state, Expression* expression) {
 		expression->temp = LLVMConstReal(llvm_type(expression->type),
 			expression->literal_float);
 		break;
-	// case EXPRESSION_LITERAL_STRING:
+	case EXPRESSION_LITERAL_STRING: {
+		// Global
+		const char* string = expression->literal_string;
+		size_t len = strlen(string);
+		LLVMValueRef llvm_global = LLVMAddGlobal(state->module,
+			LLVMArrayType(LLVMInt8Type(), len + 1), STR);
+		LLVMSetInitializer(llvm_global, LLVMConstString(string, len, false));
+		LLVMSetVisibility(llvm_global, LLVMHiddenVisibility);
+
+		// Expression
+		expression->temp = LLVMBuildPointerCast(state->builder, llvm_global,
+			llvm_type(expression->type), TEMP);
+
+		break;
+	}
 	case EXPRESSION_VARIABLE:
 		expression->temp = LLVMBuildLoad(state->builder,
 			expression->variable->temp, TEMP);
@@ -405,6 +395,11 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 		arguments[i] = arg->temp;
 	}
 
+	// TODO: Remove this gambiarra
+	if (!strcmp(call->basic->name, "printf")) {
+		return LLVMBuildCall(state->builder, state->printf, arguments, n, "");
+	}
+
 	return LLVMBuildCall(state->builder, call->declaration->llvm_value,
 		arguments, n, "");
 }
@@ -414,11 +409,6 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 //	LLVM
 //
 // ==================================================
-
-static LLVMTypeRef llvm_printf(void) {
-	LLVMTypeRef paramTypes[] = {LLVMPointerType(LLVMInt8Type(), 0)};
-	return LLVMFunctionType(LLVMInt32Type(), paramTypes, 1, true); 
-}
 
 // sets the value reference for the function prototype inside declaration
 static void llvm_function_declaration(LLVMModuleRef module,
@@ -477,8 +467,10 @@ static LLVMTypeRef llvm_type(Type* type) {
 			if (type == float_) {
 				return LLVMDoubleType();
 			}
-			TODO;
-			break; // TODO
+			if (type == string_) {
+				return LLVMPointerType(LLVMInt8Type(), 0);
+			}
+			UNREACHABLE;
 		default:
 			UNREACHABLE;
 	}
