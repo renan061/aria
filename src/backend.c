@@ -343,7 +343,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 				UNREACHABLE; \
 			} \
 		// End macro
-			
+
 		case '+':
 			backend_expression(state, expression->binary.left_expression);
 			backend_expression(state, expression->binary.right_expression);
@@ -547,7 +547,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	}
 
 	// TODO: Remove this gambiarra
-	if (!strcmp(call->basic->name, "printf")) {
+	if (!strcmp(call->basic->name, "print")) {
 		return LLVMBuildCall(state->builder, state->printf, arguments, n, "");
 	}
 

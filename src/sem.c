@@ -563,7 +563,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	switch (call->tag) {
 	case FUNCTION_CALL_BASIC:
 		// MEGA TODO: Fix this master gambiarra
-		if (!strcmp(call->basic->name, "printf")) {
+		if (!strcmp(call->basic->name, "print")) {
 			for (Expression* a = call->arguments; a; a = a->next) {
 				sem_expression(state, a);
 			}
