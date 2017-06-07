@@ -18,13 +18,24 @@
 
 // TODO
 #define TEMP "_t"
+#define LABEL "label"
 #define STR "_str"
+
+// TODO: LLVM Types / Values
+#define LLVM_VOID_TYPE LLVMVoidType()
+#define LLVM_BOOLEAN_TYPE LLVMIntType(1)
+#define LLVM_INTEGER_TYPE LLVMInt32Type()
+#define LLVM_FLOAT_TYPE LLVMDoubleType()
+#define LLVM_STRING_TYPE LLVMPointerType(LLVMInt8Type(), 0);
+
+#define LLVM_TRUE_VALUE LLVMConstInt(LLVM_BOOLEAN_TYPE, true, false)
+#define LLVM_FALSE_VALUE LLVMConstInt(LLVM_BOOLEAN_TYPE, false, false)
 
 #define LLVM_APPEND_BLOCK(state, name) \
 	LLVMPositionBuilderAtEnd( \
 		state->builder, \
 		LLVMAppendBasicBlock(state->function, name) \
-	); \
+	) \
 
 // Primitive types
 static Type* boolean_;
@@ -58,6 +69,8 @@ static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
 static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
+static void backend_condition(IRState*, Expression*,
+	LLVMBasicBlockRef, LLVMBasicBlockRef);
 static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // ==================================================
@@ -145,11 +158,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 		if (variable->global) {
 			TODO;
 		} else {
-			variable->temp = LLVMBuildAlloca(
-				state->builder,
-				llvm_type(variable->type),
-				variable->id->name
-			);
+			variable->temp = LLVMBuildAlloca(state->builder,
+				llvm_type(variable->type), variable->id->name);
 			backend_expression(state, expression);
 			LLVMBuildStore(state->builder, expression->temp, variable->temp);
 		}
@@ -306,6 +316,8 @@ static void backend_expression(IRState* state, Expression* expression) {
 			break;
 		case TK_NOT:
 			goto CONDITION_EXPRESSION;
+		default:
+			UNREACHABLE;
 		}
 		break;
 	case EXPRESSION_BINARY:
@@ -351,6 +363,8 @@ static void backend_expression(IRState* state, Expression* expression) {
 			backend_expression(state, expression->binary.right_expression);
 			BINARY_ARITHMETICS(expression, state, LLVMBuildSDiv, LLVMBuildFDiv);
 			break;
+		default:
+			UNREACHABLE;
 		}
 		break;
 	case EXPRESSION_CAST:
@@ -375,8 +389,116 @@ static void backend_expression(IRState* state, Expression* expression) {
 
 	return;
 
-	CONDITION_EXPRESSION: {
-		TODO;
+	CONDITION_EXPRESSION: { // expression ? true : false
+		LLVMBasicBlockRef
+			block_true	= LLVMAppendBasicBlock(state->function, LABEL "_a"),
+			block_false	= LLVMAppendBasicBlock(state->function, LABEL "_b"),
+			block_phi	= LLVMAppendBasicBlock(state->function, LABEL "_phi");
+
+		backend_condition(state, expression, block_true, block_false);
+		LLVMPositionBuilderAtEnd(state->builder, block_true);
+		LLVMBuildBr(state->builder, block_phi);
+		LLVMPositionBuilderAtEnd(state->builder, block_false);
+		LLVMBuildBr(state->builder, block_phi);
+		LLVMPositionBuilderAtEnd(state->builder, block_phi);
+
+		LLVMValueRef
+			phi = LLVMBuildPhi(state->builder, LLVM_BOOLEAN_TYPE, TEMP "_phi"),
+			incoming_values[2] = {LLVM_TRUE_VALUE, LLVM_FALSE_VALUE};
+		LLVMBasicBlockRef incoming_blocks[2] = {block_true, block_false};
+		LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
+
+		expression->temp = phi;
+	}
+}
+
+static void backend_condition(IRState* state, Expression* expression,
+	LLVMBasicBlockRef lt, LLVMBasicBlockRef lf) {
+
+	switch (expression->tag) {
+	case EXPRESSION_UNARY:
+		switch (expression->unary.token) {
+		case TK_NOT:
+			backend_condition(state, expression->unary.expression, lf, lt);
+			break;
+		case '-':
+			goto EXPRESSION_CONDITION;
+		default:
+			UNREACHABLE;
+		}
+		break;
+	case EXPRESSION_BINARY:
+		switch (expression->binary.token) {
+		case TK_OR:
+			// LLVMLabel l = llvm_label_temp();
+			// code_cond(exp1, lt, l);
+			// llvm_label(l);
+			// code_cond(exp2, lt, lf);
+			break;
+		case TK_AND:
+			// LLVMLabel l = llvm_label_temp();
+			// code_cond(exp1, l, lf);
+			// llvm_label(l);
+			// code_cond(exp2, lt, lf);
+			break;
+		case TK_EQUAL:
+			backend_expression(state, expression->binary.left_expression);
+			backend_expression(state, expression->binary.right_expression);
+
+			// TODO: More readable
+			if (expression->binary.left_expression->type == boolean_ &&
+				expression->binary.right_expression->type == boolean_) {
+				expression->temp = LLVMBuildICmp(state->builder, LLVMIntEQ,
+					expression->binary.left_expression->temp,
+					expression->binary.right_expression->temp, TEMP);
+			} else if (expression->binary.left_expression->type == integer_ &&
+				expression->binary.right_expression->type == integer_) {
+				expression->temp = LLVMBuildICmp(state->builder, LLVMIntEQ,
+					expression->binary.left_expression->temp,
+					expression->binary.right_expression->temp, TEMP);
+			} else if (expression->binary.left_expression->type == float_ &&
+				expression->binary.right_expression->type == float_) {
+				expression->temp = LLVMBuildFCmp(state->builder, LLVMRealOEQ,
+					expression->binary.left_expression->temp,
+					expression->binary.right_expression->temp, TEMP);
+			} else {
+				UNREACHABLE;
+			}
+			LLVMBuildCondBr(state->builder, expression->temp, lt, lf);
+			break;
+		case TK_LEQUAL:
+			// code_exp(exp1);
+			// code_exp(exp2);
+			// exp->temp = llvm_cmp_le(exp1->type, exp1->temp, exp2->temp);
+			// llvm_br3(exp->type, exp->temp, lt, lf);
+			TODO;
+		case TK_GEQUAL:
+			// code_exp(exp1);
+			// code_exp(exp2);
+			// exp->temp = llvm_cmp_ge(exp1->type, exp1->temp, exp2->temp);
+			// llvm_br3(exp->type, exp->temp, lt, lf);
+			TODO;
+		case '<':
+			// code_exp(exp1);
+			// code_exp(exp2);
+			// exp->temp = llvm_cmp_lt(exp1->type, exp1->temp, exp2->temp);
+			// llvm_br3(exp->type, exp->temp, lt, lf);
+			TODO;
+		case '>':
+			// code_exp(exp1);
+			// code_exp(exp2);
+			// exp->temp = llvm_cmp_gt(exp1->type, exp1->temp, exp2->temp);
+			// llvm_br3(exp->type, exp->temp, lt, lf);
+			TODO;
+		default:
+			goto EXPRESSION_CONDITION;
+		}
+		break;
+	default:
+		EXPRESSION_CONDITION: {
+			backend_expression(state, expression);
+			LLVMBuildCondBr(state->builder, expression->temp, lt, lf);
+		}
 	}
 }
 
@@ -446,29 +568,27 @@ static void llvm_function_declaration(LLVMModuleRef module,
 	parameter = declaration->function.parameters;
 	for (int i = 0; parameter; parameter = parameter->next, i++) {
 		parameter->variable->temp = LLVMGetParam(declaration->llvm_value, i);
-		LLVMSetValueName(
-			/* Value	*/ parameter->variable->temp,
-			/* Name		*/ parameter->variable->id->name
-		);
+		LLVMSetValueName(parameter->variable->temp,
+			parameter->variable->id->name);
 	}
 }
 
 static LLVMTypeRef llvm_type(Type* type) {
 	switch (type->tag) {
 		case TYPE_VOID:
-			return LLVMVoidType();
+			return LLVM_VOID_TYPE;
 		case TYPE_ID:
 			if (type == boolean_) {
-				return LLVMIntType(1);
+				return LLVM_BOOLEAN_TYPE;
 			}
 			if (type == integer_) {
-				return LLVMInt32Type();
+				return LLVM_INTEGER_TYPE;
 			}
 			if (type == float_) {
-				return LLVMDoubleType();
+				return LLVM_FLOAT_TYPE;
 			}
 			if (type == string_) {
-				return LLVMPointerType(LLVMInt8Type(), 0);
+				return LLVM_STRING_TYPE;
 			}
 			UNREACHABLE;
 		default:
