@@ -11,7 +11,7 @@
 #include "parser.h" // for the tokens
 
 // TODO: Move this somewhere else and look for assert(NULL) in the code
-#define UNREACHABLE assert(NULL);
+#define UNREACHABLE assert(NULL)
 
 // TODO: Remove
 #define TODO assert(NULL);
@@ -321,6 +321,16 @@ static void backend_expression(IRState* state, Expression* expression) {
 		}
 		break;
 	case EXPRESSION_BINARY:
+		switch (expression->binary.token) {
+		case TK_OR:
+		case TK_AND:
+		case TK_EQUAL:
+		case TK_LEQUAL:
+		case TK_GEQUAL:
+		case '<':
+		case '>':
+			goto CONDITION_EXPRESSION;
+
 		// Macro to be used by the [+, -, *, /] operations
 		#define BINARY_ARITHMETICS(e, s, ifunc, ffunc) \
 			if (e->type == integer_) { \
@@ -333,16 +343,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 				UNREACHABLE; \
 			} \
 		// End macro
-
-		switch (expression->binary.token) {
-		case TK_OR:
-		case TK_AND:
-		case TK_EQUAL:
-		case TK_LEQUAL:
-		case TK_GEQUAL:
-		case '<':
-		case '>':
-			goto CONDITION_EXPRESSION;
+			
 		case '+':
 			backend_expression(state, expression->binary.left_expression);
 			backend_expression(state, expression->binary.right_expression);
@@ -416,6 +417,13 @@ static void backend_condition(IRState* state, Expression* expression,
 	LLVMBasicBlockRef lt, LLVMBasicBlockRef lf) {
 
 	switch (expression->tag) {
+	case EXPRESSION_LITERAL_BOOLEAN:
+	case EXPRESSION_LITERAL_INTEGER:
+	case EXPRESSION_LITERAL_FLOAT:
+	case EXPRESSION_LITERAL_STRING:
+	case EXPRESSION_VARIABLE:
+	case EXPRESSION_FUNCTION_CALL:
+		goto EXPRESSION_CONDITION;
 	case EXPRESSION_UNARY:
 		switch (expression->unary.token) {
 		case TK_NOT:
@@ -428,77 +436,98 @@ static void backend_condition(IRState* state, Expression* expression,
 		}
 		break;
 	case EXPRESSION_BINARY:
-		switch (expression->binary.token) {
-		case TK_OR:
-			// LLVMLabel l = llvm_label_temp();
-			// code_cond(exp1, lt, l);
-			// llvm_label(l);
-			// code_cond(exp2, lt, lf);
+		switch (expression->binary.token) {		
+		case TK_OR: {
+			LLVMBasicBlockRef label =
+				LLVMAppendBasicBlock(state->function, LABEL "_or");
+			backend_condition(state, expression->binary.left_expression,
+				lt, label);
+			LLVMPositionBuilderAtEnd(state->builder, label);
+			backend_condition(state, expression->binary.right_expression,
+				lt, lf);
 			break;
-		case TK_AND:
-			// LLVMLabel l = llvm_label_temp();
-			// code_cond(exp1, l, lf);
-			// llvm_label(l);
-			// code_cond(exp2, lt, lf);
+		}
+		case TK_AND: {
+			LLVMBasicBlockRef label =
+				LLVMAppendBasicBlock(state->function, LABEL "_and");
+			backend_condition(state, expression->binary.left_expression,
+				label, lf);
+			LLVMPositionBuilderAtEnd(state->builder, label);
+			backend_condition(state, expression->binary.right_expression,
+				lt, lf);
 			break;
-		case TK_EQUAL:
-			backend_expression(state, expression->binary.left_expression);
-			backend_expression(state, expression->binary.right_expression);
+		}
+		case TK_EQUAL: {
+			Expression* l = expression->binary.left_expression;
+			Expression* r = expression->binary.right_expression;
+			backend_expression(state, l);
+			backend_expression(state, r);
 
 			// TODO: More readable
-			if (expression->binary.left_expression->type == boolean_ &&
-				expression->binary.right_expression->type == boolean_) {
+			if (l->type == boolean_ && r->type == boolean_) {
 				expression->temp = LLVMBuildICmp(state->builder, LLVMIntEQ,
-					expression->binary.left_expression->temp,
-					expression->binary.right_expression->temp, TEMP);
-			} else if (expression->binary.left_expression->type == integer_ &&
-				expression->binary.right_expression->type == integer_) {
+					l->temp, r->temp, TEMP);
+			} else if (l->type == integer_ && r->type == integer_) {
 				expression->temp = LLVMBuildICmp(state->builder, LLVMIntEQ,
-					expression->binary.left_expression->temp,
-					expression->binary.right_expression->temp, TEMP);
-			} else if (expression->binary.left_expression->type == float_ &&
-				expression->binary.right_expression->type == float_) {
+					l->temp, r->temp, TEMP);
+			} else if (l->type == float_ && r->type == float_) {
 				expression->temp = LLVMBuildFCmp(state->builder, LLVMRealOEQ,
-					expression->binary.left_expression->temp,
-					expression->binary.right_expression->temp, TEMP);
+					l->temp, r->temp, TEMP);
 			} else {
 				UNREACHABLE;
 			}
 			LLVMBuildCondBr(state->builder, expression->temp, lt, lf);
 			break;
+		}
+
+		// Macro to be used by the [<=, >=, <, >] operations
+		#define BINARY_COMPARISSON(lo, ro) { \
+			Expression* l = expression->binary.left_expression; \
+			Expression* r = expression->binary.right_expression; \
+			backend_expression(state, l); \
+			backend_expression(state, r); \
+			expression->temp = \
+				(l->type == integer_ && r->type == integer_) ? \
+					LLVMBuildICmp(state->builder, lo, l->temp, r->temp, TEMP) \
+				: (l->type == float_ && r->type == float_) ? \
+					LLVMBuildFCmp(state->builder, ro, l->temp, r->temp, TEMP) \
+				: (UNREACHABLE, NULL); \
+			LLVMBuildCondBr(state->builder, expression->temp, lt, lf); \
+		} \
+		// End macro
+
 		case TK_LEQUAL:
-			// code_exp(exp1);
-			// code_exp(exp2);
-			// exp->temp = llvm_cmp_le(exp1->type, exp1->temp, exp2->temp);
-			// llvm_br3(exp->type, exp->temp, lt, lf);
-			TODO;
+			BINARY_COMPARISSON(LLVMIntSLE, LLVMRealOLE);
+			break;
 		case TK_GEQUAL:
-			// code_exp(exp1);
-			// code_exp(exp2);
-			// exp->temp = llvm_cmp_ge(exp1->type, exp1->temp, exp2->temp);
-			// llvm_br3(exp->type, exp->temp, lt, lf);
-			TODO;
+			BINARY_COMPARISSON(LLVMIntSGE, LLVMRealOGE);
+			break;
 		case '<':
-			// code_exp(exp1);
-			// code_exp(exp2);
-			// exp->temp = llvm_cmp_lt(exp1->type, exp1->temp, exp2->temp);
-			// llvm_br3(exp->type, exp->temp, lt, lf);
-			TODO;
+			BINARY_COMPARISSON(LLVMIntSLT, LLVMRealOLT);
+			break;
 		case '>':
-			// code_exp(exp1);
-			// code_exp(exp2);
-			// exp->temp = llvm_cmp_gt(exp1->type, exp1->temp, exp2->temp);
-			// llvm_br3(exp->type, exp->temp, lt, lf);
-			TODO;
-		default:
+			BINARY_COMPARISSON(LLVMIntSGT, LLVMRealOGT);
+			break;
+		case '+':
+		case '-':
+		case '*':
+		case '/':
 			goto EXPRESSION_CONDITION;
+		default:
+			UNREACHABLE;
 		}
 		break;
+	case EXPRESSION_CAST:
+		goto EXPRESSION_CONDITION;
 	default:
-		EXPRESSION_CONDITION: {
-			backend_expression(state, expression);
-			LLVMBuildCondBr(state->builder, expression->temp, lt, lf);
-		}
+		UNREACHABLE;
+	}
+
+	return;
+
+	EXPRESSION_CONDITION: {
+		backend_expression(state, expression);
+		LLVMBuildCondBr(state->builder, expression->temp, lt, lf);
 	}
 }
 
