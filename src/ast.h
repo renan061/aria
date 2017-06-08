@@ -255,7 +255,7 @@ struct Variable {
 	bool global; // default false
 	bool value; // default false
 
-	LLVMValueRef temp;
+	LLVMValueRef llvm_value;
 
 	union {
 		// VariableId
@@ -274,7 +274,7 @@ struct Expression {
 	Expression *previous, *next;
 	Type* type;
 
-	LLVMValueRef temp; // rename to llvm_value
+	LLVMValueRef llvm_value;
 	
 	union {
 		// ExpressionLiteralBoolean

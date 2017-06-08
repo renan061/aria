@@ -453,7 +453,7 @@ Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
 	expression->line = ln;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->literal_boolean = literal_boolean;
 	return expression;
 }
@@ -465,7 +465,7 @@ Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
 	expression->line = ln;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->literal_integer = literal_integer;
 	return expression;
 }
@@ -477,7 +477,7 @@ Expression* ast_expression_literal_float(Line ln, double literal_float) {
 	expression->line = ln;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->literal_float = literal_float;
 	return expression;
 }
@@ -489,7 +489,7 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	expression->line = ln;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->literal_string = literal_string;
 	return expression;
 }
@@ -501,7 +501,7 @@ Expression* ast_expression_variable(Variable* variable) {
 	expression->line = variable->line;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->variable = variable;
 	return expression;
 }
@@ -513,7 +513,7 @@ Expression* ast_expression_function_call(FunctionCall* function_call) {
 	expression->line = function_call->line;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->function_call = function_call;
 	return expression;
 }
@@ -525,7 +525,7 @@ Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
 	unaryExpression->line = ln;
 	unaryExpression->previous = unaryExpression->next = NULL;
 	unaryExpression->type = NULL;
-	unaryExpression->temp = NULL;
+	unaryExpression->llvm_value = NULL;
 	unaryExpression->unary.token = token;
 	unaryExpression->unary.expression = expression;
 	return unaryExpression;
@@ -538,7 +538,7 @@ Expression* ast_expression_binary(Line ln, Token t, Expression* l, Expression* r
 	expression->line = ln;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
-	expression->temp = NULL;
+	expression->llvm_value = NULL;
 	expression->binary.token = t;
 	expression->binary.left_expression = l;
 	expression->binary.right_expression = r;
@@ -554,7 +554,7 @@ Expression* ast_expression_cast(Expression* expression, Type* type) {
 	castExpression->tag = EXPRESSION_CAST;
 	castExpression->line = expression->line;
 	castExpression->type = type;
-	castExpression->temp = NULL;
+	castExpression->llvm_value = NULL;
 	castExpression->cast = expression;
 
 	// Rearranging the list (only for arguments)
