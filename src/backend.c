@@ -18,8 +18,17 @@
 
 // TODO
 #define TEMP "_t"
-#define LABEL "label"
 #define STR "_str"
+
+#define LABEL "label"
+#define LABEL_IF_TRUE		LABEL "_if_true"
+#define LABEL_IF_END		LABEL "_if_end"
+#define LABEL_IF_ELSE_TRUE	LABEL "_if_else_true"
+#define LABEL_IF_ELSE_FALSE	LABEL "_if_else_false"
+#define LABEL_IF_ELSE_END	LABEL "_if_else_end"
+#define LABEL_WHILE			LABEL "_while"
+#define LABEL_WHILE_LOOP	LABEL "_while_loop"
+#define LABEL_WHILE_END		LABEL "_while_end"
 
 // TODO: LLVM Types / Values
 #define LLVM_VOID_TYPE LLVMVoidType()
@@ -171,9 +180,10 @@ static void backend_definition(IRState* state, Definition* definition) {
 	case DEFINITION_FUNCTION:
 		// `backed_declaration` sets state->function internally
 		backend_declaration(state, definition->function.declaration);
+		LLVM_APPEND_BLOCK(state, LABEL "_function_entry");
 		backend_block(state, definition->function.block);
 		// returns with the zero value of the function's return type
-		LLVM_APPEND_BLOCK(state, "invariant-return");
+		LLVM_APPEND_BLOCK(state, LABEL "_invariant_return");
 		llvm_return(state->builder,
 			typezerovalue(definition->function.declaration->function.type));
 		break;
@@ -191,7 +201,6 @@ static void backend_definition(IRState* state, Definition* definition) {
 static void backend_block(IRState* state, Block* block) {
 	if (block->tag == BLOCK) {
 		if (block->next) {
-			LLVM_APPEND_BLOCK(state, "entry");
 			backend_block(state, block->next);
 		}
 		return;
@@ -239,11 +248,58 @@ static void backend_statement(IRState* state, Statement* statement) {
 			llvm_return(state->builder, NULL);
 		}
 		break;
-	// case STATEMENT_IF:
-	// case STATEMENT_IF_ELSE:
-	// case STATEMENT_WHILE:
+	case STATEMENT_IF: {
+		LLVMBasicBlockRef
+			bt = LLVMAppendBasicBlock(state->function, LABEL_IF_TRUE),
+			be = LLVMAppendBasicBlock(state->function, LABEL_IF_END);
+		backend_condition(state, statement->if_.expression, bt, be);
+		// If
+		LLVMPositionBuilderAtEnd(state->builder, bt);
+		backend_block(state, statement->if_.block);
+		LLVMBuildBr(state->builder, be);
+		// End
+		LLVMPositionBuilderAtEnd(state->builder, be);
+		break;
+	}
+	case STATEMENT_IF_ELSE: {
+		LLVMBasicBlockRef
+			bt = LLVMAppendBasicBlock(state->function, LABEL_IF_ELSE_TRUE),
+			bf = LLVMAppendBasicBlock(state->function, LABEL_IF_ELSE_FALSE),
+			be = LLVMAppendBasicBlock(state->function, LABEL_IF_ELSE_END);
+		backend_condition(state, statement->if_else.expression, bt, bf);
+		// If
+		LLVMPositionBuilderAtEnd(state->builder, bt);
+		backend_block(state, statement->if_else.if_block);
+		LLVMBuildBr(state->builder, be);
+		// Else
+		LLVMPositionBuilderAtEnd(state->builder, bf);
+		backend_block(state, statement->if_else.else_block);
+		LLVMBuildBr(state->builder, be);
+		// End
+		LLVMPositionBuilderAtEnd(state->builder, be);
+		break;
+	}
+	case STATEMENT_WHILE: {
+		LLVMBasicBlockRef
+			bw = LLVMAppendBasicBlock(state->function, LABEL_WHILE),
+			bl = LLVMAppendBasicBlock(state->function, LABEL_WHILE_LOOP),
+			be = LLVMAppendBasicBlock(state->function, LABEL_WHILE_END);
+		LLVMBuildBr(state->builder, bw);
+		// While
+		LLVMPositionBuilderAtEnd(state->builder, bw);
+		backend_condition(state, statement->while_.expression, bl, be);
+		// Loop
+		LLVMPositionBuilderAtEnd(state->builder, bl);
+		backend_block(state, statement->while_.block);
+		LLVMBuildBr(state->builder, bw);
+		// End
+		LLVMPositionBuilderAtEnd(state->builder, be);
+		break;
+	}
 	// case STATEMENT_SPAWN:
-	// case STATEMENT_BLOCK:
+	case STATEMENT_BLOCK:
+		backend_block(state, statement->block);
+		break;
 	default:
 		UNREACHABLE;
 	}
