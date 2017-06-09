@@ -24,7 +24,7 @@
 	function topFunction10: [[[String]]] {
 	}
 	monitor SpawnMonitor {
-		initializer: SpawnMonitor {
+		function SpawnMonitor: SpawnMonitor {
 		}
 	}
 	function foo: Void {
@@ -88,7 +88,7 @@
 	}
 	monitor Monitor1 {
 		value queue: String = ("FIXME": String)
-		initializer: Monitor1 {
+		function Monitor1: Monitor1 {
 			return
 		}
 		function foo: String {
@@ -101,13 +101,13 @@
 		}
 	}
 	monitor Monitor2 {
-		initializer(variable n1: Integer, variable n2: Integer): Monitor2 {
+		function Monitor2(variable n1: Integer, variable n2: Integer): Monitor2 {
 		}
 		function foo(variable n1: Integer, variable n2: Integer): Void {
 		}
 	}
 	monitor Monitor3 {
-		initializer(variable boolean: Boolean, variable float: Float, variable string: String): Monitor3 {
+		function Monitor3(variable boolean: Boolean, variable float: Float, variable string: String): Monitor3 {
 		}
 		function foo(variable boolean: Boolean, variable float: Float, variable string: String): Void {
 		}

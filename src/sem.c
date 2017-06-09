@@ -203,7 +203,7 @@ static void sem_declaration(SemanticState* state, Declaration* declaration) {
 		}
 		break;
 	case DECLARATION_FUNCTION:
-		if (declaration->function.id) { // constructors don't have an id
+		if (declaration->function.id) { // not-constructors
 			if (!symtable_insert_declaration(state->ltable, declaration)) {
 				err_redeclaration(declaration->function.id);
 			}
@@ -214,8 +214,11 @@ static void sem_declaration(SemanticState* state, Declaration* declaration) {
 				}
 				linktype(state->utable, &declaration->function.type);
 			}
-		} else { // constructors need to be given a type
+		} else { // constructors
 			assert(state->currentMonitor);
+			// constructors need to be given an id
+			declaration->function.id = state->currentMonitor->monitor.id;
+			// constructors need to be given a type
 			declaration->function.type = state->currentMonitor;
 		}
 
