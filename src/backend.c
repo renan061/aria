@@ -809,16 +809,18 @@ static LLVMValueRef typezerovalue(Type* type) {
 		return NULL;
 	case TYPE_ID:
 		if (type == boolean_) {
-			return LLVMConstInt(llvm_type(type), false, false);
+			return LLVMConstInt(LLVM_BOOLEAN_TYPE, false, false);
 		}
 		if (type == integer_) {
-			return LLVMConstInt(llvm_type(type), 0, false);
+			return LLVMConstInt(LLVM_INTEGER_TYPE, 0, false);
 		}
 		if (type == float_) {
-			return LLVMConstReal(llvm_type(type), 0.0);
+			return LLVMConstReal(LLVM_FLOAT_TYPE, 0.0);
 		}
-		TODO; // string zero value (nil pointer ? ""?)
-		break;
+		if (type == string_) {
+			return LLVMConstNull(LLVM_STRING_TYPE);
+		}
+		UNREACHABLE;
 	case TYPE_ARRAY:
 		return LLVMConstNull(llvm_type(type));
 	case TYPE_MONITOR:
