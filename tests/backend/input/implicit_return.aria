@@ -1,0 +1,72 @@
+// Tests for the zero value return that functions return implicitly
+// when they don't terminate with a return statement.
+
+function implicitlyReturnsBoolean: Boolean {
+	/* empty */
+}
+
+function implicitlyReturnsInteger: Integer {
+	/* empty */
+}
+
+function implicitlyReturnsFloat: Float {
+	/* empty */
+}
+
+function implicitlyReturnsString: String {
+	/* empty */
+}
+
+function implicitlyReturnsArray: [Integer] {
+	/* empty */
+}
+
+function emptyBlock {
+	/* empty */
+}
+
+function onlyReturns {
+	return;
+}
+
+function statementAndReturn {
+	a := 1;
+	b := 2;
+	c := 3;
+}
+
+function blockWithNoReturn {
+	n := 10;
+	array := [String](n);
+
+	variable i = 0;
+	while i < n {
+		if i < 2 {
+			array[i] = "0-1-2";
+		} else if i > 2 and i < 8 {
+			array[i] = "3-4-5-6";
+		} else {
+			array[i] = "7-8-9";
+		}
+		i = i + 1;
+	}
+
+	if not true {
+		print("wrong");
+	} else {
+		a := 1;
+	}
+}
+
+function main {
+	print("implicitlyReturnsBoolean: %d\n", implicitlyReturnsBoolean());
+	print("implicitlyReturnsInteger: %d\n", implicitlyReturnsInteger());
+	print("implicitlyReturnsFloat: %.1f\n", implicitlyReturnsFloat());
+	print("implicitlyReturnsString: %s\n", implicitlyReturnsString());
+	print("implicitlyReturnsArray: %p\n", implicitlyReturnsArray());
+
+	emptyBlock();
+	onlyReturns();
+	statementAndReturn();
+	blockWithNoReturn();
+}

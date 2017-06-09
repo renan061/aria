@@ -18,7 +18,7 @@
 
 // TODO
 #define LLVM_TEMPORARY "_t"
-#define STR "_str"
+#define LLVM_GLOBAL_STRING "_global_string"
 
 #define LABEL "label"
 #define LABEL_IF_TRUE		LABEL "_if_true"
@@ -40,12 +40,6 @@
 #define LLVM_TRUE_VALUE LLVMConstInt(LLVM_BOOLEAN_TYPE, true, false)
 #define LLVM_FALSE_VALUE LLVMConstInt(LLVM_BOOLEAN_TYPE, false, false)
 
-#define LLVM_APPEND_BLOCK(state, name) \
-	LLVMPositionBuilderAtEnd( \
-		state->builder, \
-		LLVMAppendBasicBlock(state->function, name) \
-	) \
-
 // Primitive types
 static Type* boolean_;
 static Type* integer_;
@@ -61,21 +55,44 @@ typedef struct IRState {
 
 	// Current function
     LLVMValueRef function;
+
+    /*
+     * The current basic block.
+     * Must always set this after repositioning the builder.
+     * Must always set this to NULL after adding a terminator instruction.
+     */
+    LLVMBasicBlockRef block;
 } IRState;
+
+static void state_position_builder(IRState* state, LLVMBasicBlockRef block) {
+	assert(!state->block);
+	LLVMPositionBuilderAtEnd(state->builder, block);
+	state->block = block;
+}
+
+static bool state_block_open(IRState* state) {
+	return (bool) state->block;
+}
+
+static void state_close_block(IRState* state) {
+	assert(state->block);
+	state->block = NULL;
+}
 
 // LLVM (TODO: New Module)
 static void llvm_function_declaration(LLVMModuleRef, Declaration*);
 static LLVMTypeRef llvm_type(Type* type);
-static void llvm_return(LLVMBuilderRef, LLVMValueRef);
+static void llvm_return(IRState*, LLVMValueRef);
+static LLVMValueRef llvm_string_literal(IRState*, const char*);
 
 // Auxiliary
-static LLVMValueRef typezerovalue(Type*);
+static LLVMValueRef zerovalue(IRState*, Type*);
 
 // TODO
 static void backend_body(IRState*, Body*);
 static void backend_declaration(IRState*, Declaration*);
 static void backend_definition(IRState*, Definition*);
-static void backend_block(IRState*, Block*);
+static int backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
 static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
@@ -100,7 +117,8 @@ LLVMModuleRef backend_compile(Program* program) {
 	IRState state = {
 		/* module	*/ LLVMModuleCreateWithName("main.aria"),
 		/* builder	*/ LLVMCreateBuilder(),
-		/* function	*/ NULL
+		/* function	*/ NULL,
+		/* block 	*/ NULL
 	};
 
 	// Includes
@@ -124,21 +142,15 @@ LLVMModuleRef backend_compile(Program* program) {
 }
 
 static void backend_body(IRState* state, Body* body) {
-	if (body->tag == BODY) {
-		if (body->next) {
-			backend_body(state, body->next);
-		}
-		return;
-	}
-
-	for (Body* b = body; b; b = b->next) {
+	assert(body->tag == BODY);
+	for (Body* b = body->next; b; b = b->next) {
 		switch (b->tag) {
 		case BODY_DECLARATION:
 			backend_declaration(state, b->declaration);
-			break;
+			continue;
 		case BODY_DEFINITION:
 			backend_definition(state, b->definition);
-			break;
+			continue;
 		default:
 			UNREACHABLE;
 		}
@@ -170,7 +182,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 		Variable* variable = definition->variable.declaration->variable;
 		Expression* expression = definition->variable.expression;
 
-		if (variable->global) {
+		if (variable->global) { // global
 			variable->llvm_value = LLVMAddGlobal(
 				state->module,
 				llvm_type(variable->type),
@@ -178,7 +190,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 			);
 			backend_expression(state, expression);
 			LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
-		} else {
+		} else { // scoped variables
 			backend_declaration(state, definition->variable.declaration);
 			backend_expression(state, expression);
 			LLVMBuildStore(
@@ -191,33 +203,44 @@ static void backend_definition(IRState* state, Definition* definition) {
 	}
 	case DEFINITION_FUNCTION:
 		/* fallthrough */
-	case DEFINITION_CONSTRUCTOR:
+	case DEFINITION_CONSTRUCTOR: {
 		// `backed_declaration` sets state->function internally
 		backend_declaration(state, definition->function.declaration);
-		LLVM_APPEND_BLOCK(state, LABEL "_function_entry");
+
+		state_position_builder(state, LLVMAppendBasicBlock(
+			state->function,
+			LABEL "_function_entry"
+		));
 
 		// Calling alloca and store for parameters
-		{
-			Declaration* parameters =
+		// TODO: Fix ugly
+		for (Declaration* p =
 				definition->function.declaration->function.parameters;
-
-			for (Declaration* p = parameters; p; p = p->next) {
-				LLVMValueRef value = p->variable->llvm_value;
-				p->variable->llvm_value = LLVMBuildAlloca(
-					state->builder,
-					llvm_type(p->variable->type),
-					p->variable->id->name
-				);
-				LLVMBuildStore(state->builder, value, p->variable->llvm_value);
-			}
+				p;
+				p = p->next) {
+			LLVMValueRef value = p->variable->llvm_value;
+			p->variable->llvm_value = LLVMBuildAlloca(
+				state->builder,
+				llvm_type(p->variable->type),
+				p->variable->id->name
+			);
+			LLVMBuildStore(state->builder, value, p->variable->llvm_value);
 		}
 
 		backend_block(state, definition->function.block);
-		// returns with the zero value of the function's return type
-		LLVM_APPEND_BLOCK(state, LABEL "_invariant_return");
-		llvm_return(state->builder,
-			typezerovalue(definition->function.declaration->function.type));
+
+		// implicit return: always returns with the appropriate zero value
+		if (state_block_open(state)) {
+			llvm_return(
+				state,
+				zerovalue(
+					state,
+					definition->function.declaration->function.type
+				)
+			);
+		}
 		break;
+	}
 	case DEFINITION_METHOD:
 		TODO;
 		break;
@@ -229,29 +252,27 @@ static void backend_definition(IRState* state, Definition* definition) {
 	}
 }
 
-static void backend_block(IRState* state, Block* block) {
-	if (block->tag == BLOCK) {
-		if (block->next) {
-			backend_block(state, block->next);
-		}
-		return;
-	}
+static int backend_block(IRState* state, Block* block) {
+	assert(block->tag == BLOCK);
 
-	for (Block* b = block; b; b = b->next) {
+	int counter = 0;
+	for (Block* b = block->next; b; b = b->next, counter++) {
 		switch (b->tag) {
 		case BLOCK_DECLARATION:
 			backend_declaration(state, b->declaration);
-			break;
+			continue;
 		case BLOCK_DEFINITION:
 			backend_definition(state, b->definition);
-			break;
+			continue;
 		case BLOCK_STATEMENT:
 			backend_statement(state, b->statement);
-			break;
+			continue;
 		default:
 			UNREACHABLE;
 		}
 	}
+
+	return counter;
 }
 
 static void backend_statement(IRState* state, Statement* statement) {
@@ -280,9 +301,9 @@ static void backend_statement(IRState* state, Statement* statement) {
 	case STATEMENT_RETURN:
 		if (statement->return_) {
 			backend_expression(state, statement->return_);
-			llvm_return(state->builder, statement->return_->llvm_value);
+			llvm_return(state, statement->return_->llvm_value);
 		} else {
-			llvm_return(state->builder, NULL);
+			llvm_return(state, NULL);
 		}
 		break;
 	case STATEMENT_IF: {
@@ -291,11 +312,12 @@ static void backend_statement(IRState* state, Statement* statement) {
 			be = LLVMAppendBasicBlock(state->function, LABEL_IF_END);
 		backend_condition(state, statement->if_.expression, bt, be);
 		// If
-		LLVMPositionBuilderAtEnd(state->builder, bt);
+		state_position_builder(state, bt);
 		backend_block(state, statement->if_.block);
 		LLVMBuildBr(state->builder, be);
+		state_close_block(state);
 		// End
-		LLVMPositionBuilderAtEnd(state->builder, be);
+		state_position_builder(state, be);
 		break;
 	}
 	case STATEMENT_IF_ELSE: {
@@ -305,15 +327,17 @@ static void backend_statement(IRState* state, Statement* statement) {
 			be = LLVMAppendBasicBlock(state->function, LABEL_IF_ELSE_END);
 		backend_condition(state, statement->if_else.expression, bt, bf);
 		// If
-		LLVMPositionBuilderAtEnd(state->builder, bt);
+		state_position_builder(state, bt);
 		backend_block(state, statement->if_else.if_block);
 		LLVMBuildBr(state->builder, be);
+		state_close_block(state);
 		// Else
-		LLVMPositionBuilderAtEnd(state->builder, bf);
+		state_position_builder(state, bf);
 		backend_block(state, statement->if_else.else_block);
 		LLVMBuildBr(state->builder, be);
+		state_close_block(state);
 		// End
-		LLVMPositionBuilderAtEnd(state->builder, be);
+		state_position_builder(state, be);
 		break;
 	}
 	case STATEMENT_WHILE: {
@@ -322,15 +346,17 @@ static void backend_statement(IRState* state, Statement* statement) {
 			bl = LLVMAppendBasicBlock(state->function, LABEL_WHILE_LOOP),
 			be = LLVMAppendBasicBlock(state->function, LABEL_WHILE_END);
 		LLVMBuildBr(state->builder, bw);
+		state_close_block(state);
 		// While
-		LLVMPositionBuilderAtEnd(state->builder, bw);
+		state_position_builder(state, bw);
 		backend_condition(state, statement->while_.expression, bl, be);
 		// Loop
-		LLVMPositionBuilderAtEnd(state->builder, bl);
+		state_position_builder(state, bl);
 		backend_block(state, statement->while_.block);
 		LLVMBuildBr(state->builder, bw);
+		state_close_block(state);
 		// End
-		LLVMPositionBuilderAtEnd(state->builder, be);
+		state_position_builder(state, be);
 		break;
 	}
 	case STATEMENT_SPAWN:
@@ -370,34 +396,21 @@ static void backend_variable(IRState* state, Variable* variable) {
 static void backend_expression(IRState* state, Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		expression->llvm_value = LLVMConstInt(llvm_type(expression->type),
+		expression->llvm_value = LLVMConstInt(LLVM_BOOLEAN_TYPE,
 			expression->literal_boolean, false /* TODO */);
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		expression->llvm_value = LLVMConstInt(llvm_type(expression->type),
+		expression->llvm_value = LLVMConstInt(LLVM_INTEGER_TYPE,
 			expression->literal_integer, false /* TODO */);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->llvm_value = LLVMConstReal(llvm_type(expression->type),
+		expression->llvm_value = LLVMConstReal(LLVM_FLOAT_TYPE,
 			expression->literal_float);
 		break;
 	case EXPRESSION_LITERAL_STRING: {
-		// TODO: LLVMGlobalString ???
-
-		// Global
-		const char* string = expression->literal_string;
-		size_t len = strlen(string);
-		LLVMValueRef llvm_global = LLVMAddGlobal(state->module,
-			LLVMArrayType(LLVMInt8Type(), len + 1), STR);
-		LLVMSetInitializer(llvm_global, LLVMConstString(string, len, false));
-		LLVMSetVisibility(llvm_global, LLVMHiddenVisibility);
-
-		// Expression
-		expression->llvm_value = LLVMBuildPointerCast(
-			state->builder,
-			llvm_global,
-			llvm_type(expression->type),
-			LLVM_TEMPORARY
+		expression->llvm_value = llvm_string_literal(
+			state,
+			expression->literal_string
 		);
 		break;
 	}
@@ -520,11 +533,13 @@ static void backend_expression(IRState* state, Expression* expression) {
 			block_phi	= LLVMAppendBasicBlock(state->function, LABEL "_phi");
 
 		backend_condition(state, expression, block_true, block_false);
-		LLVMPositionBuilderAtEnd(state->builder, block_true);
+		state_position_builder(state, block_true);
 		LLVMBuildBr(state->builder, block_phi);
-		LLVMPositionBuilderAtEnd(state->builder, block_false);
+		state_close_block(state);
+		state_position_builder(state, block_false);
 		LLVMBuildBr(state->builder, block_phi);
-		LLVMPositionBuilderAtEnd(state->builder, block_phi);
+		state_close_block(state);
+		state_position_builder(state, block_phi);
 
 		LLVMValueRef
 			phi = LLVMBuildPhi(state->builder, LLVM_BOOLEAN_TYPE,
@@ -566,7 +581,7 @@ static void backend_condition(IRState* state, Expression* expression,
 				LLVMAppendBasicBlock(state->function, LABEL "_or");
 			backend_condition(state, expression->binary.left_expression,
 				lt, label);
-			LLVMPositionBuilderAtEnd(state->builder, label);
+			state_position_builder(state, label);
 			backend_condition(state, expression->binary.right_expression,
 				lt, lf);
 			break;
@@ -576,7 +591,7 @@ static void backend_condition(IRState* state, Expression* expression,
 				LLVMAppendBasicBlock(state->function, LABEL "_and");
 			backend_condition(state, expression->binary.left_expression,
 				label, lf);
-			LLVMPositionBuilderAtEnd(state->builder, label);
+			state_position_builder(state, label);
 			backend_condition(state, expression->binary.right_expression,
 				lt, lf);
 			break;
@@ -601,6 +616,7 @@ static void backend_condition(IRState* state, Expression* expression,
 				UNREACHABLE;
 			}
 			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+			state_close_block(state);
 			break;
 		}
 
@@ -619,6 +635,7 @@ static void backend_condition(IRState* state, Expression* expression,
 						r->llvm_value, LLVM_TEMPORARY) \
 				: (UNREACHABLE, NULL); \
 			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf); \
+			state_close_block(state); \
 		} \
 		// End macro
 
@@ -654,6 +671,7 @@ static void backend_condition(IRState* state, Expression* expression,
 	EXPRESSION_CONDITION: {
 		backend_expression(state, expression);
 		LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+		state_close_block(state);
 	}
 }
 
@@ -788,12 +806,34 @@ static LLVMTypeRef llvm_type(Type* type) {
 	}
 }
 
-static void llvm_return(LLVMBuilderRef builder, LLVMValueRef llvm_value) {
+static void llvm_return(IRState* state, LLVMValueRef llvm_value) {
 	if (llvm_value) {
-		LLVMBuildRet(builder, llvm_value);
+		LLVMBuildRet(state->builder, llvm_value);
 	} else {
-		LLVMBuildRetVoid(builder);
+		LLVMBuildRetVoid(state->builder);
 	}
+	state_close_block(state);
+}
+
+// TODO: This functions is wrong, should use LLVMConstString and cast to pointer
+static LLVMValueRef llvm_string_literal(IRState* state, const char* string) {
+	// Global
+	size_t len = strlen(string);
+	LLVMValueRef llvm_global = LLVMAddGlobal(
+		state->module,
+		LLVMArrayType(LLVMInt8Type(), len + 1),
+		LLVM_GLOBAL_STRING
+	);
+	LLVMSetInitializer(llvm_global, LLVMConstString(string, len, false));
+	LLVMSetVisibility(llvm_global, LLVMHiddenVisibility);
+
+	// Expression
+	return LLVMBuildPointerCast(
+		state->builder,
+		llvm_global,
+		LLVM_STRING_TYPE,
+		LLVM_TEMPORARY
+	);
 }
 
 // ==================================================
@@ -803,7 +843,7 @@ static void llvm_return(LLVMBuilderRef builder, LLVMValueRef llvm_value) {
 // ==================================================
 
 // TODO: Find a better way to write this...
-static LLVMValueRef typezerovalue(Type* type) {
+static LLVMValueRef zerovalue(IRState* state, Type* type) {
 	switch (type->tag) {
 	case TYPE_VOID:
 		return NULL;
@@ -818,7 +858,7 @@ static LLVMValueRef typezerovalue(Type* type) {
 			return LLVMConstReal(LLVM_FLOAT_TYPE, 0.0);
 		}
 		if (type == string_) {
-			return LLVMConstNull(LLVM_STRING_TYPE);
+			return llvm_string_literal(state, "");
 		}
 		UNREACHABLE;
 	case TYPE_ARRAY:

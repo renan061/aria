@@ -4,13 +4,18 @@
 
 // ==================================================
 //
-//	Global
+//	TODO
 //
 // ==================================================
 
 // global
 // permitir expressões que não sejam literais?
 value g = true or false;
+
+- Funções retornam zero value implicitamente caso não seja fornecido um return?
+
+- Variáveis não inicializadas são sempre inicializadas para um
+	zero value correspondente?
 
 // ==================================================
 //
@@ -19,21 +24,6 @@ value g = true or false;
 // ==================================================
 
 - foo() = 1 é erro do parser, mas foo()[1] = 1 é erro semântico, inconsistência?
-
-- This
-	var x []int
-
-	func foo() []int {
-		x = []int{10, 20, 30}
-		return x
-	}
-
-	func main() {
-		foo()
-		println(x) // [10 20 30]
-		foo()[1] = 77
-		println(x) // [10 77 30]
-	}
 
 // ==================================================
 //
