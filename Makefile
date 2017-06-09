@@ -8,9 +8,10 @@ CC := gcc-7
 CFLAGS := -I/usr/local/opt/llvm/include -std=gnu11 -Wall
 
 CPPFLAGS := `llvm-config --cxxflags --ldflags --system-libs`
-CPPFLAGS += `llvm-config --libs analysis bitwriter core executionengine target mcjit native`
+CPPFLAGS += `llvm-config --libs analysis bitwriter core executionengine `
+CPPFLAGS += `llvm-config --libs target mcjit native`
 
-main: clean objs
+main: objs
 	@- $(CC) $(CFLAGS) -c src/aria.c -o obj/aria.o
 
 	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o	\
@@ -96,12 +97,8 @@ sem_test: errs vector parser scanner ast sem
 
 	@- sh tests/test.sh sem
 
-backend_test: errs vector parser scanner ast sem backend
-	@- $(CC) $(CFLAGS) -o bin/backendtest							\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
-	obj/symtable.o obj/sem.o obj/backend.o							\
-	src/aria.c -Isrc/
-
+backend_test: main
+	@- mv bin/aria bin/backendtest
 	@- sh tests/test.sh backend
 
 test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
