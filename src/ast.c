@@ -8,78 +8,15 @@
 
 // ==================================================
 //
-//	Program
+//	AST
 //
 // ==================================================
 
-Program* program;
+AST* ast = NULL;
 
-Program* ast_program(Body* body) {
-	assert(body->tag == BODY);
-	Program* program;
-	MALLOC(program, Program);
-	program->body = body;
-	return program;
-}
-
-// ==================================================
-//
-//	Body
-//
-// ==================================================
-
-Body* ast_body(Body* body) {
-	Body* base;
-	MALLOC(base, Body);
-	base->tag = BODY;
-	base->next = body;
-	return base;
-}
-
-Body* ast_body_declaration(Declaration* declaration) {
-	Body* body;
-	MALLOC(body, Body);
-	body->tag = BODY_DECLARATION;
-	body->next = NULL;
-	body->declaration = declaration;
-	return body;
-}
-
-Body* ast_body_definition(Definition* definition) {
-	Body* body;
-	MALLOC(body, Body);
-	body->tag = BODY_DEFINITION;
-	body->next = NULL;
-	body->definition = definition;
-	return body;
-}
-
-// ==================================================
-//
-//	Declaration
-//
-// ==================================================
-
-Declaration* ast_declaration_variable(Variable* variable) {
-	Declaration* declaration;
-	MALLOC(declaration, Declaration);
-	declaration->tag = DECLARATION_VARIABLE;
-	declaration->next = NULL;
-	declaration->llvm_value = NULL;
-	declaration->variable = variable;
-	return declaration;
-}
-
-Declaration* ast_declaration_function(Id* id, Declaration* params, Type* type) {
-	Declaration* declaration;
-	MALLOC(declaration, Declaration);
-	declaration->tag = DECLARATION_FUNCTION;
-	declaration->next = NULL;
-	declaration->llvm_value = NULL;
-	declaration->function.id = id;
-	declaration->function.parameters = params;
-	declaration->function.type = type;
-	return declaration;
+void ast_set(Definition* definitions) {
+	MALLOC(ast, AST);
+	ast->definitions = definitions;
 }
 
 // ==================================================
@@ -88,45 +25,59 @@ Declaration* ast_declaration_function(Id* id, Declaration* params, Type* type) {
 //
 // ==================================================
 
-Definition* ast_definition_variable(Declaration* declaration, Expression* exp) {
-	assert(declaration->tag == DECLARATION_VARIABLE);
+Definition* ast_definition_variable(Variable* var, Expression* exp) {
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_VARIABLE;
-	definition->variable.declaration = declaration;
+	definition->next = NULL;
+	definition->llvm_value = NULL;
+	definition->variable.variable = var;
 	definition->variable.expression = exp;
 	return definition;
 }
 
-Definition* ast_definition_function(Declaration* declaration, Block* block) {
-	assert(declaration->tag == DECLARATION_FUNCTION);
-	assert(block->tag == BLOCK);
+// Used by function and constructor definitions
+#define AST_FUNCTION(f, _tag, _private, _id, _parameters, _type, _block) \
+	assert(_block->tag == BLOCK); \
+	f->tag = _tag; \
+	f->next = NULL; \
+	f->llvm_value = NULL; \
+	f->function.private = _private; \
+	f->function.id = _id; \
+	f->function.parameters = _parameters; \
+	f->function.type = _type; \
+	f->function.block = _block; \
+
+Definition* ast_definition_function(Id* id, Definition* ps, Type* t, Block* b) {
 	Definition* definition;
 	MALLOC(definition, Definition);
-	definition->tag = DEFINITION_FUNCTION;
-	definition->function.declaration = declaration;
-	definition->function.block = block;
+	AST_FUNCTION(definition, DEFINITION_FUNCTION,
+		/* Private		*/ false,
+		/* Id			*/ id,
+		/* Parameters	*/ ps,
+		/* Type			*/ t,
+		/* Block		*/ b
+	);
 	return definition;
 }
 
-Definition* ast_definition_method(Definition* function, bool private) {
-	assert(function->tag == DEFINITION_FUNCTION);
-	Definition* definition;
-	MALLOC(definition, Definition);
-	definition->tag = DEFINITION_METHOD;
-	definition->method.function = function;
-	definition->method.private = private;
-	return definition;
+Definition* ast_definition_method(bool private, Definition* method) {
+	assert(method->tag == DEFINITION_FUNCTION);
+	method->tag = DEFINITION_METHOD;
+	method->function.private = private;
+	return method;
 }
 
-Definition* ast_definition_constructor(Declaration* declaration, Block* block) {
-	assert(declaration->tag == DECLARATION_FUNCTION);
-	assert(block->tag == BLOCK);
+Definition* ast_definition_constructor(Definition* parameters, Block* block) {
 	Definition* definition;
 	MALLOC(definition, Definition);
-	definition->tag = DEFINITION_CONSTRUCTOR;
-	definition->function.declaration = declaration;
-	definition->function.block = block;
+	AST_FUNCTION(definition, DEFINITION_CONSTRUCTOR,
+		/* Private		*/ false,
+		/* Id			*/ NULL,
+		/* Parameters	*/ parameters,
+		/* Type			*/ NULL,
+		/* Block		*/ block
+	);
 	return definition;
 }
 
@@ -135,6 +86,8 @@ Definition* ast_definition_type(Type* type) {
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_TYPE;
+	definition->next = NULL;
+	definition->llvm_value = NULL;
 	definition->type = type;
 	return definition;
 }
@@ -145,7 +98,7 @@ Definition* ast_definition_type(Type* type) {
 //
 // ==================================================
 
-Id* ast_id(unsigned int line, const char* name) {
+Id* ast_id(Line line, const char* name) {
 	Id* id;
 	MALLOC(id, Id);
 	id->line = line;
@@ -236,14 +189,14 @@ Type* ast_type_array(Type* type) {
 	return arrayType;
 }
 
-Type* ast_type_monitor(Id* id, Body* body) {
+Type* ast_type_monitor(Id* id, Definition* definitions) {
 	Type* type;
 	MALLOC(type, Type);
 	type->tag = TYPE_MONITOR;
 	type->primitive = false;
 	type->immutable = false;
 	type->monitor.id = id;
-	type->monitor.body = body;
+	type->monitor.definitions = definitions;
 	return type;
 }
 
@@ -260,16 +213,6 @@ Block* ast_block(Line ln, Block* block) {
 	base->line = ln;
 	base->next = block;
 	return base;
-}
-
-Block* ast_block_declaration(Declaration* declaration) {
-	Block* block;
-	MALLOC(block, Block);
-	block->tag = BLOCK_DECLARATION;
-	block->line = 0; // should not be accessed
-	block->next = NULL;
-	block->declaration = declaration;
-	return block;
 }
 
 Block* ast_block_definition(Definition* definition) {
@@ -423,6 +366,7 @@ Variable* ast_variable_id(Id* id) {
 	variable->type = NULL;
 	variable->global = false;
 	variable->value = false;
+	variable->llvm_value = NULL;
 	variable->id = id;
 	return variable;
 }
@@ -435,6 +379,7 @@ Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
 	variable->type = NULL;
 	variable->global = false;
 	variable->value = false;
+	variable->llvm_value = NULL;
 	variable->indexed.array = array;
 	variable->indexed.index = index;
 	return variable;
@@ -584,33 +529,35 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
 	function_call->tag = FUNCTION_CALL_BASIC;
 	function_call->line = ln;
 	function_call->type = NULL;
+	function_call->instance = NULL;
+	function_call->id = id;
 	function_call->arguments = arguments;
-	function_call->declaration = NULL;
-	function_call->basic = id;
+	function_call->function_definition = NULL;
 	return function_call;
 }
 
-FunctionCall* ast_call_method(Line ln, Expression* o, Id* n, Expression* args) {
+FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_METHOD;
 	function_call->line = ln;
 	function_call->type = NULL;
-	function_call->arguments = args;
-	function_call->declaration = NULL;
-	function_call->method.object = o;
-	function_call->method.name = n;
+	function_call->instance = i;
+	function_call->id = id;
+	function_call->arguments = a;
+	function_call->function_definition = NULL;
 	return function_call;
 }
 
-FunctionCall* ast_call_constructor(Line ln, Type* t, Expression* args) {
+FunctionCall* ast_call_constructor(Line ln, Type* type, Expression* arguments) {
 	FunctionCall* function_call;
 	MALLOC(function_call, FunctionCall);
 	function_call->tag = FUNCTION_CALL_CONSTRUCTOR;
 	function_call->line = ln;
-	function_call->type = NULL;
-	function_call->arguments = args;
-	function_call->declaration = NULL;
-	function_call->constructor = t;
+	function_call->type = type;
+	function_call->instance = NULL;
+	function_call->id = NULL;
+	function_call->arguments = arguments;
+	function_call->function_definition = NULL;
 	return function_call;
 }
