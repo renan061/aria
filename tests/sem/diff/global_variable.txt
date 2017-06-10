@@ -1,0 +1,5 @@
+1,2c1
+< line 2:
+< 	semantic error: global variables need to have Immutable types
+---
+> tests/test.sh: line 26: ../../bin/semtest: No such file or directory

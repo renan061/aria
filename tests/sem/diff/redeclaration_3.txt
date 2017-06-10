@@ -1,0 +1,5 @@
+1,2c1
+< line 6:
+< 	semantic error: redeclaration of name 'Stack'
+---
+> tests/test.sh: line 26: ../../bin/semtest: No such file or directory

@@ -14,24 +14,14 @@
 	#include "scanner.h"
 
 	// Auxiliary macro to use with lists
-	#define APPEND(type, assignable, list, elem);				\
-		if (!list) {											\
-			assignable = elem;									\
-		} else {												\
-			type* e;											\
-			for (e = assignable = list; e->next; e = e->next);	\
-			e->next = elem;										\
-		}														\
-
-	// TODO: Remove?
-	// Auxiliary macro to wrap a list of declarations in the
-	// appropriate Body or Block type
-	#define WRAP_VARIABLE_DECLARATIONS(assignable, func, first, type)	\
-		assignable = func(first);										\
-		for (type* t = assignable; first->next; first = first->next) {	\
-			t->next = func(first->next);								\
-			t = t->next;												\
-		}																\
+	#define APPEND(type, assignable, list, elem); \
+		if (!list) { \
+			assignable = elem; \
+		} else { \
+			type* e; \
+			for (e = assignable = list; e->next; e = e->next); \
+			e->next = elem; \
+		} \
 
 	static void yyerror(const char* err);
 %}

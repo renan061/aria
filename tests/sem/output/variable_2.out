@@ -1,2 +1,1 @@
-line 3:
-	semantic error: 'foo' is not a variable
+tests/test.sh: line 26: ../../bin/semtest: No such file or directory

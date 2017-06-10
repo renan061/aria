@@ -1,0 +1,5 @@
+1,2c1
+< line 3:
+< 	semantic error: unkown type name 'Array3'
+---
+> tests/test.sh: line 26: ../../bin/semtest: No such file or directory

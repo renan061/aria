@@ -14,13 +14,11 @@ static unsigned int tabs = 0;
 static void identation(void);
 
 // Prints a scanner token from an expression
-static void printtoken(Token token);
+static void printtoken(Token);
 
-// TODO
-static void printtype(Type* type);
+// Prints a representation of the type
+static void printtype(Type*);
 
-static void print_ast_body(Body*);
-static void print_ast_declaration(Declaration*);
 static void print_ast_definition(Definition*);
 static void print_ast_id(Id*);
 static void print_ast_type(Type*);
@@ -30,109 +28,82 @@ static void print_ast_variable(Variable*);
 static void print_ast_expression(Expression*);
 static void print_ast_function_call(FunctionCall*);
 
-void print_ast_program(Program* program, bool print_types) {
+void print_ast(AST* ast, bool print_types) {
 	should_print_types = print_types;
-	print_ast_body(program->body);
-	printf("\n");
-}
-
-static void print_ast_body(Body* body) {
-	if (body->tag == BODY) {
-		printf("{\n");
-		if (body->next) {
-			tabs++;
-			print_ast_body(body->next);
-			tabs--;
-		}
-		identation();
-		printf("}");
-		return;
-	}
-
-	for (Body* b = body; b; b = b->next) {
-		identation();
-		switch (b->tag) {
-		case BODY_DECLARATION:
-			print_ast_declaration(b->declaration);
+	for (Definition* d = ast->definitions; d; d = d->next) {
+		print_ast_definition(d);
+		if (d->tag == DEFINITION_VARIABLE) {
 			printf("\n");
-			break;
-		case BODY_DEFINITION:
-			print_ast_definition(b->definition);
-			if (b->definition->tag == DEFINITION_VARIABLE) {
-				printf("\n");
-			}
-			break;
-		default:
-			assert(b->tag != BODY);
 		}
 	}
 }
 
-static void print_ast_declaration(Declaration* declaration) {
-	switch (declaration->tag) {
-	case DECLARATION_VARIABLE:
-		printf("%s ", (declaration->variable->value) ? "value" : "variable");
-		print_ast_id(declaration->variable->id);
+static void print_ast_definition(Definition* definition) {
+	switch (definition->tag) {
+	case DEFINITION_VARIABLE: {
+		Variable* variable = definition->variable.variable;
+		printf("%s ", (variable->value) ? "value" : "variable");
+		print_ast_id(variable->id);
 		printf(": ");
-		if (declaration->variable->type) {
-			print_ast_type(declaration->variable->type);
+		if (variable->type) {
+			print_ast_type(variable->type);
 		} else {
 			printf("?");
 		}
+		if (definition->variable.expression) {
+			printf(" = ");
+			print_ast_expression(definition->variable.expression);
+		}
 		break;
-	case DECLARATION_FUNCTION:
-		if (declaration->function.id) {
+	}
+	case DEFINITION_FUNCTION:
+	case DEFINITION_METHOD:
+	case DEFINITION_CONSTRUCTOR:
+		if (definition->function.private) {
+			assert(definition->tag == DEFINITION_METHOD);
+			printf("private ");
+		}
+		if (definition->function.id) {
 			printf("function ");
-			print_ast_id(declaration->function.id);
+			print_ast_id(definition->function.id);
 		} else {
 			printf("initializer");
 		}
-		if (declaration->function.parameters) {
+		if (definition->function.parameters) {
 			printf("(");
-			for (Declaration* p = declaration->function.parameters; p;) {
-				print_ast_declaration(p);
+			for (Definition* p = definition->function.parameters; p;) {
+				print_ast_definition(p);
 				if ((p = p->next)) {
 					printf(", ");
 				}
 			}
 			printf(")");
 		}
-		if (declaration->function.type) {
+		if (definition->function.type) {
 			printf(": ");
-			print_ast_type(declaration->function.type);
+			print_ast_type(definition->function.type);
 		} else {
-			printtype(declaration->function.type);
+			printtype(definition->function.type);
 		}
-		break;
-	}
-}
-
-static void print_ast_definition(Definition* definition) {
-	switch (definition->tag) {
-	case DEFINITION_VARIABLE:
-		print_ast_declaration(definition->variable.declaration);
-		printf(" = ");
-		print_ast_expression(definition->variable.expression);
-		break;
-	case DEFINITION_FUNCTION:
-	case DEFINITION_CONSTRUCTOR:
-		print_ast_declaration(definition->function.declaration);
 		printf(" ");
 		print_ast_block(definition->function.block);
 		printf("\n");
 		break;
-	case DEFINITION_METHOD:
-		if (definition->method.private) {
-			printf("private ");
-		}
-		print_ast_definition(definition->method.function);
-		break;
 	case DEFINITION_TYPE:
 		printf("monitor ");
 		print_ast_id(definition->type->monitor.id);
-		printf(" ");
-		print_ast_body(definition->type->monitor.body);
-		printf("\n");
+		printf(" {\n");
+		tabs++;
+		for (Definition* d = definition->type->monitor.definitions; d;) {
+			identation();
+			print_ast_definition(d);
+			if (d->tag == DEFINITION_VARIABLE) {
+				printf("\n");
+			}
+			d = d->next;
+		}
+		tabs--;
+		printf("}\n");
 		break;
 	}
 }
@@ -178,15 +149,16 @@ static void print_ast_block(Block* block) {
 
 	for (Block* b = block; b; b = b->next) {
 		switch (b->tag) {
-		case BLOCK_DECLARATION:
-			identation();
-			print_ast_declaration(b->declaration);
-			printf("\n");
-			break;
 		case BLOCK_DEFINITION:
 			identation();
 			print_ast_definition(b->definition);
 			printf("\n");
+			for (Definition* d = b->definition->next; d; d = d->next) {
+				assert(d->tag == DEFINITION_VARIABLE);
+				identation();
+				print_ast_definition(d);
+				printf("\n");
+			}
 			break;
 		case BLOCK_STATEMENT:
 			print_ast_statement(b->statement);
@@ -339,15 +311,15 @@ static void print_ast_expression(Expression* expression) {
 static void print_ast_function_call(FunctionCall* function_call) {
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC:
-		print_ast_id(function_call->basic);
+		print_ast_id(function_call->id);
 		break;
 	case FUNCTION_CALL_METHOD:
-		print_ast_expression(function_call->method.object);
+		print_ast_expression(function_call->instance);
 		printf(".");
-		print_ast_id(function_call->method.name);
+		print_ast_id(function_call->id);
 		break;
 	case FUNCTION_CALL_CONSTRUCTOR:
-		print_ast_type(function_call->constructor);
+		print_ast_type(function_call->type);
 	}
 
 	printf("(");

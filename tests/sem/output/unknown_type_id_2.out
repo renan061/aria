@@ -1,2 +1,1 @@
-line 2:
-	semantic error: unkown type name 'Id2'
+tests/test.sh: line 26: ../../bin/semtest: No such file or directory

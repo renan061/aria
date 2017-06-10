@@ -1,0 +1,5 @@
+1c1
+< main function not found
+\ No newline at end of file
+---
+> tests/test.sh: line 26: ../../bin/backendtest: No such file or directory
