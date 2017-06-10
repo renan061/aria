@@ -66,13 +66,13 @@
 %type <definition> // file definitions
 	file_definition_list file_definition
 %type <definition> // variable declarations
-	variable_declaration_single variable_declaration_base  variable_declaration 
+	variable_declaration
 	parameter_list parameters parameter
-	lower_ids
+	lower_id_type lower_ids lower_ids_type
 %type <definition> // variable definitions
 	variable_definition block_variable_definition
 	variable_definition_value variable_definition_variable
-	variable_definition_base
+	lower_id_optional_type_expression
 %type <definition> // functions
 	function_definition method_definition constructor_definition
 %type <definition> // monitors
@@ -151,40 +151,8 @@ file_definition
 //
 // ==================================================
 
-variable_declaration_single
-	: TK_LOWER_ID ':' type
-		{
-			Variable* variable = ast_variable_id($1);
-			variable->type = $3;
-			$$ = ast_definition_variable(variable, NULL);
-		}
-	;
-
-variable_declaration_base
-	: variable_declaration_single
-		{
-			$$ = $1;
-		}
-	/*
-		Syntactic sugar:
-
-		a, b, c: Integer		->		a: Integer
-								->		b: Integer
-								->		c: Integer
-	*/
-	| lower_ids ',' variable_declaration_single
-		{
-			$$ = $1;
-			Definition* last = NULL;
-			for (; $1; last = $1, $1 = $1->next) {
-				$1->variable.variable->type = $3->variable.variable->type;
-			}
-			last->next = $3; // there is always at least one lower_id
-		}
-	; 
-
 variable_declaration
-	: TK_VARIABLE variable_declaration_base
+	: TK_VARIABLE lower_ids_type
 		{
 			$2->variable.variable->value = false;
 			$$ = $2;
@@ -197,7 +165,7 @@ variable_declaration
 //
 // ==================================================
 
-variable_definition_base
+lower_id_optional_type_expression
 	: TK_LOWER_ID ':' type '=' expression
 		{
 			Variable* variable = ast_variable_id($1);
@@ -211,7 +179,7 @@ variable_definition_base
 	;
 
 variable_definition_value
-	: TK_VALUE variable_definition_base
+	: TK_VALUE lower_id_optional_type_expression
 		{
 			$2->variable.variable->value = true;
 			$$ = $2;
@@ -219,7 +187,7 @@ variable_definition_value
 	;
 
 variable_definition_variable
-	: TK_VARIABLE variable_definition_base
+	: TK_VARIABLE lower_id_optional_type_expression
 		{
 			$2->variable.variable->value = false;
 			$$ = $2;
@@ -664,7 +632,16 @@ constructor_definition
 //
 // ==================================================
 
-// Used by variable_declaration_base
+// Used by variable declarations and parameters
+lower_id_type
+	: TK_LOWER_ID ':' type
+		{
+			Variable* variable = ast_variable_id($1);
+			variable->type = $3;
+			$$ = ast_definition_variable(variable, NULL);
+		}
+	;
+
 lower_ids
 	: TK_LOWER_ID
 		{
@@ -676,6 +653,29 @@ lower_ids
 				ast_definition_variable(ast_variable_id($3), NULL));
 		}
 	;
+
+lower_ids_type
+	: lower_id_type
+		{
+			$$ = $1;
+		}
+	/*
+		Syntactic sugar:
+
+		a, b, c: Integer		->		a: Integer
+								->		b: Integer
+								->		c: Integer
+	*/
+	| lower_ids ',' lower_id_type
+		{
+			$$ = $1;
+			Definition* last = NULL;
+			for (; $1; last = $1, $1 = $1->next) {
+				$1->variable.variable->type = $3->variable.variable->type;
+			}
+			last->next = $3; // there is always at least one lower_id
+		}
+	; 
 
 // Used by function declarations
 parameter_list
@@ -701,7 +701,7 @@ parameters
 	;
 
 parameter
-	: variable_declaration_base
+	: lower_ids_type
 		{
 			for ($$ = $1; $1; $1 = $1->next) {
 				$1->variable.variable->value = true;
