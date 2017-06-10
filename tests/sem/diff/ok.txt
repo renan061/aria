@@ -1,4 +1,4 @@
-1,171c1
+1,171d0
 < {
 < 	value topValue1: Boolean = (true: Boolean)
 < 	value topValue2: String = ("string": String)
@@ -170,5 +170,3 @@
 < 		}
 < 	}
 < }
----
-> tests/test.sh: line 26: ../../bin/semtest: No such file or directory

@@ -1,5 +1,10 @@
-1,2c1
+1,2c1,6
 < line 5:
 < 	semantic error: can't access a variable inside a spawn block (only values)
 ---
-> tests/test.sh: line 26: ../../bin/semtest: No such file or directory
+> function foo: Void {
+> 	variable a: Integer
+> 	spawn {
+> 		value b: Integer = (a: Integer)
+> 	}
+> }

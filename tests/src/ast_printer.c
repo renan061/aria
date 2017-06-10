@@ -311,12 +311,18 @@ static void print_ast_expression(Expression* expression) {
 static void print_ast_function_call(FunctionCall* function_call) {
 	switch (function_call->tag) {
 	case FUNCTION_CALL_BASIC:
-		print_ast_id(function_call->id);
+		print_ast_id((function_call->id)
+			? function_call->id
+			: function_call->function_definition->function.id
+		);
 		break;
 	case FUNCTION_CALL_METHOD:
 		print_ast_expression(function_call->instance);
 		printf(".");
-		print_ast_id(function_call->id);
+		print_ast_id((function_call->id)
+			? function_call->id
+			: function_call->function_definition->function.id
+		);
 		break;
 	case FUNCTION_CALL_CONSTRUCTOR:
 		print_ast_type(function_call->type);

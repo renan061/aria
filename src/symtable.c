@@ -7,6 +7,9 @@
 
 #define ERR_SCOPE "symbol table: did not leave all scopes"
 
+// TODO: Move this somewhere else and look for assert(NULL) in the code
+#define UNREACHABLE assert(NULL)
+
 // ==================================================
 //
 //	Auxiliary
@@ -29,62 +32,47 @@ struct Scope {
 
 struct Symbol {
 	Symbol* next;
-	Declaration* declaration;
-	Type* type;
+	Definition* definition;
 };
 
-static const char* declarationstring(Declaration* declaration) {
-	switch (declaration->tag) {
-	case DECLARATION_VARIABLE:
-		assert(declaration->variable->tag == VARIABLE_ID);
-		return declaration->variable->id->name;
-	case DECLARATION_FUNCTION:
-		assert(declaration->function.id); // can't be constructor
-		return declaration->function.id->name;
-	}
-	return assert(NULL), NULL; // unreachable
-}
-
-static const char* typestring(Type* type) {
-	switch (type->tag) {
-	case TYPE_ID:
-		return type->id->name;
-	case TYPE_MONITOR:
-		return type->monitor.id->name;
+static const char* definitionstring(Definition* definition) {
+	switch (definition->tag) {
+	case DEFINITION_VARIABLE:
+		assert(definition->variable.variable->tag == VARIABLE_ID);
+		return definition->variable.variable->id->name;
+	case DEFINITION_FUNCTION:
+		/* fallthrough */
+	case DEFINITION_METHOD:
+		/* fallthrough */
+	case DEFINITION_CONSTRUCTOR:
+		assert(definition->function.id);
+		return definition->function.id->name;
+	case DEFINITION_TYPE:
+		switch (definition->type->tag) {
+		case TYPE_VOID:
+			UNREACHABLE;
+		case TYPE_ID:
+			return definition->type->id->name;
+		case TYPE_ARRAY:
+			UNREACHABLE;
+		case TYPE_MONITOR:
+			return definition->type->monitor.id->name;
+		default:
+			UNREACHABLE;
+		}
 	default:
-		return assert(NULL), NULL; // unreachable
+		UNREACHABLE;
 	}
 }
 
-// Finds a declaration inside a given scope
-static Declaration* finddeclaration(Scope* scope, const char* idstring) {
+// Finds a definition inside a given scope
+static Definition* finddefinition(Scope* scope, const char* idstring) {
 	for (Symbol* s = scope->first_symbol; s; s = s->next) {
-		if (s->declaration && declarationstring(s->declaration) == idstring) {
-			return s->declaration;
+		if (s->definition && definitionstring(s->definition) == idstring) {
+			return s->definition;
 		}
 	}
 	return NULL;
-}
-
-// Finds a type inside a given scope
-static Type* findtype(Scope* scope, const char* idstring) {
-	for (Symbol* s = scope->first_symbol; s; s = s->next) {
-		if (s->type && typestring(s->type) == idstring) {
-			return s->type;
-		}
-	}
-	return NULL;
-}
-
-// Used for inserting new symbols
-static Symbol* newsymbol(SymbolTable* t, Declaration* declaration, Type* type) {
-	Symbol* symbol;
-	MALLOC(symbol, Symbol);
-	symbol->declaration = declaration;
-	symbol->type = type;
-	symbol->next = t->top_scope->first_symbol;
-	t->top_scope->first_symbol = symbol;
-	return symbol;
 }
 
 // ==================================================
@@ -130,37 +118,27 @@ void symtable_leave_scope(SymbolTable* table) {
 }
 
 bool symtable_contains_in_current_scope(SymbolTable* tb, Id* id) {
-	return finddeclaration(tb->top_scope, id->name) != NULL;
+	return (bool) finddefinition(tb->top_scope, id->name);
 }
 
-Declaration* symtable_find_declaration(SymbolTable* table, Id* id) {
-	Declaration* found = NULL;
+Definition* symtable_find(SymbolTable* table, Id* id) {
+	Definition* found = NULL;
 	for (Scope* s = table->top_scope; s && !found; s = s->next) {
-		found = finddeclaration(s, id->name);
+		found = finddefinition(s, id->name);
 	}
 	return found;
 }
 
-Type* symtable_find_type(SymbolTable* table, Id* id) {
-	Type* found = NULL;
-	for (Scope* s = table->top_scope; s && !found; s = s->next) {
-		found = findtype(s, id->name);
-	}
-	return found;
-}
-
-bool symtable_insert_declaration(SymbolTable* table, Declaration* declaration) {
-	if (finddeclaration(table->top_scope, declarationstring(declaration))) {
+bool symtable_insert(SymbolTable* table, Definition* definition) {
+	if (finddefinition(table->top_scope, definitionstring(definition))) {
 		return false; // repetition
 	}
-	newsymbol(table, declaration, NULL);
-	return true;
-}
+	
+	Symbol* symbol;
+	MALLOC(symbol, Symbol);
+	symbol->next = table->top_scope->first_symbol;
+	symbol->definition = definition;
+	table->top_scope->first_symbol = symbol;
 
-bool symtable_insert_type(SymbolTable* table, Type* type) {
-	if (findtype(table->top_scope, typestring(type))) {
-		return false; // repetition
-	}
-	newsymbol(table, NULL, type);
 	return true;
 }

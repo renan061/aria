@@ -92,7 +92,7 @@ static LLVMValueRef zerovalue(IRState*, Type*);
 static void backend_body(IRState*, Body*);
 static void backend_declaration(IRState*, Declaration*);
 static void backend_definition(IRState*, Definition*);
-static int backend_block(IRState*, Block*);
+static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
 static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
@@ -252,11 +252,9 @@ static void backend_definition(IRState* state, Definition* definition) {
 	}
 }
 
-static int backend_block(IRState* state, Block* block) {
+static void backend_block(IRState* state, Block* block) {
 	assert(block->tag == BLOCK);
-
-	int counter = 0;
-	for (Block* b = block->next; b; b = b->next, counter++) {
+	for (Block* b = block->next; b; b = b->next) {
 		switch (b->tag) {
 		case BLOCK_DECLARATION:
 			backend_declaration(state, b->declaration);
@@ -271,8 +269,6 @@ static int backend_block(IRState* state, Block* block) {
 			UNREACHABLE;
 		}
 	}
-
-	return counter;
 }
 
 static void backend_statement(IRState* state, Statement* statement) {

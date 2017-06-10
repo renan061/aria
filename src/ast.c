@@ -82,7 +82,7 @@ Definition* ast_definition_constructor(Definition* parameters, Block* block) {
 }
 
 Definition* ast_definition_type(Type* type) {
-	assert(type->tag == TYPE_MONITOR);
+	assert(type->tag == TYPE_ID || type->tag == TYPE_MONITOR);
 	Definition* definition;
 	MALLOC(definition, Definition);
 	definition->tag = DEFINITION_TYPE;
@@ -532,6 +532,7 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
 	function_call->instance = NULL;
 	function_call->id = id;
 	function_call->arguments = arguments;
+	function_call->arguments_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }
@@ -545,6 +546,7 @@ FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
 	function_call->instance = i;
 	function_call->id = id;
 	function_call->arguments = a;
+	function_call->arguments_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }
@@ -558,6 +560,7 @@ FunctionCall* ast_call_constructor(Line ln, Type* type, Expression* arguments) {
 	function_call->instance = NULL;
 	function_call->id = NULL;
 	function_call->arguments = arguments;
+	function_call->arguments_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }

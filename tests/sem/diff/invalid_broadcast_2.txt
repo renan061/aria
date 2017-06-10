@@ -1,5 +1,0 @@
-1,2c1
-< line 5:
-< 	semantic error: invalid use of 'broadcast' statement inside a monitor's initializer
----
-> tests/test.sh: line 26: ../../bin/semtest: No such file or directory

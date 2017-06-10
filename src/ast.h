@@ -270,10 +270,11 @@ struct FunctionCall {
 	Type* type;
 	// Only used by method (NULL for other types of calls)
 	Expression* instance;
-	// Name of the function being called
-	// Id is NULL for constructors until replaced by the type's id (sem.c)
+	// Name of the function being called (NULL for constructors)
 	Id* id;
 	Expression* arguments;
+	// Initialized with -1
+	int arguments_count;
 
 	// Used in the backend module
 	Definition* function_definition;
