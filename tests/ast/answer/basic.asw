@@ -43,9 +43,7 @@ function foo: Void {
 	variable type: Integer
 	variable type: [Integer]
 	variable type: [[[Integer]]]
-	variable type: Integer
 	variable type: Immutable [Integer]
-	variable type: Immutable Monitor
 	variable a: Integer
 	variable x: Integer
 	variable y: Integer

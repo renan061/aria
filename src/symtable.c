@@ -121,10 +121,14 @@ bool symtable_contains_in_current_scope(SymbolTable* tb, Id* id) {
 	return (bool) finddefinition(tb->top_scope, id->name);
 }
 
-Definition* symtable_find(SymbolTable* table, Id* id) {
+Definition* symtable_find(SymbolTable* table, Id* id, int* counter) {
 	Definition* found = NULL;
-	for (Scope* s = table->top_scope; s && !found; s = s->next) {
+	int n = 0;
+	for (Scope* s = table->top_scope; s && !found; s = s->next, n++) {
 		found = finddefinition(s, id->name);
+	}
+	if (counter) {
+		*counter = n;		
 	}
 	return found;
 }

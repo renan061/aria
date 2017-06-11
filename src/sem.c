@@ -1,15 +1,8 @@
 /*
  * TODO
  *
- *	- initializer(): Semântica? Pode ter mais de um?
- *		Pode ter mais de um com tipos / quantidade
- *		diferentes de parâmetros?
- *	- Can a monitor type be declared Immutable? Immutable Monitor1?
- *		Redundant? Find a better name (Safe?)?
- *	- Function that return nothing should be represented with type
- *		Void, not NULL pointers. And return statements with no expressions
- *		should return the 'nil' expression.
- *	- Change parameters to 'value' instead of 'variable'.
+ *	- Immutable Monitor1 is wrong
+ *	- Return statements with no expressions should return the 'nil' expression
  *
  */
 #include <assert.h>
@@ -40,13 +33,13 @@ typedef struct SemanticState {
 	Type* monitor;
 
 	// <type> if currently analysing a function's body, <NULL> otherwise
-	Type* returnType;
+	Type* return_;
 
 	// <true> if currently analysing a monitor's initializer, <false> otherwise
-	bool insideInitializer;
+	bool initializer;
 
 	// <true> if currently analysing a spawn statement block, <false> otherwise
-	bool insideSpawn;
+	bool spawn;
 } SemanticState;
 
 // Primitive types
@@ -168,9 +161,9 @@ void sem_analyse(AST* ast) {
 	free(definition_string);
 
 	assert(!state.monitor);
-	assert(!state.returnType);
-	assert(!state.insideInitializer);
-	assert(!state.insideSpawn);
+	assert(!state.return_);
+	assert(!state.initializer);
+	assert(!state.spawn);
 }
 
 // ==================================================
@@ -202,7 +195,7 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		break;
 	}
 	case DEFINITION_CONSTRUCTOR:
-		state->insideInitializer = true;
+		state->initializer = true;
 		/* fallthrough */
 	case DEFINITION_FUNCTION:
 		assert(!definition->function.private);
@@ -235,11 +228,11 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		}
 
 		// Block
-		state->returnType = definition->function.type;
+		state->return_ = definition->function.type;
 		sem_block(state, definition->function.block);
-		state->returnType = NULL;
+		state->return_ = NULL;
 		symtable_leave_scope(state->table);
-		state->insideInitializer = false;
+		state->initializer = false;
 		break;
 	case DEFINITION_TYPE:
 		if (!symtable_insert(state->table, definition)) {
@@ -292,7 +285,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (!state->monitor) {
 			err_monitor_statements(statement->line, "while-wait");
 		}
-		if (state->insideInitializer) {
+		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "while-wait");
 		}
 		sem_expression(state, statement->while_wait.expression);
@@ -306,7 +299,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (!state->monitor) {
 			err_monitor_statements(statement->line, "signal");
 		}
-		if (state->insideInitializer) {
+		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "signal");
 		}
 		// TODO: Special semantics for condition variables
@@ -316,7 +309,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (!state->monitor) {
 			err_monitor_statements(statement->line, "broadcast");
 		}
-		if (state->insideInitializer) {
+		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "broadcast");
 		}
 		// TODO: Special semantics for condition variables
@@ -324,11 +317,11 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		break;
 	case STATEMENT_RETURN:
 		// Can't return inside a spawn block
-		if (state->insideSpawn) {
+		if (state->spawn) {
 			err_return_inside_spawn(statement->line);
 		}
 		// Can't return an expression inside an initializer
-		if (state->insideInitializer) {
+		if (state->initializer) {
 			if (statement->return_) {
 				err_return_initializer(statement->line);
 			} else {
@@ -336,13 +329,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 			}
 		}
 		// Can't return empty when the function expects a return type
-		if (state->returnType != void_ && !statement->return_) {	
-			err_return_void(statement->line, state->returnType);
+		if (state->return_ != void_ && !statement->return_) {	
+			err_return_void(statement->line, state->return_);
 		}
 
 		if (statement->return_) {
 			sem_expression(state, statement->return_);
-			typecheck1(state->returnType, &statement->return_);
+			typecheck1(state->return_, &statement->return_);
 		}
 		break;
 	case STATEMENT_IF:
@@ -378,9 +371,9 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 	case STATEMENT_SPAWN:
 		// TODO: Should not be able to spawn inside a monitor and initializer
 		symtable_enter_scope(state->table);
-		state->insideSpawn = true;
+		state->spawn = true;
 		sem_block(state, statement->spawn);
-		state->insideSpawn = false;
+		state->spawn = false;
 		symtable_leave_scope(state->table);
 		break;
 	case STATEMENT_BLOCK:
@@ -393,12 +386,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 	}
 }
 
-static void sem_variable(SemanticState* state, Variable** variablePointer) {
-	Variable* variable = *variablePointer;
+static void sem_variable(SemanticState* state, Variable** variable_pointer) {
+	Variable* variable = *variable_pointer;
 
 	switch (variable->tag) {
 	case VARIABLE_ID: {
-		Definition* definition = symtable_find(state->table, variable->id);
+		int n = 0;
+		Definition* definition = symtable_find(state->table, variable->id, &n);
 		if (!definition) {
 			err_variable_unknown(variable->id);
 		} else if (definition->tag != DEFINITION_VARIABLE) {
@@ -410,13 +404,10 @@ static void sem_variable(SemanticState* state, Variable** variablePointer) {
 		Line line = variable->line;
 		free(variable->id);
 		free(variable);
-		*variablePointer = variable = definition->variable.variable;
+		*variable_pointer = variable = definition->variable.variable;
 
-		// MEGA TODO: THIS IS WRONG, DO WHAT IS SUGGESTED
-		// TODO: Find a better way to do this
-		// - symtable_find receives pointer to integer with scope levels?
-		// - check this uptop along with other symtable_fin errors
-		if (state->insideSpawn && !symtable_find(state->table, variable->id)) {
+		// If accessing variables from outside a spawn block
+		if (state->spawn && n != 1) {
 			if (!variable->value) {
 				err_spawn_variable(line);
 			}
@@ -424,7 +415,6 @@ static void sem_variable(SemanticState* state, Variable** variablePointer) {
 				err_spawn_unsafe(line);
 			}
 		}
-
 		break;
 	}
 	case VARIABLE_INDEXED:
@@ -555,10 +545,12 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			return;
 		}
 
-		call->function_definition = symtable_find(state->table, call->id);
+		call->function_definition = symtable_find(state->table, call->id, NULL);
 		if (!call->function_definition) {
 			err_function_call_unknown(call->id);
-		} else if (call->function_definition->tag != DEFINITION_FUNCTION) {
+		} else if (call->function_definition->tag != DEFINITION_FUNCTION &&
+			call->function_definition->tag != DEFINITION_METHOD) {
+			// TODO: Can't call constructor from inside a Monitor
 			err_function_call_misuse(call->id);
 		}
 
@@ -628,8 +620,12 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 				break;
 			}
 		}
+		
 		if (!call->function_definition) {
-			err_function_call_no_constructor(call->line, call->type->monitor.id);
+			err_function_call_no_constructor(
+				call->line,
+				call->type->monitor.id
+			);
 		}
 		break;
 	default:
@@ -725,11 +721,13 @@ static void linktype(SymbolTable* table, Type** pointer) {
 		// TypeVoid instance is not provided by the user as an id
 		break;
 	case TYPE_ID: {
-		Definition* definition = symtable_find(table, (*pointer)->id);
+		Definition* definition = symtable_find(table, (*pointer)->id, NULL);
 		if (!definition) {
 			err_unkown_type_name((*pointer)->id);
 		}
+		assert(definition->tag == DEFINITION_TYPE);
 		freetypeid(*pointer);
+		(*pointer) = definition->type;
 		break;
 	}
 	case TYPE_ARRAY:

@@ -1,3 +1,0 @@
-1,2d0
-< line 8:
-< 	semantic error: method 'foo' from monitor 'M' is private

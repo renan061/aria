@@ -1,0 +1,2 @@
+line 14:
+	semantic error: type error (expecting 'Immutable [String]', got '[String]')

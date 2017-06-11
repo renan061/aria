@@ -234,11 +234,7 @@ type
 		{
 			$$ = ast_type_id($1);
 		}
-	| TK_IMMUTABLE TK_UPPER_ID
-		{
-			$$ = ast_type_id($2);
-			$$->immutable = true;
-		}
+	/* TODO: Error handling for TK_IMMUTABLE TK_UPPER_ID */
 	| '[' type ']'
 		{
 			$$ = ast_type_array($2);

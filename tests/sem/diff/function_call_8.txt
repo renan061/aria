@@ -1,3 +1,0 @@
-1,2d0
-< line 7:
-< 	semantic error: function call has too few arguments

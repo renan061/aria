@@ -113,7 +113,7 @@ static void print_ast_id(Id* id) {
 }
 
 static void print_ast_type(Type* type) {
-	if (type->immutable && !(type->primitive || type->tag == TYPE_MONITOR)) {
+	if (type->immutable && !(type->primitive)) {
 		printf("Immutable ");
 	}
 	switch (type->tag) {

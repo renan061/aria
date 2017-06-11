@@ -1,3 +1,0 @@
-1,2d0
-< line 5:
-< 	semantic error: monitor 'Stack' has no defined initializer

@@ -23,7 +23,7 @@ bool symtable_contains_in_current_scope(SymbolTable*, Id*);
 /*
  * Returns NULL if id could not be found.
  */
-extern Definition* symtable_find(SymbolTable*, Id*);
+extern Definition* symtable_find(SymbolTable*, Id*, int*);
 
 /*
  * Returns false if definition is already inside and true otherwise.
