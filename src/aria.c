@@ -23,8 +23,8 @@ int main(int argc, char* argv[]) {
 	scanner_setup(argv[1]);
 	yyparse();
 	scanner_clean();
-	sem_analyse(program);
-	LLVMModuleRef module = backend_compile(program);
+	sem_analyse(ast);
+	LLVMModuleRef module = backend_compile(ast);
 
 	// Bytecode
 	if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {

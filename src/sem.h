@@ -6,6 +6,6 @@
 /*
  * Analyses the program semantically.
  */
-extern void sem_analyse(Program*);
+extern void sem_analyse(AST*);
 
 #endif

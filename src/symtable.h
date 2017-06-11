@@ -23,13 +23,11 @@ bool symtable_contains_in_current_scope(SymbolTable*, Id*);
 /*
  * Returns NULL if id could not be found.
  */
-extern Declaration* symtable_find_declaration(SymbolTable*, Id*);
-extern Type* symtable_find_type(SymbolTable*, Id*);
+extern Definition* symtable_find(SymbolTable*, Id*, int*);
 
 /*
- * Returns false if declaration/type id is already inside and true otherwise.
+ * Returns false if definition is already inside and true otherwise.
  */
-extern bool symtable_insert_declaration(SymbolTable*, Declaration*);
-extern bool symtable_insert_type(SymbolTable*, Type*);
+extern bool symtable_insert(SymbolTable*, Definition*);
 
 #endif

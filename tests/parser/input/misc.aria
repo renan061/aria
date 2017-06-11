@@ -82,7 +82,7 @@ function foo(a, b: [Array]) {
 	variable d: [[[Integer]]];
 
 	// With Immutable
-	variable c: Immutable Type;
+	variable c: Immutable [Integer];
 	variable d: Immutable [[[Integer]]];
 }
 

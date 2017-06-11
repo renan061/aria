@@ -1,77 +1,104 @@
-{
-	function foo: Void {
+function foo: Void {
+	if (true) {
+	} else {
+	}
+	if (true) {
+	} else {
+		if (true) {
+		}
+	}
+	if (true) {
+	} else {
 		if (true) {
 		} else {
 		}
-		if (true) {
-		} else {
-			if (true) {
-			}
-		}
+	}
+	if (true) {
+	} else {
 		if (true) {
 		} else {
 			if (true) {
 			} else {
+				if (true) {
+				}
 			}
 		}
+	}
+	if (true) {
+	} else {
 		if (true) {
 		} else {
 			if (true) {
 			} else {
 				if (true) {
 				} else {
-					if (true) {
-					}
 				}
 			}
 		}
+	}
+	if (true) {
+		value a: ? = (1)
+		value b: ? = (2)
+		value c: ? = (3)
+	} else {
+		value a: ? = (1)
+		value b: ? = (2)
+		value c: ? = (3)
+	}
+	if (true) {
+		value a: ? = (1)
+		value b: ? = (2)
+		value c: ? = (3)
+	} else {
 		if (true) {
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
+		}
+	}
+	if (true) {
+		value a: ? = (1)
+		value b: ? = (2)
+		value c: ? = (3)
+	} else {
+		if (true) {
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
+		} else {
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
+		}
+	}
+	if (true) {
+		value a: ? = (1)
+		value b: ? = (2)
+		value c: ? = (3)
+	} else {
+		if (true) {
+			value a: ? = (1)
+			value b: ? = (2)
+			value c: ? = (3)
 		} else {
 			if (true) {
+				value a: ? = (1)
+				value b: ? = (2)
+				value c: ? = (3)
 			} else {
 				if (true) {
-				} else {
-					if (true) {
-					} else {
-					}
+					value a: ? = (1)
+					value b: ? = (2)
+					value c: ? = (3)
 				}
 			}
 		}
-		if (true) {
-			value a: ? = (1)
-			value b: ? = (2)
-			value c: ? = (3)
-		} else {
-			value a: ? = (1)
-			value b: ? = (2)
-			value c: ? = (3)
-		}
-		if (true) {
-			value a: ? = (1)
-			value b: ? = (2)
-			value c: ? = (3)
-		} else {
-			if (true) {
-				value a: ? = (1)
-				value b: ? = (2)
-				value c: ? = (3)
-			}
-		}
-		if (true) {
-			value a: ? = (1)
-			value b: ? = (2)
-			value c: ? = (3)
-		} else {
-			if (true) {
-				value a: ? = (1)
-				value b: ? = (2)
-				value c: ? = (3)
-			} else {
-				value a: ? = (1)
-				value b: ? = (2)
-				value c: ? = (3)
-			}
-		}
+	}
+	if (true) {
+		value a: ? = (1)
+		value b: ? = (2)
+		value c: ? = (3)
+	} else {
 		if (true) {
 			value a: ? = (1)
 			value b: ? = (2)
@@ -87,73 +114,44 @@
 					value b: ? = (2)
 					value c: ? = (3)
 				} else {
-					if (true) {
-						value a: ? = (1)
-						value b: ? = (2)
-						value c: ? = (3)
-					}
-				}
-			}
-		}
-		if (true) {
-			value a: ? = (1)
-			value b: ? = (2)
-			value c: ? = (3)
-		} else {
-			if (true) {
-				value a: ? = (1)
-				value b: ? = (2)
-				value c: ? = (3)
-			} else {
-				if (true) {
 					value a: ? = (1)
 					value b: ? = (2)
 					value c: ? = (3)
-				} else {
-					if (true) {
-						value a: ? = (1)
-						value b: ? = (2)
-						value c: ? = (3)
-					} else {
-						value a: ? = (1)
-						value b: ? = (2)
-						value c: ? = (3)
-					}
 				}
 			}
 		}
+	}
+	if (true) {
 		if (true) {
-			if (true) {
-			}
 		}
-		if (true) {
-			if (true) {
-			} else {
-			}
-		}
+	}
+	if (true) {
 		if (true) {
 		} else {
+		}
+	}
+	if (true) {
+	} else {
+		if (true) {
 			if (true) {
-				if (true) {
-				} else {
-				}
+			} else {
+			}
+		} else {
+			if (true) {
 			} else {
 				if (true) {
-				} else {
-					if (true) {
-					}
 				}
 			}
 		}
+	}
+	if (true) {
+	} else {
 		if (true) {
 		} else {
 			if (true) {
 			} else {
 				if (true) {
 				} else {
-					if (true) {
-					} else {
-					}
 				}
 			}
 		}

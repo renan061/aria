@@ -22,17 +22,6 @@ typedef unsigned int Line;
 //
 // ==================================================
 
-typedef enum BodyTag {
-	BODY,
-	BODY_DECLARATION,
-	BODY_DEFINITION
-} BodyTag;
-
-typedef enum DeclarationTag {
-	DECLARATION_VARIABLE,
-	DECLARATION_FUNCTION
-} DeclarationTag;
-
 typedef enum DefinitionTag {
 	DEFINITION_VARIABLE,
 	DEFINITION_FUNCTION,
@@ -98,9 +87,7 @@ typedef enum FunctionCallTag {
 //
 // ==================================================
 
-typedef struct Program Program;
-typedef struct Body Body;
-typedef struct Declaration Declaration;
+typedef struct AST AST;
 typedef struct Definition Definition;
 typedef struct Id Id;
 typedef struct Type Type;
@@ -110,65 +97,38 @@ typedef struct Variable Variable;
 typedef struct Expression Expression;
 typedef struct FunctionCall FunctionCall;
 
-struct Program {
-	Body* body;
-};
-
-struct Body {
-	BodyTag tag;
-	Body* next;
-
-	union {
-		Declaration* declaration;
-		Definition* definition;
-	};
-};
-
-struct Declaration {
-	DeclarationTag tag;
-	Declaration* next; // parameters
-
-	LLVMValueRef llvm_value; // for functions only
-
-	union {
-		// DeclarationVariable
-		Variable* variable;
-		// DeclarationFunction
-		struct {
-			Id* id;
-			Declaration* parameters;
-			Type* type;
-		} function;
-	};
+struct AST {
+	Definition* definitions;
 };
 
 struct Definition {
 	DefinitionTag tag;
+	Definition* next;
+	LLVMValueRef llvm_value;
 	
 	union {
 		// DefinitionVariable
 		struct {
-			Declaration* declaration;
+			Variable* variable;
 			Expression* expression;
 		} variable;
 		// DefinitionFunction
+		// DefinitionMethod
 		// DefinitionConstructor
 		struct {
-			Declaration* declaration;
+			bool private;
+			Id* id;
+			Definition* parameters;
+			Type* type;
 			Block* block;
 		} function;
-		// DefinitionMethod
-		struct {
-			Definition* function;
-			bool private;
-		} method;
 		// DefinitionType
 		Type* type;
 	};
 };
 
 struct Id {
-	unsigned int line;
+	Line line;
 	const char* name;
 };
 
@@ -185,7 +145,7 @@ struct Type {
 		// TypeMonitor
 		struct {
 			Id* id;
-			Body* body;
+			Definition* definitions;
 		} monitor;
 	};
 };
@@ -196,7 +156,6 @@ struct Block {
 	Block* next;
 
 	union {
-		Declaration* declaration;
 		Definition* definition;
 		Statement* statement;
 	};
@@ -254,7 +213,6 @@ struct Variable {
 	Type* type;
 	bool global; // default false
 	bool value; // default false
-
 	LLVMValueRef llvm_value;
 
 	union {
@@ -273,7 +231,6 @@ struct Expression {
 	Line line;
 	Expression *previous, *next;
 	Type* type;
-
 	LLVMValueRef llvm_value;
 	
 	union {
@@ -308,22 +265,19 @@ struct Expression {
 struct FunctionCall {
 	FunctionCallTag tag;
 	Line line;
-	Type* type; // TODO: use for array and monitor constructors
+
+	// Used by constructor calls before semantic analysis
+	Type* type;
+	// Only used by method (NULL for other types of calls)
+	Expression* instance;
+	// Name of the function being called (NULL for constructors)
+	Id* id;
 	Expression* arguments;
+	// Initialized with -1
+	int arguments_count;
 
-	Declaration* declaration;
-
-	union {
-		// FunctionCallBasic
-		Id* basic;
-		// FunctionCallMethod
-		struct {
-			Expression* object; // TODO: Rename to instance?
-			Id* name; // TODO: Rename to id?
-		} method;
-		// FunctionCallConstructor
-		Type* constructor;
-	};
+	// Used in the backend module
+	Definition* function_definition;
 };
 
 // ==================================================
@@ -332,23 +286,16 @@ struct FunctionCall {
 //
 // ==================================================
 
-extern Program* program; // TODO: This variable should be called ast
-extern Program* ast_program(Body*);
+extern AST* ast;
+extern void ast_set(Definition*);
 
-extern Body* ast_body(Body*);
-extern Body* ast_body_declaration(Declaration*);
-extern Body* ast_body_definition(Definition*);
-
-extern Declaration* ast_declaration_variable(Variable*);
-extern Declaration* ast_declaration_function(Id*, Declaration*, Type*);
-
-extern Definition* ast_definition_variable(Declaration*, Expression*);
-extern Definition* ast_definition_function(Declaration*, Block*);
-extern Definition* ast_definition_method(Definition*, bool);
-extern Definition* ast_definition_constructor(Declaration*, Block*);
+extern Definition* ast_definition_variable(Variable*, Expression*);
+extern Definition* ast_definition_function(Id*, Definition*, Type*, Block*);
+extern Definition* ast_definition_method(bool, Definition*);
+extern Definition* ast_definition_constructor(Definition*, Block*);
 extern Definition* ast_definition_type(Type*);
 
-extern Id* ast_id(unsigned int, const char*);
+extern Id* ast_id(Line, const char*);
 
 extern Type* ast_type_void(void);
 extern Type* ast_type_boolean(void);
@@ -357,10 +304,9 @@ extern Type* ast_type_float(void);
 extern Type* ast_type_string(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
-extern Type* ast_type_monitor(Id*, Body*);
+extern Type* ast_type_monitor(Id*, Definition*);
 
 extern Block* ast_block(Line, Block*);
-extern Block* ast_block_declaration(Declaration*);
 extern Block* ast_block_definition(Definition*);
 extern Block* ast_block_statement(Statement*);
 

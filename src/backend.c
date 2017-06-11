@@ -80,7 +80,7 @@ static void state_close_block(IRState* state) {
 }
 
 // LLVM (TODO: New Module)
-static void llvm_function_declaration(LLVMModuleRef, Declaration*);
+static void llvm_function_declaration(LLVMModuleRef, Definition*);
 static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(IRState*, LLVMValueRef);
 static LLVMValueRef llvm_string_literal(IRState*, const char*);
@@ -89,10 +89,8 @@ static LLVMValueRef llvm_string_literal(IRState*, const char*);
 static LLVMValueRef zerovalue(IRState*, Type*);
 
 // TODO
-static void backend_body(IRState*, Body*);
-static void backend_declaration(IRState*, Declaration*);
 static void backend_definition(IRState*, Definition*);
-static int backend_block(IRState*, Block*);
+static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
 static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
@@ -106,7 +104,7 @@ static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 //
 // ==================================================
 
-LLVMModuleRef backend_compile(Program* program) {
+LLVMModuleRef backend_compile(AST* ast) {
 	// Setup
 	boolean_ = ast_type_boolean();
 	integer_ = ast_type_integer();
@@ -128,7 +126,9 @@ LLVMModuleRef backend_compile(Program* program) {
 		printf_param_types, 1, true); 
 	state.printf = LLVMAddFunction(state.module, "printf", printf_type);
 
-	backend_body(&state, program->body);
+	for (Definition* d = ast->definitions; d; d = d->next) {
+		backend_definition(&state, d);
+	}
 
 	// Analysis
 	char* error = NULL;
@@ -141,48 +141,13 @@ LLVMModuleRef backend_compile(Program* program) {
 	return state.module;
 }
 
-static void backend_body(IRState* state, Body* body) {
-	assert(body->tag == BODY);
-	for (Body* b = body->next; b; b = b->next) {
-		switch (b->tag) {
-		case BODY_DECLARATION:
-			backend_declaration(state, b->declaration);
-			continue;
-		case BODY_DEFINITION:
-			backend_definition(state, b->definition);
-			continue;
-		default:
-			UNREACHABLE;
-		}
-	}
-}
-
-// TODO: Maybe remove?
-static void backend_declaration(IRState* state, Declaration* declaration) {
-	switch (declaration->tag) {
-	case DECLARATION_VARIABLE:
-		declaration->variable->llvm_value = LLVMBuildAlloca(
-			state->builder,
-			llvm_type(declaration->variable->type),
-			declaration->variable->id->name
-		);
-		break;
-	case DECLARATION_FUNCTION:
-		llvm_function_declaration(state->module, declaration);
-		state->function = declaration->llvm_value;
-		break;
-	default:
-		UNREACHABLE;
-	}
-}
-
 static void backend_definition(IRState* state, Definition* definition) {
 	switch (definition->tag) {
 	case DEFINITION_VARIABLE: {
-		Variable* variable = definition->variable.declaration->variable;
+		Variable* variable = definition->variable.variable;
 		Expression* expression = definition->variable.expression;
 
-		if (variable->global) { // global
+		if (variable->global) { // Global
 			variable->llvm_value = LLVMAddGlobal(
 				state->module,
 				llvm_type(variable->type),
@@ -190,8 +155,12 @@ static void backend_definition(IRState* state, Definition* definition) {
 			);
 			backend_expression(state, expression);
 			LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
-		} else { // scoped variables
-			backend_declaration(state, definition->variable.declaration);
+		} else { // Scoped variables
+			variable->llvm_value = LLVMBuildAlloca(
+				state->builder,
+				llvm_type(variable->type),
+				variable->id->name
+			);
 			backend_expression(state, expression);
 			LLVMBuildStore(
 				state->builder,
@@ -204,8 +173,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 	case DEFINITION_FUNCTION:
 		/* fallthrough */
 	case DEFINITION_CONSTRUCTOR: {
-		// `backed_declaration` sets state->function internally
-		backend_declaration(state, definition->function.declaration);
+		llvm_function_declaration(state->module, definition);
+		state->function = definition->llvm_value;
 
 		state_position_builder(state, LLVMAppendBasicBlock(
 			state->function,
@@ -213,31 +182,25 @@ static void backend_definition(IRState* state, Definition* definition) {
 		));
 
 		// Calling alloca and store for parameters
-		// TODO: Fix ugly
-		for (Declaration* p =
-				definition->function.declaration->function.parameters;
-				p;
-				p = p->next) {
-			LLVMValueRef value = p->variable->llvm_value;
-			p->variable->llvm_value = LLVMBuildAlloca(
+		for (Definition* p = definition->function.parameters; p; p = p->next) {
+			LLVMValueRef value = p->variable.variable->llvm_value;
+			p->variable.variable->llvm_value = LLVMBuildAlloca(
 				state->builder,
-				llvm_type(p->variable->type),
-				p->variable->id->name
+				llvm_type(p->variable.variable->type),
+				p->variable.variable->id->name
 			);
-			LLVMBuildStore(state->builder, value, p->variable->llvm_value);
+			LLVMBuildStore(
+				state->builder,
+				value,
+				p->variable.variable->llvm_value
+			);
 		}
 
 		backend_block(state, definition->function.block);
 
-		// implicit return: always returns with the appropriate zero value
+		// Implicit return - always returns with the appropriate zero value
 		if (state_block_open(state)) {
-			llvm_return(
-				state,
-				zerovalue(
-					state,
-					definition->function.declaration->function.type
-				)
-			);
+			llvm_return(state, zerovalue(state, definition->function.type));
 		}
 		break;
 	}
@@ -252,15 +215,10 @@ static void backend_definition(IRState* state, Definition* definition) {
 	}
 }
 
-static int backend_block(IRState* state, Block* block) {
+static void backend_block(IRState* state, Block* block) {
 	assert(block->tag == BLOCK);
-
-	int counter = 0;
-	for (Block* b = block->next; b; b = b->next, counter++) {
+	for (Block* b = block->next; b; b = b->next) {
 		switch (b->tag) {
-		case BLOCK_DECLARATION:
-			backend_declaration(state, b->declaration);
-			continue;
 		case BLOCK_DEFINITION:
 			backend_definition(state, b->definition);
 			continue;
@@ -271,8 +229,6 @@ static int backend_block(IRState* state, Block* block) {
 			UNREACHABLE;
 		}
 	}
-
-	return counter;
 }
 
 static void backend_statement(IRState* state, Statement* statement) {
@@ -677,31 +633,29 @@ static void backend_condition(IRState* state, Expression* expression,
 
 static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	// Arguments
+	assert(call->arguments_count > -1);
 	Expression* e;
-	int n = 0;
-	for (e = call->arguments; e; e = e->next, n++) {
+	for (e = call->arguments; e; e = e->next) {
 		backend_expression(state, e);
 	}
-	int argument_count = n;
-	LLVMValueRef arguments[argument_count];
-	for (e = call->arguments, n = 0; e; e = e->next, n++) {
+	LLVMValueRef arguments[call->arguments_count];
+	for (int n = (e = call->arguments, 0); e; e = e->next, n++) {
 		arguments[n] = e->llvm_value;
 	}
 
 	switch (call->tag) {
-	case FUNCTION_CALL_BASIC: {
+	case FUNCTION_CALL_BASIC:
 		// TODO: Remove this gambiarra
-		if (!strcmp(call->basic->name, "print")) {
+		if (!call->function_definition && !strcmp(call->id->name, "print")) {
 			return LLVMBuildCall(state->builder, state->printf, arguments,
-				argument_count, "");
+				call->arguments_count, "");
 		}
 		break;
-	}
 	case FUNCTION_CALL_METHOD:
 		TODO;
 	case FUNCTION_CALL_CONSTRUCTOR:
 		if (call->type->tag == TYPE_ARRAY) { // new array
-			assert(argument_count == 1);
+			assert(call->arguments_count == 1);
 			return LLVMBuildArrayMalloc(
 				/* Builder */		state->builder,
 				/* ElementType */	llvm_type(call->type->array),
@@ -722,9 +676,9 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	 */
 	return LLVMBuildCall(
 		/* Builder */	state->builder,
-		/* Function */	call->declaration->llvm_value,
+		/* Function */	call->function_definition->llvm_value,
 		/* Arguments */	arguments,
-		/* NumArgs */	argument_count,
+		/* NumArgs */	call->arguments_count,
 		/* TempName */	""
 	);
 }
@@ -735,32 +689,33 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 //
 // ==================================================
 
+// TODO: Remove?
 // sets the value reference for the function prototype inside declaration
 static void llvm_function_declaration(LLVMModuleRef module,
-	Declaration* declaration) {
+	Definition* definition) {
 
-	assert(declaration->tag == DECLARATION_FUNCTION);
-	assert(declaration->function.id);
-	assert(declaration->function.type);
+	assert(definition->tag == DEFINITION_FUNCTION);
+	assert(definition->function.id);
+	assert(definition->function.type);
 	
 	// Counting the number of parameters
-	Declaration* parameter = declaration->function.parameters;
+	Definition* parameter = definition->function.parameters;
 	unsigned int paramCount = 0;
-	for (Declaration* p = parameter; p; p = p->next, paramCount++);
+	for (Definition* p = parameter; p; p = p->next, paramCount++);
 
 	// Creating a list of parameters
 	LLVMTypeRef paramTypes[paramCount]; // TODO: Won't this be destroyed?
-	parameter = declaration->function.parameters;
+	parameter = definition->function.parameters;
 	for (int i = 0; parameter; parameter = parameter->next, i++) {
-		paramTypes[i] = llvm_type(parameter->variable->type);
+		paramTypes[i] = llvm_type(parameter->variable.variable->type);
 	}
 
 	// Creating the function prototype and setting it as the current function
-	declaration->llvm_value = LLVMAddFunction(
+	definition->llvm_value = LLVMAddFunction(
 		/* Module		*/ module,
-		/* FunctionName	*/ declaration->function.id->name,
+		/* FunctionName	*/ definition->function.id->name,
 		/* FunctionRef	*/ LLVMFunctionType(
-			/* ReturnType	*/ llvm_type(declaration->function.type),
+			/* ReturnType	*/ llvm_type(definition->function.type),
 			/* ParamTypes	*/ paramTypes,
 			/* ParamCount	*/ paramCount,
 			/* IsVarArg		*/ false
@@ -768,15 +723,15 @@ static void llvm_function_declaration(LLVMModuleRef module,
 	);
 
 	// Setting the names for the parameters
-	parameter = declaration->function.parameters;
+	parameter = definition->function.parameters;
 	for (int i = 0; parameter; parameter = parameter->next, i++) {
-		parameter->variable->llvm_value = LLVMGetParam(
-			declaration->llvm_value,
+		parameter->variable.variable->llvm_value = LLVMGetParam(
+			definition->llvm_value,
 			i
 		);
 		LLVMSetValueName(
-			parameter->variable->llvm_value,
-			parameter->variable->id->name
+			parameter->variable.variable->llvm_value,
+			parameter->variable.variable->id->name
 		);
 	}
 }

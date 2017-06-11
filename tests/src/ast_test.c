@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	scanner_setup(argv[1]);
 	yyparse();
 	scanner_clean();
-	print_ast_program(program, false);
+	print_ast(ast, false);
 
     return 0;
 }

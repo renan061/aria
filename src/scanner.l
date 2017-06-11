@@ -95,7 +95,7 @@ string 		"\""(\\.|[^\\"])*"\""
 "value"			return yylval.ival = line, TK_VALUE;
 "variable"		return yylval.ival = line, TK_VARIABLE;
 "function"		return yylval.ival = line, TK_FUNCTION;
-":="			return yylval.ival = line, TK_DEFINE;
+":="			return yylval.ival = line, TK_DEFINE; // TODO: change semantic name
 "while"			return yylval.ival = line, TK_WHILE;
 "wait"			return yylval.ival = line, TK_WAIT;
 "in"			return yylval.ival = line, TK_IN;
