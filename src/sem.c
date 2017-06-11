@@ -538,8 +538,10 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	case FUNCTION_CALL_BASIC:
 		// MEGA TODO: Fix this master gambiarra
 		if (!strcmp(call->id->name, "print")) {
+			call->arguments_count = 0;
 			for (Expression* e = call->arguments; e; e = e->next) {
 				sem_expression(state, e);
+				call->arguments_count++;
 			}
 			call->type = integer_;
 			return;
@@ -638,6 +640,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	Expression** pointer = &call->arguments;
 
 	// Comparing arguments with parameters
+	call->arguments_count = 0;
 	while (parameter || argument) {
 		if (parameter && !argument) {
 			err_function_call_few_args(call->line);
@@ -645,6 +648,8 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 		if (!parameter && argument) {
 			err_function_call_excess_args(call->line);
 		}
+
+		call->arguments_count++;
 
 		sem_expression(state, argument);
 		typecheck1(parameter->variable.variable->type, pointer);

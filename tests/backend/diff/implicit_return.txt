@@ -1,8 +1,0 @@
-1,5c1
-< implicitlyReturnsBoolean: 0
-< implicitlyReturnsInteger: 0
-< implicitlyReturnsFloat: 0.0
-< implicitlyReturnsString: 
-< implicitlyReturnsArray: 0x0
----
-> tests/test.sh: line 26: ../../bin/backendtest: No such file or directory

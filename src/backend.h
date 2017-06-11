@@ -4,6 +4,6 @@
 #include "ast.h"
 
 // TODO: Doc
-extern LLVMModuleRef backend_compile(Program*);
+extern LLVMModuleRef backend_compile(AST*);
 
 #endif
