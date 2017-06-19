@@ -179,6 +179,15 @@ void sem_analyse(AST* ast) {
 //
 // ==================================================
 
+// TODO
+static Variable* astself(Line line) {
+	static const char* keyword_self = "self";
+	Variable* variable = ast_variable_id(ast_id(line, keyword_self));
+	variable->global = false;
+	variable->value = true;
+	return variable;
+}
+
 static void sem_definition(SemanticState* state, Definition* definition) {
 	switch (definition->tag) {
 	case DEFINITION_VARIABLE: {
@@ -203,22 +212,12 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 	}
 	case DEFINITION_FUNCTION:
 		assert(!definition->function.private);
+		if (!symtable_insert(state->table, definition)) {
+			err_redeclaration(definition->function.id);
+		}
+		linktype(state->table, &definition->function.type);
 
 	DEFAULT_DEFINITION_FUNCTION: {
-		if (definition->function.id) { // Functions and methods
-			if (!symtable_insert(state->table, definition)) {
-				err_redeclaration(definition->function.id);
-			}
-			if (state->monitor && !safetype(definition->function.type)) {
-				err_monitor_function_type(definition->function.id->line);
-			}
-			linktype(state->table, &definition->function.type);
-		} else { // Constructors
-			assert(state->monitor);
-			definition->function.id = state->monitor->monitor.id;
-			definition->function.type = state->monitor;
-		}
-
 		// Parameters
 		symtable_enter_scope(state->table);
 		for (Definition* p = definition->function.parameters; p; p = p->next) {
@@ -241,22 +240,30 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 	}
 	case DEFINITION_METHOD: {
 		assert(state->monitor);
-		static const char* keyword_self = "self";
-
+		
 		// TODO: Take line (-1) from definition
-		Variable* variable = ast_variable_id(ast_id(-1, keyword_self));
-		variable->global = false;
-		variable->value = true;
+		Variable* variable = astself(-1);
 		variable->type = ast_type_id(ast_id(-1,
 			state->monitor->monitor.id->name));
 
 		Definition* self = ast_definition_variable(variable, NULL);
 		PREPEND(Definition, definition->function.parameters, self);
 
+		if (!symtable_insert(state->table, definition)) {
+			err_redeclaration(definition->function.id);
+		}
+		if (!safetype(definition->function.type)) {
+			err_monitor_function_type(definition->function.id->line);
+		}
+		linktype(state->table, &definition->function.type);
+
 		goto DEFAULT_DEFINITION_FUNCTION;
 	}
 	case DEFINITION_CONSTRUCTOR:
+		assert(state->monitor);
 		state->initializer = true;
+		definition->function.id = state->monitor->monitor.id;
+		definition->function.type = state->monitor;	
 		goto DEFAULT_DEFINITION_FUNCTION;
 	case DEFINITION_TYPE:
 		assert(definition->type->tag == TYPE_MONITOR);
@@ -601,10 +608,18 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 		call->function_definition = symtable_find(state->table, call->id, NULL);
 		if (!call->function_definition) {
 			err_function_call_unknown(call->id);
-		} else if (call->function_definition->tag != DEFINITION_FUNCTION &&
+		}
+		if (call->function_definition->tag != DEFINITION_FUNCTION &&
 			call->function_definition->tag != DEFINITION_METHOD) {
 			// TODO: Can't call constructor from inside a Monitor
 			err_function_call_misuse(call->id);
+		}
+
+		// Implicit method calls inside monitors
+		if (call->function_definition->tag == DEFINITION_METHOD) {
+			assert(state->monitor);
+			PREPEND(Expression, call->arguments,
+				ast_expression_variable(astself(call->line)));
 		}
 
 		call->type = call->function_definition->function.type;
