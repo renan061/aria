@@ -137,6 +137,8 @@ struct Type {
 	bool primitive;
 	bool immutable; // default false
 
+	LLVMTypeRef llvm_type; // TODO: Always set
+
 	union {
 		// TypeID
 		Id* id;
@@ -268,7 +270,7 @@ struct FunctionCall {
 
 	// Used by constructor calls before semantic analysis
 	Type* type;
-	// Only used by method (NULL for other types of calls)
+	// Only used by methods (NULL for other types of calls)
 	Expression* instance;
 	// Name of the function being called (NULL for constructors)
 	Id* id;

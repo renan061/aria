@@ -120,6 +120,7 @@ Id* ast_id(Line line, const char* name) {
 		v->tag = TYPE_ID;						\
 		v->primitive = true;					\
 		v->immutable = true;					\
+		v->llvm_type = NULL;					\
 		v->id = ast_id(-1, primitive_types[i]);	\
 	}											\
 	return v;									\
@@ -131,6 +132,7 @@ Type* ast_type_void(void) {
 		type_void->tag = TYPE_VOID;
 		type_void->primitive = true;
 		type_void->immutable = true;
+		type_void->llvm_type = NULL;
 		type_void->id = NULL; // just in case
 	}
 	return type_void;
@@ -175,6 +177,7 @@ Type* ast_type_id(Id* id) {
 	type->tag = TYPE_ID;
 	type->primitive = false;
 	type->immutable = false;
+	type->llvm_type = NULL;
 	type->id = id;
 	return type;
 }
@@ -185,6 +188,7 @@ Type* ast_type_array(Type* type) {
 	arrayType->tag = TYPE_ARRAY;
 	arrayType->primitive = false;
 	arrayType->immutable = false;
+	arrayType->llvm_type = NULL;
 	arrayType->array = type;
 	return arrayType;
 }
@@ -195,6 +199,7 @@ Type* ast_type_monitor(Id* id, Definition* definitions) {
 	type->tag = TYPE_MONITOR;
 	type->primitive = false;
 	type->immutable = false;
+	type->llvm_type = NULL;
 	type->monitor.id = id;
 	type->monitor.definitions = definitions;
 	return type;

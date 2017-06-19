@@ -87,6 +87,7 @@ static LLVMValueRef llvm_string_literal(IRState*, const char*);
 
 // Auxiliary
 static LLVMValueRef zerovalue(IRState*, Type*);
+static const char* SELF = "self"; // TODO
 
 // TODO
 static void backend_definition(IRState*, Definition*);
@@ -207,9 +208,54 @@ static void backend_definition(IRState* state, Definition* definition) {
 	case DEFINITION_METHOD:
 		TODO;
 		break;
-	case DEFINITION_TYPE:
-		TODO;
+	case DEFINITION_TYPE: {
+		assert(definition->type->tag == TYPE_MONITOR);
+
+		Type* type = definition->type;
+
+		int n = 0;
+
+		for (Definition* d = type->monitor.definitions; d; d = d->next, n++) {
+			if (d->tag != DEFINITION_VARIABLE) {
+				continue;
+			}
+		}
+
+		LLVMTypeRef elements[n];
+
+		n = 0;
+
+		for (Definition* d = type->monitor.definitions; d; d = d->next) {
+			switch (d->tag) {
+			case DEFINITION_VARIABLE:
+				elements[n++] = llvm_type(d->variable.variable->type);
+				break;
+			case DEFINITION_METHOD: {
+				// TODO: Move this to parser/sem?
+				Variable* v = ast_variable_id(ast_id(-1, SELF));
+				v->type = type;
+				v->global = false;
+				v->value = true;
+
+				Definition* p = ast_definition_variable(v, NULL);
+				
+				p->next = d->function.parameters;
+				d->function.parameters = p;
+				break;
+			}
+			case DEFINITION_CONSTRUCTOR:
+				backend_definition(state, d->function);
+				break;
+			default:
+				UNREACHABLE;
+			}
+		}
+
+		// TODO: Packed?
+		m->llvm_type = LLVMStructType(elements, n, false);
+
 		break;
+	}
 	default:
 		UNREACHABLE;
 	}
@@ -654,7 +700,8 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	case FUNCTION_CALL_METHOD:
 		TODO;
 	case FUNCTION_CALL_CONSTRUCTOR:
-		if (call->type->tag == TYPE_ARRAY) { // new array
+		switch (call->type->tag) {
+		case TYPE_ARRAY: // new array
 			assert(call->arguments_count == 1);
 			return LLVMBuildArrayMalloc(
 				/* Builder */		state->builder,
@@ -662,8 +709,10 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 				/* Size */			arguments[0],
 				/* TempName */		LLVM_TEMPORARY
 			);
-		} else { // monitor constructor
+		case TYPE_MONITOR: // monitor's constructor
 			TODO;
+		default:
+			UNREACHABLE;
 		}
 		break;
 	default:
@@ -756,6 +805,8 @@ static LLVMTypeRef llvm_type(Type* type) {
 		UNREACHABLE;
 	case TYPE_ARRAY:
 		return LLVMPointerType(llvm_type(type->array), 0);
+	case TYPE_MONITOR:
+		return type->llvm_type;
 	default:
 		UNREACHABLE;
 	}

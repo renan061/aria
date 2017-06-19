@@ -24,6 +24,13 @@
 #define TODOERR(line, err) \
 	printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
 
+// TODO
+#define PREPEND(Type, head, element) { \
+		Type* _temporary = head; \
+		head = element; \
+		head->next = _temporary; \
+	} \
+
 // Stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
 	// Symbol table for definitions
@@ -194,13 +201,10 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		}
 		break;
 	}
-	case DEFINITION_CONSTRUCTOR:
-		state->initializer = true;
-		/* fallthrough */
 	case DEFINITION_FUNCTION:
 		assert(!definition->function.private);
-		/* fallthrough */
-	case DEFINITION_METHOD:
+
+	DEFAULT_DEFINITION_FUNCTION: {
 		if (definition->function.id) { // Functions and methods
 			if (!symtable_insert(state->table, definition)) {
 				err_redeclaration(definition->function.id);
@@ -234,7 +238,28 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		symtable_leave_scope(state->table);
 		state->initializer = false;
 		break;
+	}
+	case DEFINITION_METHOD: {
+		assert(state->monitor);
+		static const char* keyword_self = "self";
+
+		// TODO: Take line (-1) from definition
+		Variable* variable = ast_variable_id(ast_id(-1, keyword_self));
+		variable->global = false;
+		variable->value = true;
+		variable->type = ast_type_id(ast_id(-1,
+			state->monitor->monitor.id->name));
+
+		Definition* self = ast_definition_variable(variable, NULL);
+		PREPEND(Definition, definition->function.parameters, self);
+
+		goto DEFAULT_DEFINITION_FUNCTION;
+	}
+	case DEFINITION_CONSTRUCTOR:
+		state->initializer = true;
+		goto DEFAULT_DEFINITION_FUNCTION;
 	case DEFINITION_TYPE:
+		assert(definition->type->tag == TYPE_MONITOR);
 		if (!symtable_insert(state->table, definition)) {
 			err_redeclaration(definition->type->monitor.id);
 		}
@@ -533,6 +558,32 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 	}
 }
 
+// TODO: Doc
+// TODO: Currently checking only the first matching method
+// TODO: Currently no overloading
+static Definition* findmethod(FunctionCall* call) {
+	Definition* method_definition = NULL;
+	Type* monitor = call->instance->type;
+
+	for (Definition* d = monitor->monitor.definitions; d; d = d->next) {
+		if (d->tag == DEFINITION_METHOD) {
+			if (d->function.id->name == call->id->name) {
+				if (d->function.private) {
+					err_function_call_private(call->line, call->id, monitor);
+				}
+				method_definition = d;
+				break;
+			}
+		}
+	}
+
+	if (!method_definition) {
+		err_function_call_no_method(call->line, monitor, call->id);
+	}
+
+	return method_definition;
+}
+
 static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	switch (call->tag) {
 	case FUNCTION_CALL_BASIC:
@@ -565,27 +616,16 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 		if (call->instance->type->tag != TYPE_MONITOR) {
 			err_function_call_no_monitor(call->line);
 		}
-		// Instance type is already linked
-		for (Definition* d = call->instance->type->monitor.definitions; d;
-			d = d->next) {
+		// OBS: Instance type is already linked
 
-			if (d->tag == DEFINITION_METHOD) {
-				if (d->function.id->name == call->id->name) {
-					// TODO: Currently checking only the first matching method
-					// TODO: Currently no overloading
-					if (d->function.private) {
-						err_function_call_private(call->line, call->id,
-							call->instance->type);
-					}
-					call->function_definition = d;
-				}
-				break;
-			}
+		// Finding the function definition in the monitor
+		call->function_definition = findmethod(call);
+		// Prepending self to arguments
+		PREPEND(Expression, call->arguments, call->instance);
+		if (call->arguments->next) {
+			call->arguments->next->previous = call->instance;
 		}
-		
-		if (!call->function_definition) {
-			err_function_call_no_method(call->line, call->instance->type, call->id);
-		}
+
 		call->type = call->function_definition->function.type;
 		free(call->id);
 		call->id = NULL;
@@ -638,6 +678,14 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	Definition* parameter = call->function_definition->function.parameters;
 	Expression* argument = call->arguments;
 	Expression** pointer = &call->arguments;
+
+	// Skips comparing between the first parameter and argument of a method
+	if (call->tag == FUNCTION_CALL_METHOD) {
+		assert(parameter && argument);
+		parameter = parameter->next;
+		argument = (*pointer)->next;
+		pointer = &argument;
+	}
 
 	// Comparing arguments with parameters
 	call->arguments_count = 0;
