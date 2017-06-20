@@ -215,7 +215,9 @@ struct Variable {
 	Type* type;
 	bool global; // default false
 	bool value; // default false
+
 	LLVMValueRef llvm_value;
+	LLVMValueRef llvm_structure_index; // TODO: default -1
 
 	union {
 		// VariableId

@@ -61,11 +61,11 @@ Definition* ast_definition_function(Id* id, Definition* ps, Type* t, Block* b) {
 	return definition;
 }
 
-Definition* ast_definition_method(bool private, Definition* method) {
-	assert(method->tag == DEFINITION_FUNCTION);
-	method->tag = DEFINITION_METHOD;
-	method->function.private = private;
-	return method;
+Definition* ast_definition_method(bool private, Definition* function) {
+	assert(function->tag == DEFINITION_FUNCTION);
+	function->tag = DEFINITION_METHOD;
+	function->function.private = private;
+	return function;
 }
 
 Definition* ast_definition_constructor(Definition* parameters, Block* block) {
@@ -372,6 +372,7 @@ Variable* ast_variable_id(Id* id) {
 	variable->global = false;
 	variable->value = false;
 	variable->llvm_value = NULL;
+	variable->llvm_structure_index = NULL;
 	variable->id = id;
 	return variable;
 }
@@ -385,6 +386,7 @@ Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
 	variable->global = false;
 	variable->value = false;
 	variable->llvm_value = NULL;
+	variable->llvm_structure_index = NULL;
 	variable->indexed.array = array;
 	variable->indexed.index = index;
 	return variable;

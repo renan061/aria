@@ -10,6 +10,11 @@
 #include "ast.h"
 #include "parser.h" // for the tokens
 
+/*
+ * TODO
+ *	- Should not call alloca and store for parameters since they are values.
+ */
+
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL)
 
@@ -31,14 +36,18 @@
 #define LABEL_WHILE_END		LABEL "_while_end"
 
 // TODO: LLVM Types / Values
-#define LLVM_VOID_TYPE LLVMVoidType()
-#define LLVM_BOOLEAN_TYPE LLVMIntType(1)
-#define LLVM_INTEGER_TYPE LLVMInt32Type()
-#define LLVM_FLOAT_TYPE LLVMDoubleType()
-#define LLVM_STRING_TYPE LLVMPointerType(LLVMInt8Type(), 0)
+#define LLVM_VOID_TYPE			LLVMVoidType()
+#define LLVM_BOOLEAN_TYPE		LLVMIntType(1)
+#define LLVM_INTEGER_TYPE		LLVMInt32Type()
+#define LLVM_FLOAT_TYPE			LLVMDoubleType()
+#define LLVM_STRING_TYPE		LLVMPointerType(LLVMInt8Type(), 0)
+#define LLVM_MONITOR_TYPE(t)	LLVMPointerType(t, 0) /* TODO */
 
-#define LLVM_TRUE_VALUE LLVMConstInt(LLVM_BOOLEAN_TYPE, true, false)
-#define LLVM_FALSE_VALUE LLVMConstInt(LLVM_BOOLEAN_TYPE, false, false)
+// TODO: Last argument SignExtend?
+#define LLVM_BOOLEAN_CONSTANT(b)	LLVMConstInt(LLVM_BOOLEAN_TYPE, b, false)
+#define LLVM_INTEGER_CONSTANT(n)	LLVMConstInt(LLVM_INTEGER_TYPE, n, false)
+#define LLVM_TRUE_CONSTANT			LLVM_BOOLEAN_CONSTANT(true)
+#define LLVM_FALSE_CONSTANT 		LLVM_BOOLEAN_CONSTANT(false)
 
 // Primitive types
 static Type* boolean_;
@@ -62,6 +71,9 @@ typedef struct IRState {
      * Must always set this to NULL after adding a terminator instruction.
      */
     LLVMBasicBlockRef block;
+
+    // TODO: Gambiarra
+    LLVMValueRef self;
 } IRState;
 
 static void state_position_builder(IRState* state, LLVMBasicBlockRef block) {
@@ -87,7 +99,6 @@ static LLVMValueRef llvm_string_literal(IRState*, const char*);
 
 // Auxiliary
 static LLVMValueRef zerovalue(IRState*, Type*);
-static const char* SELF = "self"; // TODO
 
 // TODO
 static void backend_definition(IRState*, Definition*);
@@ -117,7 +128,8 @@ LLVMModuleRef backend_compile(AST* ast) {
 		/* module	*/ LLVMModuleCreateWithName("main.aria"),
 		/* builder	*/ LLVMCreateBuilder(),
 		/* function	*/ NULL,
-		/* block 	*/ NULL
+		/* block 	*/ NULL,
+		/* self		*/ NULL,
 	};
 
 	// Includes
@@ -148,7 +160,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 		Variable* variable = definition->variable.variable;
 		Expression* expression = definition->variable.expression;
 
-		if (variable->global) { // Global
+		if (variable->global) { // Globals
 			variable->llvm_value = LLVMAddGlobal(
 				state->module,
 				llvm_type(variable->type),
@@ -156,7 +168,9 @@ static void backend_definition(IRState* state, Definition* definition) {
 			);
 			backend_expression(state, expression);
 			LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
-		} else { // Scoped variables
+		} else if (variable->llvm_structure_index) { // Attributes
+
+		} else { // Common scoped variables
 			variable->llvm_value = LLVMBuildAlloca(
 				state->builder,
 				llvm_type(variable->type),
@@ -173,6 +187,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 	}
 	case DEFINITION_FUNCTION:
 		/* fallthrough */
+	case DEFINITION_METHOD:
+		/* fallthrough */
 	case DEFINITION_CONSTRUCTOR: {
 		llvm_function_declaration(state->module, definition);
 		state->function = definition->llvm_value;
@@ -181,6 +197,38 @@ static void backend_definition(IRState* state, Definition* definition) {
 			state->function,
 			LABEL "_function_entry"
 		));
+
+		// TODO: Gambiarra
+		if (definition->tag == DEFINITION_CONSTRUCTOR) {
+			Type* monitor_type = definition->function.type;
+
+			// Creating the instance
+			state->self = LLVMBuildMalloc(
+				state->builder,
+				monitor_type->llvm_type,
+				LLVM_TEMPORARY
+			);
+
+			// Initializing attributes
+			Definition* monitor_definitions = monitor_type->monitor.definitions;
+			for (Definition* d = monitor_definitions; d; d = d->next) {
+				if (d->tag == DEFINITION_VARIABLE) {
+					backend_variable(state, d->variable.variable);
+					backend_expression(state, d->variable.expression);
+					LLVMBuildStore(
+						state->builder,
+						d->variable.expression->llvm_value,
+						d->variable.variable->llvm_value
+					);
+				}
+			}
+		}
+
+		// TODO: Gambiarra
+		if (definition->tag == DEFINITION_METHOD) {
+			// Self is the first parameter
+			state->self = definition->function.parameters->variable.variable->llvm_value;
+		}
 
 		// Calling alloca and store for parameters
 		for (Definition* p = definition->function.parameters; p; p = p->next) {
@@ -199,60 +247,67 @@ static void backend_definition(IRState* state, Definition* definition) {
 
 		backend_block(state, definition->function.block);
 
+		// TODO: Gambiarra
+		if (definition->tag == DEFINITION_CONSTRUCTOR) {
+			if (state_block_open(state)) {
+				llvm_return(state, state->self);
+			} else {
+				state_position_builder(state, LLVMAppendBasicBlock(
+					state->function,
+					LABEL "_constructor_return"
+				));
+				llvm_return(state, state->self);
+			}
+		}
+
 		// Implicit return - always returns with the appropriate zero value
 		if (state_block_open(state)) {
 			llvm_return(state, zerovalue(state, definition->function.type));
 		}
+		state->self = NULL; // TODO
 		break;
 	}
-	case DEFINITION_METHOD:
-		TODO;
-		break;
 	case DEFINITION_TYPE: {
 		assert(definition->type->tag == TYPE_MONITOR);
 
 		Type* type = definition->type;
-
+		Definition* parameters = type->monitor.definitions;
 		int n = 0;
 
-		for (Definition* d = type->monitor.definitions; d; d = d->next, n++) {
+		for (Definition* d = parameters; d; d = d->next, n++) {
 			if (d->tag != DEFINITION_VARIABLE) {
 				continue;
 			}
 		}
 
 		LLVMTypeRef elements[n];
-
 		n = 0;
 
-		for (Definition* d = type->monitor.definitions; d; d = d->next) {
-			switch (d->tag) {
-			case DEFINITION_VARIABLE:
+		for (Definition* d = parameters; d; d = d->next) {
+			if (d->tag == DEFINITION_VARIABLE) {
+				d->variable.variable->llvm_structure_index =
+					LLVM_INTEGER_CONSTANT(n);
 				elements[n++] = llvm_type(d->variable.variable->type);
-				break;
-			case DEFINITION_METHOD: {
-				// TODO: Move this to parser/sem?
-				Variable* v = ast_variable_id(ast_id(-1, SELF));
-				v->type = type;
-				v->global = false;
-				v->value = true;
-
-				Definition* p = ast_definition_variable(v, NULL);
-				
-				p->next = d->function.parameters;
-				d->function.parameters = p;
-				break;
-			}
-			case DEFINITION_CONSTRUCTOR:
-				backend_definition(state, d->function);
-				break;
-			default:
-				UNREACHABLE;
 			}
 		}
 
-		// TODO: Packed?
-		m->llvm_type = LLVMStructType(elements, n, false);
+		type->llvm_type = LLVMStructCreateNamed(
+			LLVMGetGlobalContext(),
+			type->monitor.id->name
+		);
+		LLVMStructSetBody(type->llvm_type, elements, n, false); // TODO: Packed?
+
+		for (Definition* d = parameters; d; d = d->next) {
+			switch (d->tag) {
+			case DEFINITION_METHOD:
+				/* fallthrough */
+			case DEFINITION_CONSTRUCTOR:
+				backend_definition(state, d);
+				break;
+			default:
+				continue;
+			}
+		}
 
 		break;
 	}
@@ -375,7 +430,22 @@ static void backend_statement(IRState* state, Statement* statement) {
 static void backend_variable(IRState* state, Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID:
-		// llvm_value dealed with already
+		// llvm_value dealt with already, unless if attribute
+		if (variable->llvm_structure_index) {
+			assert(state->self);
+
+			LLVMValueRef indexes[2] = {
+				LLVM_INTEGER_CONSTANT(0),
+				variable->llvm_structure_index
+			};
+			variable->llvm_value = LLVMBuildGEP(
+				state->builder,
+				state->self,
+				indexes,
+				2,
+				LLVM_TEMPORARY
+			);
+		}
 		break;
 	case VARIABLE_INDEXED: {
 		backend_expression(state, variable->indexed.array);
@@ -398,12 +468,12 @@ static void backend_variable(IRState* state, Variable* variable) {
 static void backend_expression(IRState* state, Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		expression->llvm_value = LLVMConstInt(LLVM_BOOLEAN_TYPE,
-			expression->literal_boolean, false /* TODO */);
+		expression->llvm_value =
+			LLVM_BOOLEAN_CONSTANT(expression->literal_boolean);
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		expression->llvm_value = LLVMConstInt(LLVM_INTEGER_TYPE,
-			expression->literal_integer, false /* TODO */);
+		expression->llvm_value =
+			LLVM_INTEGER_CONSTANT(expression->literal_integer);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
 		expression->llvm_value = LLVMConstReal(LLVM_FLOAT_TYPE,
@@ -546,7 +616,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 		LLVMValueRef
 			phi = LLVMBuildPhi(state->builder, LLVM_BOOLEAN_TYPE,
 				LLVM_TEMPORARY "_phi"),
-			incoming_values[2] = {LLVM_TRUE_VALUE, LLVM_FALSE_VALUE};
+			incoming_values[2] = {LLVM_TRUE_CONSTANT, LLVM_FALSE_CONSTANT};
 		LLVMBasicBlockRef incoming_blocks[2] = {block_true, block_false};
 		LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
 
@@ -698,7 +768,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 		}
 		break;
 	case FUNCTION_CALL_METHOD:
-		TODO;
+		break;
 	case FUNCTION_CALL_CONSTRUCTOR:
 		switch (call->type->tag) {
 		case TYPE_ARRAY: // new array
@@ -709,8 +779,8 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 				/* Size */			arguments[0],
 				/* TempName */		LLVM_TEMPORARY
 			);
-		case TYPE_MONITOR: // monitor's constructor
-			TODO;
+		case TYPE_MONITOR: // monitor constructor
+			break;
 		default:
 			UNREACHABLE;
 		}
@@ -743,7 +813,6 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 static void llvm_function_declaration(LLVMModuleRef module,
 	Definition* definition) {
 
-	assert(definition->tag == DEFINITION_FUNCTION);
 	assert(definition->function.id);
 	assert(definition->function.type);
 	
@@ -806,7 +875,7 @@ static LLVMTypeRef llvm_type(Type* type) {
 	case TYPE_ARRAY:
 		return LLVMPointerType(llvm_type(type->array), 0);
 	case TYPE_MONITOR:
-		return type->llvm_type;
+		return LLVM_MONITOR_TYPE(type->llvm_type);
 	default:
 		UNREACHABLE;
 	}
@@ -849,16 +918,17 @@ static LLVMValueRef llvm_string_literal(IRState* state, const char* string) {
 // ==================================================
 
 // TODO: Find a better way to write this...
+// TODO: Check for llvm zeroinitalizer
 static LLVMValueRef zerovalue(IRState* state, Type* type) {
 	switch (type->tag) {
 	case TYPE_VOID:
 		return NULL;
 	case TYPE_ID:
 		if (type == boolean_) {
-			return LLVMConstInt(LLVM_BOOLEAN_TYPE, false, false);
+			return LLVM_FALSE_CONSTANT;
 		}
 		if (type == integer_) {
-			return LLVMConstInt(LLVM_INTEGER_TYPE, 0, false);
+			return LLVM_INTEGER_CONSTANT(0);
 		}
 		if (type == float_) {
 			return LLVMConstReal(LLVM_FLOAT_TYPE, 0.0);
@@ -870,7 +940,7 @@ static LLVMValueRef zerovalue(IRState* state, Type* type) {
 	case TYPE_ARRAY:
 		return LLVMConstNull(llvm_type(type));
 	case TYPE_MONITOR:
-		TODO;
+		return LLVMConstNull(llvm_type(type));
 	default:
 		UNREACHABLE;
 	}

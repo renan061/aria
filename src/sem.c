@@ -243,11 +243,13 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		
 		// TODO: Take line (-1) from definition
 		Variable* variable = astself(-1);
-		variable->type = ast_type_id(ast_id(-1,
-			state->monitor->monitor.id->name));
+		variable->type = ast_type_id(ast_id(
+			-1,
+			state->monitor->monitor.id->name)
+		);
 
-		Definition* self = ast_definition_variable(variable, NULL);
-		PREPEND(Definition, definition->function.parameters, self);
+		PREPEND(Definition, definition->function.parameters,
+			ast_definition_variable(variable, NULL));
 
 		if (!symtable_insert(state->table, definition)) {
 			err_redeclaration(definition->function.id);
@@ -427,7 +429,8 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 		Definition* definition = symtable_find(state->table, variable->id, &n);
 		if (!definition) {
 			err_variable_unknown(variable->id);
-		} else if (definition->tag != DEFINITION_VARIABLE) {
+		}
+		if (definition->tag != DEFINITION_VARIABLE) {
 			err_variable_misuse(variable->id);
 		}
 
@@ -615,7 +618,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			err_function_call_misuse(call->id);
 		}
 
-		// Implicit method calls inside monitors
+		// Implicit self for method calls inside monitors
 		if (call->function_definition->tag == DEFINITION_METHOD) {
 			assert(state->monitor);
 			PREPEND(Expression, call->arguments,
@@ -693,17 +696,18 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	Definition* parameter = call->function_definition->function.parameters;
 	Expression* argument = call->arguments;
 	Expression** pointer = &call->arguments;
+	call->arguments_count = 0;
 
 	// Skips comparing between the first parameter and argument of a method
 	if (call->tag == FUNCTION_CALL_METHOD) {
 		assert(parameter && argument);
+		call->arguments_count++;
 		parameter = parameter->next;
 		argument = (*pointer)->next;
 		pointer = &argument;
 	}
 
 	// Comparing arguments with parameters
-	call->arguments_count = 0;
 	while (parameter || argument) {
 		if (parameter && !argument) {
 			err_function_call_few_args(call->line);
