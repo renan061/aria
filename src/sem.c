@@ -46,8 +46,9 @@ typedef struct SemanticState {
 	// <true> if currently analysing a monitor's initializer, <false> otherwise
 	bool initializer;
 
-	// <true> if currently analysing a spawn statement block, <false> otherwise
-	bool spawn;
+	// The spawn scope if currently analysing a spawn statement block, NULL
+	// otherwise
+	Scope* spawn;
 } SemanticState;
 
 // Primitive types
@@ -147,7 +148,7 @@ void sem_analyse(AST* ast) {
 		/* current monitor		*/ NULL,
 		/* return type			*/ NULL,
 		/* inside initializer	*/ false,
-		/* inside spawn			*/ false
+		/* spawn scope			*/ NULL
 	};
 
 	// Analysis
@@ -405,10 +406,9 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		break;
 	case STATEMENT_SPAWN:
 		// TODO: Should not be able to spawn inside a monitor and initializer
-		symtable_enter_scope(state->table);
-		state->spawn = true;
+		state->spawn = symtable_enter_scope(state->table);
 		sem_block(state, statement->spawn);
-		state->spawn = false;
+		state->spawn = NULL;
 		symtable_leave_scope(state->table);
 		break;
 	case STATEMENT_BLOCK:
@@ -426,8 +426,7 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 
 	switch (variable->tag) {
 	case VARIABLE_ID: {
-		int n = 0;
-		Definition* definition = symtable_find(state->table, variable->id, &n);
+		Definition* definition = symtable_find(state->table, variable->id);
 		if (!definition) {
 			err_variable_unknown(variable->id);
 		}
@@ -442,13 +441,14 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 		free(variable);
 		*variable_pointer = variable = definition->variable.variable;
 
-		// If accessing variables from outside a spawn block
-		if (state->spawn && n != 1) {
-			if (!variable->value) {
-				err_spawn_variable(line);
-			}
-			if (!safetype(variable->type)) {
-				err_spawn_unsafe(line);
+		if (state->spawn) {
+			if (!symtable_find_in_scope(state->spawn, variable->id)) {
+				if (!variable->value) {
+					err_spawn_variable(line);
+				}
+				if (!safetype(variable->type)) {
+					err_spawn_unsafe(line);
+				}
 			}
 		}
 		break;
@@ -609,7 +609,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			return;
 		}
 
-		call->function_definition = symtable_find(state->table, call->id, NULL);
+		call->function_definition = symtable_find(state->table, call->id);
 		if (!call->function_definition) {
 			err_function_call_unknown(call->id);
 		}
@@ -794,7 +794,7 @@ static void linktype(SymbolTable* table, Type** pointer) {
 		// TypeVoid instance is not provided by the user as an id
 		break;
 	case TYPE_ID: {
-		Definition* definition = symtable_find(table, (*pointer)->id, NULL);
+		Definition* definition = symtable_find(table, (*pointer)->id);
 		if (!definition) {
 			err_unkown_type_name((*pointer)->id);
 		}

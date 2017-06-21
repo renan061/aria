@@ -76,6 +76,9 @@ typedef struct IRState {
 
     // TODO: Gambiarra
     LLVMValueRef self;
+
+    // TODO: Gambiarra
+    bool main;
 } IRState;
 
 static void state_position_builder(IRState* state, LLVMBasicBlockRef block) {
@@ -120,7 +123,10 @@ static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // TODO: Move this uptop?
 #define NAME_PTHREAD_CREATE	"pthread_create"
+#define NAME_PTHREAD_EXIT	"pthread_exit"
+
 #define NAME_SPAWN_FUNCTION	"_spawn_block"
+
 #define LLVM_TYPE_PTHREAD_T	LLVM_TYPE_VOID_POINTER
 
 // Returns the type the function pthread_create needs to receive as an argument
@@ -168,10 +174,30 @@ static LLVMValueRef threads_declare_pthread_create(LLVMModuleRef module) {
 	);
 }
 
+// Declares pthread_exit in the module and returns its LLVM value
+static LLVMValueRef threads_declare_pthread_exit(LLVMModuleRef module) {
+	// void pthread_exit(void *value_ptr);
+
+	LLVMTypeRef parameters[1] = {LLVM_TYPE_VOID_POINTER};
+
+	LLVMTypeRef type_pthread_exit = LLVMFunctionType(
+		/* ReturnType	*/ LLVM_TYPE_VOID,
+		/* ParamTypes	*/ parameters,
+		/* ParamCount	*/ 1,
+		/* IsVarArg		*/ false
+	);
+
+	return LLVMAddFunction(
+		/* Module		*/ module,
+		/* FunctionName	*/ NAME_PTHREAD_EXIT,
+		/* FunctionType	*/ type_pthread_exit
+	);
+}
+
 // Defines the spawn function
 static LLVMValueRef threads_define_spawn_function(IRState* state, Block* block) {
 	IRState spawn_state = {state->module, state->builder, state->printf, NULL,
-		NULL, NULL};
+		NULL, NULL, false};
 
 	spawn_state.function = LLVMAddFunction(
 		/* Module		*/ spawn_state.module,
@@ -221,6 +247,15 @@ static void threads_call_pthread_create(IRState* state, LLVMValueRef spawn_funct
 	LLVMBuildCall(state->builder, _pthread_create, arguments, 4, "");
 }
 
+
+static void threads_call_pthread_exit(IRState* state) {
+	LLVMValueRef
+		_pthread_exit = LLVMGetNamedFunction(state->module, NAME_PTHREAD_EXIT),
+		arguments[1] = {LLVMConstPointerNull(LLVM_TYPE_VOID_POINTER)}
+	;
+	LLVMBuildCall(state->builder, _pthread_exit, arguments, 1, "");
+}
+
 // ==================================================
 //
 //	Implementation
@@ -241,6 +276,7 @@ LLVMModuleRef backend_compile(AST* ast) {
 		/* function	*/ NULL,
 		/* block 	*/ NULL,
 		/* self		*/ NULL,
+		/* main		*/ false,
 	};
 
 	// Includes
@@ -256,6 +292,7 @@ LLVMModuleRef backend_compile(AST* ast) {
 	state.printf = LLVMAddFunction(state.module, "printf", type_printf);
 
 	threads_declare_pthread_create(state.module);
+	threads_declare_pthread_exit(state.module);
 	// End includes
 
 	for (Definition* d = ast->definitions; d; d = d->next) {
@@ -305,6 +342,10 @@ static void backend_definition(IRState* state, Definition* definition) {
 		break;
 	}
 	case DEFINITION_FUNCTION:
+		// TODO: Remove gambiarra
+		if (!strcmp(definition->function.id->name, "main")) {
+			state->main = true;
+		}
 		/* fallthrough */
 	case DEFINITION_METHOD:
 		/* fallthrough */
@@ -385,6 +426,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 			llvm_return(state, zerovalue(state, definition->function.type));
 		}
 		state->self = NULL; // TODO
+		state->main = false; // TODO
 		break;
 	}
 	case DEFINITION_TYPE: {
@@ -1007,6 +1049,10 @@ static LLVMTypeRef llvm_type(Type* type) {
 }
 
 static void llvm_return(IRState* state, LLVMValueRef llvm_value) {
+	if (state->main) {
+		threads_call_pthread_exit(state);
+	}
+
 	if (llvm_value) {
 		LLVMBuildRet(state->builder, llvm_value);
 	} else {

@@ -73,6 +73,9 @@ function foo: Void {
 		variable x: Integer = (1: Integer)
 		variable y: Integer = (2: Integer)
 		x: Integer = (((y: Integer) *: Integer (2: Integer)) +: Integer (value1: Integer))
+		while ((x: Integer) <: Boolean (10: Integer)) {
+			x: Integer = ((x: Integer) +: Integer (1: Integer))
+		}
 	}
 	{
 		value a: Integer = (1: Integer)
