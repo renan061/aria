@@ -36,18 +36,20 @@
 #define LABEL_WHILE_END		LABEL "_while_end"
 
 // TODO: LLVM Types / Values
-#define LLVM_VOID_TYPE			LLVMVoidType()
-#define LLVM_BOOLEAN_TYPE		LLVMIntType(1)
-#define LLVM_INTEGER_TYPE		LLVMInt32Type()
-#define LLVM_FLOAT_TYPE			LLVMDoubleType()
-#define LLVM_STRING_TYPE		LLVMPointerType(LLVMInt8Type(), 0)
-#define LLVM_MONITOR_TYPE(t)	LLVMPointerType(t, 0) /* TODO */
+// TODO: These are actually LLVM_ARIA_VOID_TYPE and etc
+#define LLVM_TYPE_VOID			LLVMVoidType()
+#define LLVM_TYPE_BOOLEAN		LLVMIntType(1)
+#define LLVM_TYPE_INTEGER		LLVMInt32Type()
+#define LLVM_TYPE_FLOAT			LLVMDoubleType()
+#define LLVM_TYPE_STRING		LLVMPointerType(LLVMInt8Type(), 0)
+#define LLVM_TYPE_MONITOR(t)	LLVMPointerType(t, 0) /* TODO */
+#define LLVM_TYPE_VOID_POINTER	LLVMPointerType(LLVMInt8Type(), 0)
 
 // TODO: Last argument SignExtend?
-#define LLVM_BOOLEAN_CONSTANT(b)	LLVMConstInt(LLVM_BOOLEAN_TYPE, b, false)
-#define LLVM_INTEGER_CONSTANT(n)	LLVMConstInt(LLVM_INTEGER_TYPE, n, false)
-#define LLVM_TRUE_CONSTANT			LLVM_BOOLEAN_CONSTANT(true)
-#define LLVM_FALSE_CONSTANT 		LLVM_BOOLEAN_CONSTANT(false)
+#define LLVM_CONSTANT_BOOLEAN(b)	LLVMConstInt(LLVM_TYPE_BOOLEAN, b, false)
+#define LLVM_CONSTANT_INTEGER(n)	LLVMConstInt(LLVM_TYPE_INTEGER, n, false)
+#define LLVM_CONSTANT_TRUE			LLVM_CONSTANT_BOOLEAN(true)
+#define LLVM_CONSTANT_FALSE 		LLVM_CONSTANT_BOOLEAN(false)
 
 // Primitive types
 static Type* boolean_;
@@ -112,6 +114,115 @@ static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // ==================================================
 //
+//	Threads
+//
+// ==================================================
+
+// TODO: Move this uptop?
+#define NAME_PTHREAD_CREATE	"pthread_create"
+#define NAME_SPAWN_FUNCTION	"_spawn_block"
+#define LLVM_TYPE_PTHREAD_T	LLVM_TYPE_VOID_POINTER
+
+// Returns the type the function pthread_create needs to receive as an argument
+static LLVMTypeRef threads_type_spawn_function(void) {
+	// void *(*start_routine)(void*)
+	LLVMTypeRef parameters[1] = {LLVM_TYPE_VOID_POINTER};
+	return LLVMFunctionType(
+		/* ReturnType	*/ LLVM_TYPE_VOID_POINTER,
+		/* ParamTypes	*/ parameters,
+		/* ParamCount	*/ 1,
+		/* IsVarArg		*/ false
+	);
+}
+
+// Declares pthread_create in the module and returns its LLVM value
+static LLVMValueRef threads_declare_pthread_create(LLVMModuleRef module) {
+	// int pthread_create(...);
+
+	LLVMTypeRef type_pointer_pthread_t = LLVMPointerType(
+		/* ElementType	*/ LLVM_TYPE_PTHREAD_T,
+		/* AddressSpace	*/ 0
+	);
+	LLVMTypeRef type_pointer_spawn_function = LLVMPointerType(
+		/* ElementType	*/ threads_type_spawn_function(),
+		/* AddressSpace	*/ 0
+	);
+	LLVMTypeRef parameters[4] = {
+		/* pthread_t *thread				*/ type_pointer_pthread_t,
+		/* const pthread_attr_t *attr		*/ LLVM_TYPE_VOID_POINTER,
+		/* void *(*start_routine)(void*)	*/ type_pointer_spawn_function,
+		/* void *arg						*/ LLVM_TYPE_VOID_POINTER
+	};
+
+	LLVMTypeRef type_pthread_create = LLVMFunctionType(
+		/* ReturnType	*/ LLVM_TYPE_INTEGER,
+		/* ParamTypes	*/ parameters,
+		/* ParamCount	*/ 4,
+		/* IsVarArg		*/ false
+	);
+
+	return LLVMAddFunction(
+		/* Module		*/ module,
+		/* FunctionName	*/ NAME_PTHREAD_CREATE,
+		/* FunctionType	*/ type_pthread_create
+	);
+}
+
+// Defines the spawn function
+static LLVMValueRef threads_define_spawn_function(IRState* state, Block* block) {
+	IRState spawn_state = {state->module, state->builder, state->printf, NULL,
+		NULL, NULL};
+
+	spawn_state.function = LLVMAddFunction(
+		/* Module		*/ spawn_state.module,
+		/* FunctionName	*/ NAME_SPAWN_FUNCTION,
+		/* FunctionType	*/ threads_type_spawn_function()
+	);
+	spawn_state.block = LLVMAppendBasicBlock(
+		/* Function		*/ spawn_state.function,
+		/* BlockName	*/ LABEL "_spawn_function_entry"
+	);
+	LLVMPositionBuilderAtEnd(spawn_state.builder, spawn_state.block);
+	backend_block(&spawn_state, block);
+	LLVMBuildRet(
+		/* Builder		*/ spawn_state.builder,
+		/* ReturnValue	*/ LLVMConstPointerNull(LLVM_TYPE_VOID_POINTER)
+	);
+
+	// Going back to the original state builder position
+	LLVMPositionBuilderAtEnd(state->builder, state->block);
+
+	return spawn_state.function;
+}
+
+static void threads_call_pthread_create(IRState* state, LLVMValueRef spawn_function) {
+	LLVMValueRef _pthread_create = LLVMGetNamedFunction(
+		/* Module		*/ state->module,
+		/* FunctionName	*/ NAME_PTHREAD_CREATE
+	);
+
+	LLVMValueRef _pthread_t = LLVMBuildAlloca(
+		/* Builder	*/ state->builder,
+		/* Type		*/ LLVM_TYPE_PTHREAD_T,
+		/* Name		*/ LLVM_TEMPORARY
+	);
+
+	LLVMValueRef arguments[4] = {
+		// pthread_t *thread
+		_pthread_t,
+		// const pthread_attr_t *attr
+		LLVMConstPointerNull(LLVM_TYPE_VOID_POINTER),
+		// void *(*start_routine)(void*)
+		spawn_function,
+		// void *arg
+		LLVMConstPointerNull(LLVM_TYPE_VOID_POINTER)
+	};
+
+	LLVMBuildCall(state->builder, _pthread_create, arguments, 4, "");
+}
+
+// ==================================================
+//
 //	Implementation
 //
 // ==================================================
@@ -134,10 +245,18 @@ LLVMModuleRef backend_compile(AST* ast) {
 
 	// Includes
 	// TODO: Should declare something like `extern printf` in the code...
-	LLVMTypeRef printf_param_types[] = {LLVM_STRING_TYPE};
-	LLVMTypeRef printf_type = LLVMFunctionType(LLVMInt32Type(),
-		printf_param_types, 1, true); 
-	state.printf = LLVMAddFunction(state.module, "printf", printf_type);
+	// TODO: Can I use LLVMGetNamedFunction instead of a struct "global" value?
+	LLVMTypeRef printf_parameter_types[1] = {LLVM_TYPE_STRING};
+	LLVMTypeRef type_printf = LLVMFunctionType(
+		LLVM_TYPE_INTEGER,
+		printf_parameter_types,
+		1,
+		true
+	);
+	state.printf = LLVMAddFunction(state.module, "printf", type_printf);
+
+	threads_declare_pthread_create(state.module);
+	// End includes
 
 	for (Definition* d = ast->definitions; d; d = d->next) {
 		backend_definition(&state, d);
@@ -227,7 +346,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 		// TODO: Gambiarra
 		if (definition->tag == DEFINITION_METHOD) {
 			// Self is the first parameter
-			state->self = definition->function.parameters->variable.variable->llvm_value;
+			state->self =
+				definition->function.parameters->variable.variable->llvm_value;
 		}
 
 		// Calling alloca and store for parameters
@@ -286,7 +406,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 		for (Definition* d = parameters; d; d = d->next) {
 			if (d->tag == DEFINITION_VARIABLE) {
 				d->variable.variable->llvm_structure_index =
-					LLVM_INTEGER_CONSTANT(n);
+					LLVM_CONSTANT_INTEGER(n);
 				elements[n++] = llvm_type(d->variable.variable->type);
 			}
 		}
@@ -416,9 +536,14 @@ static void backend_statement(IRState* state, Statement* statement) {
 		state_position_builder(state, be);
 		break;
 	}
-	case STATEMENT_SPAWN:
-		// break;
-		TODO;
+	case STATEMENT_SPAWN: {
+		LLVMValueRef spawn_function = threads_define_spawn_function(
+			state,
+			statement->spawn
+		);
+		threads_call_pthread_create(state, spawn_function);
+		break;
+	}
 	case STATEMENT_BLOCK:
 		backend_block(state, statement->block);
 		break;
@@ -435,7 +560,7 @@ static void backend_variable(IRState* state, Variable* variable) {
 			assert(state->self);
 
 			LLVMValueRef indexes[2] = {
-				LLVM_INTEGER_CONSTANT(0),
+				LLVM_CONSTANT_INTEGER(0),
 				variable->llvm_structure_index
 			};
 			variable->llvm_value = LLVMBuildGEP(
@@ -469,14 +594,14 @@ static void backend_expression(IRState* state, Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
 		expression->llvm_value =
-			LLVM_BOOLEAN_CONSTANT(expression->literal_boolean);
+			LLVM_CONSTANT_BOOLEAN(expression->literal_boolean);
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
 		expression->llvm_value =
-			LLVM_INTEGER_CONSTANT(expression->literal_integer);
+			LLVM_CONSTANT_INTEGER(expression->literal_integer);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->llvm_value = LLVMConstReal(LLVM_FLOAT_TYPE,
+		expression->llvm_value = LLVMConstReal(LLVM_TYPE_FLOAT,
 			expression->literal_float);
 		break;
 	case EXPRESSION_LITERAL_STRING: {
@@ -614,9 +739,9 @@ static void backend_expression(IRState* state, Expression* expression) {
 		state_position_builder(state, block_phi);
 
 		LLVMValueRef
-			phi = LLVMBuildPhi(state->builder, LLVM_BOOLEAN_TYPE,
+			phi = LLVMBuildPhi(state->builder, LLVM_TYPE_BOOLEAN,
 				LLVM_TEMPORARY "_phi"),
-			incoming_values[2] = {LLVM_TRUE_CONSTANT, LLVM_FALSE_CONSTANT};
+			incoming_values[2] = {LLVM_CONSTANT_TRUE, LLVM_CONSTANT_FALSE};
 		LLVMBasicBlockRef incoming_blocks[2] = {block_true, block_false};
 		LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
 
@@ -857,25 +982,25 @@ static void llvm_function_declaration(LLVMModuleRef module,
 static LLVMTypeRef llvm_type(Type* type) {
 	switch (type->tag) {
 	case TYPE_VOID:
-		return LLVM_VOID_TYPE;
+		return LLVM_TYPE_VOID;
 	case TYPE_ID:
 		if (type == boolean_) {
-			return LLVM_BOOLEAN_TYPE;
+			return LLVM_TYPE_BOOLEAN;
 		}
 		if (type == integer_) {
-			return LLVM_INTEGER_TYPE;
+			return LLVM_TYPE_INTEGER;
 		}
 		if (type == float_) {
-			return LLVM_FLOAT_TYPE;
+			return LLVM_TYPE_FLOAT;
 		}
 		if (type == string_) {
-			return LLVM_STRING_TYPE;
+			return LLVM_TYPE_STRING;
 		}
 		UNREACHABLE;
 	case TYPE_ARRAY:
 		return LLVMPointerType(llvm_type(type->array), 0);
 	case TYPE_MONITOR:
-		return LLVM_MONITOR_TYPE(type->llvm_type);
+		return LLVM_TYPE_MONITOR(type->llvm_type);
 	default:
 		UNREACHABLE;
 	}
@@ -906,7 +1031,7 @@ static LLVMValueRef llvm_string_literal(IRState* state, const char* string) {
 	return LLVMBuildPointerCast(
 		state->builder,
 		llvm_global,
-		LLVM_STRING_TYPE,
+		LLVM_TYPE_STRING,
 		LLVM_TEMPORARY
 	);
 }
@@ -925,13 +1050,13 @@ static LLVMValueRef zerovalue(IRState* state, Type* type) {
 		return NULL;
 	case TYPE_ID:
 		if (type == boolean_) {
-			return LLVM_FALSE_CONSTANT;
+			return LLVM_CONSTANT_FALSE;
 		}
 		if (type == integer_) {
-			return LLVM_INTEGER_CONSTANT(0);
+			return LLVM_CONSTANT_INTEGER(0);
 		}
 		if (type == float_) {
-			return LLVMConstReal(LLVM_FLOAT_TYPE, 0.0);
+			return LLVMConstReal(LLVM_TYPE_FLOAT, 0.0);
 		}
 		if (type == string_) {
 			return llvm_string_literal(state, "");

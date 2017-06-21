@@ -3,6 +3,7 @@
  *
  *	- Immutable Monitor1 is wrong
  *	- Return statements with no expressions should return the 'nil' expression
+ *	- Shouldn't be able to return inside a spawn block
  *
  */
 #include <assert.h>

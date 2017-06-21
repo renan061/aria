@@ -62,5 +62,5 @@ static int executeModule(LLVMModuleRef module)
 	}
 	LLVMGenericValueRef result = LLVMRunFunction(engine, main_function, 0, NULL);
 	LLVMDisposeExecutionEngine(engine);
-	return (int)LLVMGenericValueToInt(result, 0);
+	return (int) LLVMGenericValueToInt(result, 0);
 }
