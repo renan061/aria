@@ -404,13 +404,15 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		sem_block(state, statement->while_.block);
 		symtable_leave_scope(state->table);
 		break;
-	case STATEMENT_SPAWN:
+	case STATEMENT_SPAWN: {
 		// TODO: Should not be able to spawn inside a monitor and initializer
+		Scope* previous_spawn = state->spawn;
 		state->spawn = symtable_enter_scope(state->table);
 		sem_block(state, statement->spawn);
-		state->spawn = NULL;
+		state->spawn = previous_spawn;
 		symtable_leave_scope(state->table);
 		break;
+	}
 	case STATEMENT_BLOCK:
 		symtable_enter_scope(state->table);
 		sem_block(state, statement->block);

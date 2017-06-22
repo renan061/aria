@@ -325,19 +325,24 @@ static void backend_definition(IRState* state, Definition* definition) {
 			backend_expression(state, expression);
 			LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
 		} else if (variable->llvm_structure_index) { // Attributes
-
+			// TODO: "else if not variable->llvm_structure_index" below
 		} else { // Common scoped variables
-			variable->llvm_value = LLVMBuildAlloca(
-				state->builder,
-				llvm_type(variable->type),
-				variable->id->name
-			);
-			backend_expression(state, expression);
-			LLVMBuildStore(
-				state->builder,
-				expression->llvm_value,
-				variable->llvm_value
-			);
+			if (variable->value) { // values
+				backend_expression(state, expression);
+				variable->llvm_value = expression->llvm_value;
+			} else { // variables
+				variable->llvm_value = LLVMBuildAlloca(
+					state->builder,
+					llvm_type(variable->type),
+					variable->id->name
+				);
+				backend_expression(state, expression);
+				LLVMBuildStore(
+					state->builder,
+					expression->llvm_value,
+					variable->llvm_value
+				);
+			}
 		}
 		break;
 	}
@@ -389,21 +394,6 @@ static void backend_definition(IRState* state, Definition* definition) {
 			// Self is the first parameter
 			state->self =
 				definition->function.parameters->variable.variable->llvm_value;
-		}
-
-		// Calling alloca and store for parameters
-		for (Definition* p = definition->function.parameters; p; p = p->next) {
-			LLVMValueRef value = p->variable.variable->llvm_value;
-			p->variable.variable->llvm_value = LLVMBuildAlloca(
-				state->builder,
-				llvm_type(p->variable.variable->type),
-				p->variable.variable->id->name
-			);
-			LLVMBuildStore(
-				state->builder,
-				value,
-				p->variable.variable->llvm_value
-			);
 		}
 
 		backend_block(state, definition->function.block);
@@ -655,11 +645,15 @@ static void backend_expression(IRState* state, Expression* expression) {
 	}
 	case EXPRESSION_VARIABLE:
 		backend_variable(state, expression->variable);
-		expression->llvm_value = LLVMBuildLoad(
-			state->builder,
-			expression->variable->llvm_value,
-			LLVM_TEMPORARY
-		);
+		if (expression->variable->value) { // values
+			expression->llvm_value = expression->variable->llvm_value;
+		} else { // variables
+			expression->llvm_value = LLVMBuildLoad(
+				state->builder,
+				expression->variable->llvm_value,
+				LLVM_TEMPORARY
+			);
+		}
 		break;
 	case EXPRESSION_FUNCTION_CALL:
 		expression->llvm_value =
