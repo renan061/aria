@@ -4,7 +4,7 @@
 
 #include "ast.h"
 #include "alloc.h"
-#include "scanner.h" // for primitive_types
+#include "scanner.h" // for native_types
 
 // ==================================================
 //
@@ -113,7 +113,7 @@ Id* ast_id(Line line, const char* name) {
 // ==================================================
 
 // TODO: Test static
-#define PRIMITIVE_TYPE(v, i)					\
+#define NATIVE_TYPE(v, i)						\
 	static Type* v = NULL;						\
 	if (!v) {									\
 		MALLOC(v, Type);						\
@@ -121,7 +121,7 @@ Id* ast_id(Line line, const char* name) {
 		v->primitive = true;					\
 		v->immutable = true;					\
 		v->llvm_type = NULL;					\
-		v->id = ast_id(-1, primitive_types[i]);	\
+		v->id = ast_id(-1, native_types[i]);	\
 	}											\
 	return v;									\
 
@@ -139,37 +139,42 @@ Type* ast_type_void(void) {
 }
 
 Type* ast_type_boolean(void) {
-	PRIMITIVE_TYPE(type_boolean, SCANNER_BOOLEAN);
+	NATIVE_TYPE(type_boolean, SCANNER_NATIVE_BOOLEAN);
 }
 
 Type* ast_type_integer(void) {
-	PRIMITIVE_TYPE(type_integer, SCANNER_INTEGER);
+	NATIVE_TYPE(type_integer, SCANNER_NATIVE_INTEGER);
 }
 
 Type* ast_type_float(void) {
-	PRIMITIVE_TYPE(type_float, SCANNER_FLOAT);
+	NATIVE_TYPE(type_float, SCANNER_NATIVE_FLOAT);
 }
 
 Type* ast_type_string(void) {
-	PRIMITIVE_TYPE(type_string, SCANNER_STRING);
+	NATIVE_TYPE(type_string, SCANNER_NATIVE_STRING);
 }
 
-static Type* checkprimitive(Id* id) {
+Type* ast_type_condition_queue(void) {
+	NATIVE_TYPE(type_string, SCANNER_NATIVE_CONDITION_QUEUE);
+}
+
+static Type* checknative(Id* id) {
 	#define CHECK_TYPE(i, v)					\
-		if (primitive_types[i] == id->name) {	\
+		if (native_types[i] == id->name) {		\
 			return free(id), v;					\
 		}										\
 
-	CHECK_TYPE(SCANNER_BOOLEAN, ast_type_boolean());
-	CHECK_TYPE(SCANNER_INTEGER, ast_type_integer());
-	CHECK_TYPE(SCANNER_FLOAT, ast_type_float());
-	CHECK_TYPE(SCANNER_STRING, ast_type_string());
+	CHECK_TYPE(SCANNER_NATIVE_BOOLEAN, ast_type_boolean());
+	CHECK_TYPE(SCANNER_NATIVE_INTEGER, ast_type_integer());
+	CHECK_TYPE(SCANNER_NATIVE_FLOAT, ast_type_float());
+	CHECK_TYPE(SCANNER_NATIVE_STRING, ast_type_string());
+	CHECK_TYPE(SCANNER_NATIVE_CONDITION_QUEUE, ast_type_condition_queue());
 	return NULL;
 }
 
 Type* ast_type_id(Id* id) {
 	Type* type;
-	if ((type = checkprimitive(id))) {
+	if ((type = checknative(id))) {
 		return type;
 	}
 

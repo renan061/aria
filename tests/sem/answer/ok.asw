@@ -89,7 +89,7 @@ function foo: Void {
 	}
 }
 monitor Monitor1 {
-	value queue: String = ("FIXME": String)
+	variable queue: ConditionQueue
 	function Monitor1: Monitor1 {
 		return
 	}
@@ -97,9 +97,9 @@ monitor Monitor1 {
 		return ("string": String)
 	}
 	function bar(value self: Monitor1): Void {
-		while (true: Boolean) wait in queue: String
-		signal queue: String
-		broadcast queue: String
+		while (true: Boolean) wait in queue: ConditionQueue
+		signal queue: ConditionQueue
+		broadcast queue: ConditionQueue
 	}
 }
 monitor Monitor2 {

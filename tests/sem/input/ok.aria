@@ -104,7 +104,7 @@ function foo {
 
 // Others (monitor's and return) simple statements
 monitor Monitor1 {
-	value queue = "FIXME"; // FIXME: Condition Variables
+	variable queue: ConditionQueue;
 
 	initializer {
 		return;

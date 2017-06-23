@@ -4,6 +4,9 @@
  *	- Immutable Monitor1 is wrong
  *	- Return statements with no expressions should return the 'nil' expression
  *	- Shouldn't be able to return inside a spawn block
+ *	- semantic error: monitor 'String' has no defined initializer
+ *		- From doing 'value s = String();'
+ *	- ConditionQueue constructor call?
  *
  */
 #include <assert.h>
@@ -51,12 +54,13 @@ typedef struct SemanticState {
 	Scope* spawn;
 } SemanticState;
 
-// Primitive types
-static Type* void_;
-static Type* boolean_;
-static Type* integer_;
-static Type* float_;
-static Type* string_;
+// Native types
+static Type* __void;
+static Type* __boolean;
+static Type* __integer;
+static Type* __float;
+static Type* __string;
+static Type* __condition_queue;
 
 // Functions that analyse the abstract syntax tree recursively
 static void sem_definition(SemanticState*, Definition*);
@@ -133,15 +137,18 @@ static void err_expression(ErrorType, Expression*);
  */
 void sem_analyse(AST* ast) {
 	// Setup
-	void_ = ast_type_void();
-	boolean_ = ast_type_boolean();
-	integer_ = ast_type_integer();
-	float_ = ast_type_float();
-	string_ = ast_type_string();
-	Definition* definition_boolean = ast_definition_type(boolean_);
-	Definition* definition_integer = ast_definition_type(integer_);
-	Definition* definition_float = ast_definition_type(float_);
-	Definition* definition_string = ast_definition_type(string_);
+	__void = ast_type_void();
+	__boolean = ast_type_boolean();
+	__integer = ast_type_integer();
+	__float = ast_type_float();
+	__string = ast_type_string();
+	__condition_queue = ast_type_condition_queue();
+
+	Definition* def_boolean = ast_definition_type(__boolean);
+	Definition* def_integer = ast_definition_type(__integer);
+	Definition* def_float = ast_definition_type(__float);
+	Definition* def_string = ast_definition_type(__string);
+	Definition* def_condition_queue = ast_definition_type(__condition_queue);
 
 	SemanticState state = {
 		/* symbol table			*/ symtable_new(),
@@ -153,10 +160,11 @@ void sem_analyse(AST* ast) {
 
 	// Analysis
 	symtable_enter_scope(state.table);
-	symtable_insert(state.table, definition_boolean);
-	symtable_insert(state.table, definition_integer);
-	symtable_insert(state.table, definition_float);
-	symtable_insert(state.table, definition_string);
+	symtable_insert(state.table, def_boolean);
+	symtable_insert(state.table, def_integer);
+	symtable_insert(state.table, def_float);
+	symtable_insert(state.table, def_string);
+	symtable_insert(state.table, def_condition_queue);
 	for (Definition* d = ast->definitions; d; d = d->next) {
 		sem_definition(&state, d);
 	}
@@ -164,10 +172,11 @@ void sem_analyse(AST* ast) {
 
 	// Teardown
 	symtable_free(state.table);
-	free(definition_boolean);
-	free(definition_integer);
-	free(definition_float);
-	free(definition_string);
+	free(def_boolean);
+	free(def_integer);
+	free(def_float);
+	free(def_string);
+	free(def_condition_queue);
 
 	assert(!state.monitor);
 	assert(!state.return_);
@@ -328,8 +337,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (!conditiontype(statement->while_wait.expression->type)) {
 			err_invalid_condition_type(statement->while_wait.expression);
 		}
-		// TODO: Special semantics for condition variables
 		sem_variable(state, &statement->while_wait.variable);
+		if (statement->while_wait.variable->type != __condition_queue) {
+			TODOERR(
+				statement->line,
+				"wait-for-in second expression must be of type ConditionQueue"
+			);
+		}
 		break;
 	case STATEMENT_SIGNAL:
 		if (!state->monitor) {
@@ -338,8 +352,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "signal");
 		}
-		// TODO: Special semantics for condition variables
 		sem_variable(state, &statement->signal);
+		if (statement->signal->type != __condition_queue) {
+			TODOERR(
+				statement->line,
+				"signal must receive expression of type ConditionQueue"
+			);
+		}
 		break;
 	case STATEMENT_BROADCAST:
 		if (!state->monitor) {
@@ -348,8 +367,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "broadcast");
 		}
-		// TODO: Special semantics for condition variables
 		sem_variable(state, &statement->broadcast);
+		if (statement->broadcast->type != __condition_queue) {
+			TODOERR(
+				statement->line,
+				"broadcast must receive expression of type ConditionQueue"
+			);
+		}
 		break;
 	case STATEMENT_RETURN:
 		// Can't return inside a spawn block
@@ -365,7 +389,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 			}
 		}
 		// Can't return empty when the function expects a return type
-		if (state->return_ != void_ && !statement->return_) {	
+		if (state->return_ != __void && !statement->return_) {	
 			err_return_void(statement->line, state->return_);
 		}
 
@@ -474,16 +498,16 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 static void sem_expression(SemanticState* state, Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		expression->type = boolean_;
+		expression->type = __boolean;
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		expression->type = integer_;
+		expression->type = __integer;
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->type = float_;
+		expression->type = __float;
 		break;
 	case EXPRESSION_LITERAL_STRING:
-		expression->type = string_;
+		expression->type = __string;
 		break;
 	case EXPRESSION_VARIABLE:
 		sem_variable(state, &expression->variable);
@@ -506,7 +530,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			if (!conditiontype(expression->unary.expression->type)) {
 				err_expression(ERR_EXPRESSION_NOT, expression);
 			}
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		default:
 			UNREACHABLE;
@@ -525,7 +549,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			if (!conditiontype((*rp)->type)) {
 				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		case TK_EQUAL:
 			if (!equatabletype((*lp)->type)) {
@@ -537,7 +561,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			if (!typecheck2(lp, rp)) {
 				err_expression(ERR_EXPRESSION_TYPECHECK_EQUAL, expression);
 			}
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
 			if (!numerictype((*lp)->type)) {
@@ -547,7 +571,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
 			assert(typecheck2(lp, rp)); // for casting, if necessary
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		case '+': case '-': case '*': case '/':
 			if (!numerictype((*lp)->type)) {
@@ -607,7 +631,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 				sem_expression(state, e);
 				call->arguments_count++;
 			}
-			call->type = integer_;
+			call->type = __integer;
 			return;
 		}
 
@@ -661,10 +685,10 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 				call->arguments_count++);
 			if (call->arguments_count == 0) { // defaults to 8
 				call->arguments = ast_expression_literal_integer(call->line, 8);
-				call->arguments->type = integer_;
+				call->arguments->type = __integer;
 			} else if (call->arguments_count == 1) {
 				sem_expression(state, call->arguments);
-				typecheck1(integer_, &call->arguments);
+				typecheck1(__integer, &call->arguments);
 			} else {
 				err_function_call_array_constructor(
 					call->line,
@@ -867,30 +891,30 @@ static Type* typecheck2(Expression** l, Expression** r) {
 	}
 
 	// Performs casts
-	if (t1 == float_) {
-		return (*r = ast_expression_cast(*r, float_))->type;
+	if (t1 == __float) {
+		return (*r = ast_expression_cast(*r, __float))->type;
 	}
-	if (t2 == float_) {
-		return (*l = ast_expression_cast(*l, float_))->type;
+	if (t2 == __float) {
+		return (*l = ast_expression_cast(*l, __float))->type;
 	}
 
 	UNREACHABLE;
 }
 
 static bool indextype(Type* type) {
-	return type == integer_; // TODO: Float also
+	return type == __integer; // TODO: Float also
 }
 
 static bool numerictype(Type* type) {
-	return type == integer_ || type == float_;
+	return type == __integer || type == __float;
 }
 
 static bool conditiontype(Type* type) {
-	return type == boolean_;
+	return type == __boolean;
 }
 
 static bool equatabletype(Type* type) { // TODO: Strings?
-	return type == boolean_ || type == integer_ || type == float_;
+	return type == __boolean || type == __integer || type == __float;
 }
 
 static bool safetype(Type *type) {

@@ -5,6 +5,7 @@
  * TODO:
  *
  *	- Put line numbers in all structures (except for declarations and types)
+ *	- signal, broadcast and wait-for-in must be exp not var
  */
 
 #include <stdbool.h>
@@ -306,6 +307,7 @@ extern Type* ast_type_boolean(void);
 extern Type* ast_type_integer(void);
 extern Type* ast_type_float(void);
 extern Type* ast_type_string(void);
+extern Type* ast_type_condition_queue(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
 extern Type* ast_type_monitor(Id*, Definition*);

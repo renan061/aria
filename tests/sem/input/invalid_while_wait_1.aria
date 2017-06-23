@@ -1,5 +1,5 @@
 // Outside a monitor
 function foo {
-	a := 1; // TODO: Condition Variable
+	variable a: ConditionQueue;
 	while true wait in a;
 }
