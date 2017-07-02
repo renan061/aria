@@ -348,7 +348,10 @@ Statement* ast_statement_spawn(Line ln, Block* block) {
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SPAWN;
 	statement->line = ln;
-	statement->spawn = block;
+	statement->spawn = ast_call(ln, /* id */ NULL, /* arguments */ NULL);
+	statement->spawn->function_definition = ast_definition_function(
+		/* id */ NULL, /* parameters */ NULL, ast_type_void(), block
+	);
 	return statement;
 }
 
@@ -544,7 +547,7 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
 	function_call->instance = NULL;
 	function_call->id = id;
 	function_call->arguments = arguments;
-	function_call->arguments_count = -1;
+	function_call->argument_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }
@@ -558,7 +561,7 @@ FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
 	function_call->instance = i;
 	function_call->id = id;
 	function_call->arguments = a;
-	function_call->arguments_count = -1;
+	function_call->argument_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }
@@ -572,7 +575,7 @@ FunctionCall* ast_call_constructor(Line ln, Type* type, Expression* arguments) {
 	function_call->instance = NULL;
 	function_call->id = NULL;
 	function_call->arguments = arguments;
-	function_call->arguments_count = -1;
+	function_call->argument_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }

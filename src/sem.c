@@ -51,7 +51,10 @@ typedef struct SemanticState {
 
 	// The spawn scope if currently analysing a spawn statement block, NULL
 	// otherwise
-	Scope* spawn;
+	struct {
+		Scope* scope;
+		FunctionCall* function_call;
+	} spawn;
 } SemanticState;
 
 // Native types
@@ -155,8 +158,9 @@ void sem_analyse(AST* ast) {
 		/* current monitor		*/ NULL,
 		/* return type			*/ NULL,
 		/* inside initializer	*/ false,
-		/* spawn scope			*/ NULL
 	};
+	state.spawn.scope = NULL;
+	state.spawn.function_call = NULL;
 
 	// Analysis
 	symtable_enter_scope(state.table);
@@ -181,7 +185,8 @@ void sem_analyse(AST* ast) {
 	assert(!state.monitor);
 	assert(!state.return_);
 	assert(!state.initializer);
-	assert(!state.spawn);
+	assert(!state.spawn.scope);
+	assert(!state.spawn.function_call);
 }
 
 // ==================================================
@@ -377,7 +382,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		break;
 	case STATEMENT_RETURN:
 		// Can't return inside a spawn block
-		if (state->spawn) {
+		if (state->spawn.scope) {
 			err_return_inside_spawn(statement->line);
 		}
 		// Can't return an expression inside an initializer
@@ -430,11 +435,16 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		break;
 	case STATEMENT_SPAWN: {
 		// TODO: Should not be able to spawn inside a monitor and initializer
-		Scope* previous_spawn = state->spawn;
-		state->spawn = symtable_enter_scope(state->table);
-		sem_block(state, statement->spawn);
-		state->spawn = previous_spawn;
+		Scope* previous_spawn_scope = state->spawn.scope;
+		FunctionCall* previous_spawn_function_call = state->spawn.function_call;
+
+		state->spawn.scope = symtable_enter_scope(state->table);
+		state->spawn.function_call = statement->spawn;
+		sem_block(state, statement->spawn->function_definition->function.block);
 		symtable_leave_scope(state->table);
+
+		state->spawn.scope = previous_spawn_scope;
+		state->spawn.function_call = previous_spawn_function_call;
 		break;
 	}
 	case STATEMENT_BLOCK:
@@ -449,6 +459,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 
 static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 	Variable* variable = *variable_pointer;
+	assert(!variable->type);
 
 	switch (variable->tag) {
 	case VARIABLE_ID: {
@@ -461,22 +472,61 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 		}
 
 		assert(definition->variable.variable->tag == VARIABLE_ID);
-		assert(!variable->type);
-		Line line = variable->line;
-		free(variable->id);
-		free(variable);
-		*variable_pointer = variable = definition->variable.variable;
 
-		if (state->spawn) {
-			if (!symtable_find_in_scope(state->spawn, variable->id)) {
-				if (!variable->value) {
-					err_spawn_variable(line);
+		bool from_outside_spawn_scope = false;
+		if (state->spawn.scope) {
+			if (!symtable_find_in_scope(state->spawn.scope, variable->id)) {
+				if (!definition->variable.variable->value) {
+					err_spawn_variable(variable->line);
 				}
-				if (!safetype(variable->type)) {
-					err_spawn_unsafe(line);
+				if (!safetype(definition->variable.variable->type)) {
+					err_spawn_unsafe(variable->line);
 				}
+				from_outside_spawn_scope = true;
 			}
 		}
+
+		// TODO: This is messy (use lambdas someday)
+		if (from_outside_spawn_scope && !variable->global) {
+			FunctionCall* call = state->spawn.function_call;
+			Definition* function = call->function_definition;
+
+			Definition* parameter = ast_definition_variable(
+				ast_variable_id(ast_id(variable->line, variable->id->name)),
+				NULL
+			);
+			parameter->variable.variable->value = true;
+			parameter->variable.variable->type =
+				definition->variable.variable->type;
+			symtable_insert(state->table, parameter);
+
+			Expression* argument = ast_expression_variable(
+				definition->variable.variable
+			);
+
+			if (call->argument_count == -1) {
+				call->arguments = argument;
+				call->argument_count = 1;
+				function->function.parameters = parameter;
+			} else if (call->argument_count > 0) {
+				argument->next = call->arguments;
+				call->arguments = argument;
+				call->argument_count++;
+				parameter->next = function->function.parameters;
+				function->function.parameters = parameter;
+			} else {
+				UNREACHABLE;
+			}
+
+			free(variable->id);
+			free(variable);
+			*variable_pointer = parameter->variable.variable;
+		} else {
+			free(variable->id);
+			free(variable);
+			*variable_pointer = definition->variable.variable;
+		}
+		
 		break;
 	}
 	case VARIABLE_INDEXED:
@@ -626,10 +676,10 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	case FUNCTION_CALL_BASIC:
 		// MEGA TODO: Fix this master gambiarra
 		if (!strcmp(call->id->name, "print")) {
-			call->arguments_count = 0;
+			call->argument_count = 0;
 			for (Expression* e = call->arguments; e; e = e->next) {
 				sem_expression(state, e);
-				call->arguments_count++;
+				call->argument_count++;
 			}
 			call->type = __integer;
 			return;
@@ -680,19 +730,19 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 
 		// Array constructors must have no arguments or one numeric argument
 		if (call->type->tag == TYPE_ARRAY) {
-			call->arguments_count = 0;
+			call->argument_count = 0;
 			for (Expression* e = call->arguments; e; e = e->next,
-				call->arguments_count++);
-			if (call->arguments_count == 0) { // defaults to 8
+				call->argument_count++);
+			if (call->argument_count == 0) { // defaults to 8
 				call->arguments = ast_expression_literal_integer(call->line, 8);
 				call->arguments->type = __integer;
-			} else if (call->arguments_count == 1) {
+			} else if (call->argument_count == 1) {
 				sem_expression(state, call->arguments);
 				typecheck1(__integer, &call->arguments);
 			} else {
 				err_function_call_array_constructor(
 					call->line,
-					call->arguments_count
+					call->argument_count
 				);
 			}
 			return;
@@ -723,12 +773,12 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	Definition* parameter = call->function_definition->function.parameters;
 	Expression* argument = call->arguments;
 	Expression** pointer = &call->arguments;
-	call->arguments_count = 0;
+	call->argument_count = 0;
 
 	// Skips comparing between the first parameter and argument of a method
 	if (call->tag == FUNCTION_CALL_METHOD) {
 		assert(parameter && argument);
-		call->arguments_count++;
+		call->argument_count++;
 		parameter = parameter->next;
 		argument = (*pointer)->next;
 		pointer = &argument;
@@ -743,7 +793,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			err_function_call_excess_args(call->line);
 		}
 
-		call->arguments_count++;
+		call->argument_count++;
 
 		sem_expression(state, argument);
 		typecheck1(parameter->variable.variable->type, pointer);

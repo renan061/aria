@@ -204,7 +204,7 @@ struct Statement {
 			Block* block;
 		} while_;
 		// StatementSpawn
-		Block* spawn;
+		FunctionCall* spawn;
 		// StatementBlock
 		Block* block;
 	};
@@ -279,7 +279,7 @@ struct FunctionCall {
 	Id* id;
 	Expression* arguments;
 	// Initialized with -1
-	int arguments_count;
+	int argument_count;
 
 	// Used in the backend module
 	Definition* function_definition;

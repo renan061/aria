@@ -66,7 +66,7 @@ function foo: Void {
 	}
 	value spawnMonitor: SpawnMonitor = (SpawnMonitor(): SpawnMonitor)
 	value nestedSafeType: Immutable [Immutable [Immutable [Integer]]] = (Immutable [Immutable [Immutable [Integer]]]((8: Integer)): Immutable [Immutable [Immutable [Integer]]])
-	spawn {
+	spawn function(value nestedSafeType: Immutable [Immutable [Immutable [Integer]]], value value1: Integer, value spawnMonitor: SpawnMonitor) {
 		variable a: SpawnMonitor = (spawnMonitor: SpawnMonitor)
 		value b: Integer = (value1: Integer)
 		value c: Immutable [Immutable [Immutable [Integer]]] = (nestedSafeType: Immutable [Immutable [Immutable [Integer]]])
@@ -76,7 +76,7 @@ function foo: Void {
 		while ((x: Integer) <: Boolean (10: Integer)) {
 			x: Integer = ((x: Integer) +: Integer (1: Integer))
 		}
-	}
+	}((nestedSafeType: Immutable [Immutable [Immutable [Integer]]]), (value1: Integer), (spawnMonitor: SpawnMonitor));
 	{
 		value a: Integer = (1: Integer)
 		value b: Integer = (2: Integer)

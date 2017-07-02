@@ -223,10 +223,34 @@ static void print_ast_statement(Statement* statement) {
 		printf(" ");
 		print_ast_block(statement->while_.block);
 		break;
-	case STATEMENT_SPAWN:
-		printf("spawn ");
-		print_ast_block(statement->spawn);
+	case STATEMENT_SPAWN: {
+		Definition* function = statement->spawn->function_definition;
+		
+		printf("spawn function");
+		if (function->function.parameters) {
+			printf("(");
+			for (Definition* p = function->function.parameters; p;) {
+				print_ast_definition(p);
+				if ((p = p->next)) {
+					printf(", ");
+				}
+			}
+			printf(")");
+		}
+		printf(" ");
+		print_ast_block(function->function.block);
+		printf("(");
+		if (statement->spawn->arguments) {
+			for (Expression* e = statement->spawn->arguments; e;) {
+				print_ast_expression(e);
+				if ((e = e->next)) {
+					printf(", ");
+				}
+			}
+		}
+		printf(");");
 		break;
+	}
 	case STATEMENT_BLOCK:
 		print_ast_block(statement->block);
 		break;

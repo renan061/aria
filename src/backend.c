@@ -35,7 +35,9 @@
 
 // TODO
 #define LLVM_TEMPORARY				"_t_"
+#define LLVM_TEMPORARY_NONE			""
 #define LLVM_TEMPORARY_MONITOR_LOCK	LLVM_TEMPORARY "monitor_lock_"
+#define LLVM_TEMPORARY_PHI			LLVM_TEMPORARY "phi_"
 
 #define LLVM_GLOBAL_STRING "_global_string"
 
@@ -55,7 +57,7 @@
 // TODO: Address Space 0 ?
 #define LLVM_TYPE_POINTER(t)	LLVMPointerType(t, 0)
 // TODO: Monitor type is pointer to monitor struct type? Think about it.
-#define LLVM_TYPE_MONITOR(m)	LLVM_TYPE_POINTER(m)
+#define LLVM_TYPE_MONITOR(s)	LLVM_TYPE_POINTER(s)
 #define LLVM_TYPE_POINTER_VOID	LLVM_TYPE_POINTER(LLVMInt8Type())
 
 // TODO: These are actually LLVM_ARIA_VOID_TYPE and etc
@@ -107,6 +109,7 @@ const IRState NEW_IR_STATE = {
 	.initializer	= false,
 };
 
+// TODO: Move / rename -> see position_builder
 static void state_close_block(IRState* state) {
 	assert(state->block);
 	state->block = NULL;
@@ -363,7 +366,7 @@ static void pt_call_create(IRState* s, LLVMValueRef spawn_function) {
 			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
 		}
 	;
-	LLVMBuildCall(s->builder, fn, args, 4, "");
+	LLVMBuildCall(s->builder, fn, args, 4, LLVM_TEMPORARY_NONE);
 }
 
 
@@ -372,7 +375,7 @@ static void pt_call_exit(IRState* s) {
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_EXIT),
 		args[1] = {LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)}
 	;
-	LLVMBuildCall(s->builder, fn, args, 1, "");
+	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_mutex_init(IRState* s, LLVMValueRef lock) {
@@ -385,7 +388,7 @@ static void pt_call_mutex_init(IRState* s, LLVMValueRef lock) {
 			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
 		}
 	;
-	LLVMBuildCall(s->builder, fn, args, 2, "");
+	LLVMBuildCall(s->builder, fn, args, 2, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_mutex_lock(IRState* s, LLVMValueRef lock) {
@@ -393,7 +396,7 @@ static void pt_call_mutex_lock(IRState* s, LLVMValueRef lock) {
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_MUTEX_LOCK),
 		args[1] = {lock}
 	;
-	LLVMBuildCall(s->builder, fn, args, 1, "");
+	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_mutex_unlock(IRState* s, LLVMValueRef lock) {
@@ -401,7 +404,7 @@ static void pt_call_mutex_unlock(IRState* s, LLVMValueRef lock) {
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_MUTEX_UNLOCK),
 		args[1] = {lock}
 	;
-	LLVMBuildCall(s->builder, fn, args, 1, "");
+	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_cond_init(IRState* s, LLVMValueRef cond) {
@@ -409,7 +412,7 @@ static void pt_call_cond_init(IRState* s, LLVMValueRef cond) {
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_INIT),
 		args[2] = {cond, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)}
 	;
-	LLVMBuildCall(s->builder, fn, args, 2, "");
+	LLVMBuildCall(s->builder, fn, args, 2, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_cond_wait(IRState* s, LLVMValueRef cond, LLVMValueRef mutex) {
@@ -418,7 +421,7 @@ static void pt_call_cond_wait(IRState* s, LLVMValueRef cond, LLVMValueRef mutex)
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_WAIT),
 		args[2] = {cond, mutex}
 	;
-	LLVMBuildCall(s->builder, fn, args, 2, "");
+	LLVMBuildCall(s->builder, fn, args, 2, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_cond_signal(IRState* s, LLVMValueRef cond) {
@@ -426,7 +429,7 @@ static void pt_call_cond_signal(IRState* s, LLVMValueRef cond) {
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_SIGNAL),
 		args[1] = {cond}
 	;
-	LLVMBuildCall(s->builder, fn, args, 1, "");
+	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
 static void pt_call_cond_broadcast(IRState* s, LLVMValueRef cond) {
@@ -434,7 +437,7 @@ static void pt_call_cond_broadcast(IRState* s, LLVMValueRef cond) {
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_BROADCAST),
 		args[1] = {cond}
 	;
-	LLVMBuildCall(s->builder, fn, args, 1, "");
+	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
 static LLVMValueRef pt_define_spawn_function(IRState* s, Block* block) {
@@ -1023,8 +1026,9 @@ static void backend_expression(IRState* state, Expression* expression) {
 		position_builder(state, block_phi);
 
 		LLVMValueRef
-			phi = LLVMBuildPhi(state->builder, LLVM_TYPE_BOOLEAN,
-				LLVM_TEMPORARY "_phi"),
+			phi = LLVMBuildPhi(
+				state->builder, LLVM_TYPE_BOOLEAN, LLVM_TEMPORARY_PHI
+			),
 			incoming_values[2] = {LLVM_CONSTANT_TRUE, LLVM_CONSTANT_FALSE}
 		;
 		LLVMBasicBlockRef incoming_blocks[2] = {block_true, block_false};
@@ -1056,31 +1060,25 @@ static void backend_condition(IRState* state, Expression* expression,
 			UNREACHABLE;
 		}
 		break;
-	case EXPRESSION_BINARY:
-		switch (expression->binary.token) {		
-		case TK_OR: {
-			LLVMBasicBlockRef label =
-				LLVMAppendBasicBlock(state->function, LABEL "or");
-			backend_condition(state, expression->binary.left_expression,
-				lt, label);
+	case EXPRESSION_BINARY: {
+		Expression* l = expression->binary.left_expression;
+		Expression* r = expression->binary.right_expression;
+		LLVMBasicBlockRef label; // used by "or" and "and"
+
+		switch (expression->binary.token) {
+		case TK_OR:
+			label = LLVMAppendBasicBlock(state->function, LABEL "or");
+			backend_condition(state, l, lt, label);
 			position_builder(state, label);
-			backend_condition(state, expression->binary.right_expression,
-				lt, lf);
+			backend_condition(state, r, lt, lf);
 			break;
-		}
-		case TK_AND: {
-			LLVMBasicBlockRef label =
-				LLVMAppendBasicBlock(state->function, LABEL "and");
-			backend_condition(state, expression->binary.left_expression,
-				label, lf);
+		case TK_AND:
+			label = LLVMAppendBasicBlock(state->function, LABEL "and");
+			backend_condition(state, l, label, lf);
 			position_builder(state, label);
-			backend_condition(state, expression->binary.right_expression,
-				lt, lf);
+			backend_condition(state, r, lt, lf);
 			break;
-		}
-		case TK_EQUAL: {
-			Expression* l = expression->binary.left_expression;
-			Expression* r = expression->binary.right_expression;
+		case TK_EQUAL:
 			backend_expression(state, l);
 			backend_expression(state, r);
 
@@ -1100,20 +1098,18 @@ static void backend_condition(IRState* state, Expression* expression,
 			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
 			state_close_block(state);
 			break;
-		}
 
+		// TODO: Rename into/floato based on LLVM parameter names for the types
 		// Macro to be used by the [<=, >=, <, >] operations
-		#define BINARY_COMPARISSON(lo, ro) { \
-			Expression* l = expression->binary.left_expression; \
-			Expression* r = expression->binary.right_expression; \
+		#define BINARY_COMPARISSON(into, floato) { \
 			backend_expression(state, l); \
 			backend_expression(state, r); \
 			expression->llvm_value = \
 				(l->type == __integer && r->type == __integer) ? \
-					LLVMBuildICmp(state->builder, lo, l->llvm_value, \
+					LLVMBuildICmp(state->builder, into, l->llvm_value, \
 						r->llvm_value, LLVM_TEMPORARY) \
 				: (l->type == __float && r->type == __float) ? \
-					LLVMBuildFCmp(state->builder, ro, l->llvm_value, \
+					LLVMBuildFCmp(state->builder, floato, l->llvm_value, \
 						r->llvm_value, LLVM_TEMPORARY) \
 				: (UNREACHABLE, NULL); \
 			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf); \
@@ -1142,6 +1138,7 @@ static void backend_condition(IRState* state, Expression* expression,
 			UNREACHABLE;
 		}
 		break;
+	}
 	case EXPRESSION_CAST:
 		goto EXPRESSION_CONDITION;
 	default:
@@ -1178,7 +1175,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 				LLVMGetNamedFunction(state->module, NAME_PRINTF),
 				args,
 				call->arguments_count,
-				""
+				LLVM_TEMPORARY_NONE
 			);
 		}
 		break;
@@ -1194,7 +1191,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 			/* Function */	call->function_definition->llvm_value,
 			/* Arguments */	args,
 			/* NumArgs */	call->arguments_count,
-			/* TempName */	"" /* TODO: Look down for OBS */
+			/* TempName */	LLVM_TEMPORARY_NONE /* TODO: Look down for OBS */
 		);
 		pt_call_mutex_unlock(state, mutex);
 
@@ -1231,7 +1228,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 		/* Function */	call->function_definition->llvm_value,
 		/* Arguments */	args,
 		/* NumArgs */	call->arguments_count,
-		/* TempName */	""
+		/* TempName */	LLVM_TEMPORARY_NONE
 	);
 }
 
