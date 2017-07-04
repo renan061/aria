@@ -7,6 +7,7 @@
  *	- semantic error: monitor 'String' has no defined initializer
  *		- From doing 'value s = String();'
  *	- ConditionQueue constructor call?
+ *	- Monitors can call functions that return mutable arrays (types in general)
  *
  */
 #include <assert.h>
@@ -486,23 +487,27 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 			}
 		}
 
-		// TODO: This is messy (use lambdas someday)
+		// TODO: This is messy (define lambdas someday)
 		if (from_outside_spawn_scope && !variable->global) {
 			FunctionCall* call = state->spawn.function_call;
 			Definition* function = call->function_definition;
+			Type* type = definition->variable.variable->type;
 
+			Variable* parameter_variable = ast_variable_id(
+				ast_id(variable->line, variable->id->name)
+			);
+			parameter_variable->type = type;
 			Definition* parameter = ast_definition_variable(
-				ast_variable_id(ast_id(variable->line, variable->id->name)),
-				NULL
+				parameter_variable, NULL
 			);
 			parameter->variable.variable->value = true;
-			parameter->variable.variable->type =
-				definition->variable.variable->type;
+			parameter->variable.variable->type = type;
 			symtable_insert(state->table, parameter);
 
 			Expression* argument = ast_expression_variable(
 				definition->variable.variable
 			);
+			argument->type = type;
 
 			if (call->argument_count == -1) {
 				call->arguments = argument;

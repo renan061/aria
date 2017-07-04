@@ -380,7 +380,7 @@ Variable* ast_variable_id(Id* id) {
 	variable->global = false;
 	variable->value = false;
 	variable->llvm_value = NULL;
-	variable->llvm_structure_index = NULL;
+	variable->llvm_structure_index = -1;
 	variable->id = id;
 	return variable;
 }
@@ -394,7 +394,7 @@ Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
 	variable->global = false;
 	variable->value = false;
 	variable->llvm_value = NULL;
-	variable->llvm_structure_index = NULL;
+	variable->llvm_structure_index = -1;
 	variable->indexed.array = array;
 	variable->indexed.index = index;
 	return variable;

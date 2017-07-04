@@ -18,8 +18,8 @@
  *	- Create macro for function calls?
  */
 
-#define UNREACHABLE assert(NULL) // TODO: Move this and look for assert(NULL)
-#define TODO assert(NULL) // TODO: Remove
+#define UNREACHABLE assert(NULL)	// TODO: Move this and look for assert(NULL)
+#define TODO assert(NULL)			// TODO: Remove
 
 // Names of declared functions from external sources
 #define NAME_PRINTF					"printf"
@@ -32,6 +32,9 @@
 #define NAME_PTHREAD_COND_WAIT		"pthread_cond_wait"
 #define NAME_PTHREAD_COND_SIGNAL	"pthread_cond_signal"
 #define NAME_PTHREAD_COND_BROADCAST	"pthread_cond_broadcast"
+
+// Other names
+#define NAME_THREAD_ARGUMENTS_STRUCTURE	"_thread_arguments"
 
 // TODO
 #define LLVM_TEMPORARY				"_t_"
@@ -69,7 +72,8 @@
 
 // TODO: Last argument SignExtend?
 #define LLVM_CONSTANT_BOOLEAN(b)	LLVMConstInt(LLVM_TYPE_BOOLEAN, b, false)
-#define LLVM_CONSTANT_INTEGER(n)	LLVMConstInt(LLVM_TYPE_INTEGER, n, false)
+#define LLVM_CONSTANT_INTEGER(i)	LLVMConstInt(LLVM_TYPE_INTEGER, i, false)
+#define LLVM_CONSTANT_FLOAT(f)		LLVMConstReal(LLVM_TYPE_FLOAT, f);
 #define LLVM_CONSTANT_TRUE			LLVM_CONSTANT_BOOLEAN(true)
 #define LLVM_CONSTANT_FALSE 		LLVM_CONSTANT_BOOLEAN(false)
 
@@ -119,6 +123,7 @@ static void state_close_block(IRState* state) {
 static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(IRState*, LLVMValueRef);
 static LLVMValueRef llvm_string_literal(IRState*, const char*);
+static LLVMTypeRef llvm_structure(LLVMTypeRef[], unsigned int, const char*);
 
 // Auxiliary
 static LLVMValueRef zerovalue(IRState*, Type*);
@@ -194,7 +199,7 @@ static void position_builder(IRState* state, LLVMBasicBlockRef block) {
 
 // ==================================================
 //
-//	TODO: PThreads
+//	TODO: Posix threads
 //
 // ==================================================
 
@@ -206,7 +211,6 @@ static void position_builder(IRState* state, LLVMBasicBlockRef block) {
 
 // TODO: Docs
 static LLVMTypeRef pt_type_spawn_function(void);
-static LLVMValueRef pt_define_spawn_function(IRState*, Block*);
 static LLVMValueRef pt_monitor_mutex(LLVMBuilderRef, LLVMValueRef);
 
 // TODO: Docs
@@ -221,7 +225,7 @@ static void pt_declare_cond_signal(LLVMModuleRef);
 static void pt_declare_cond_broadcast(LLVMModuleRef);
 
 // TODO: Docs
-static void pt_call_create(IRState*, LLVMValueRef spawn_function);
+static void pt_call_create(IRState*, LLVMValueRef, LLVMValueRef);
 static void pt_call_exit(IRState*);
 static void pt_call_mutex_init(IRState*, LLVMValueRef);
 static void pt_call_mutex_lock(IRState*, LLVMValueRef);
@@ -245,10 +249,7 @@ static LLVMTypeRef pt_type_spawn_function(void) {
 
 // Returns the lock from a monitor
 static LLVMValueRef pt_monitor_mutex(LLVMBuilderRef b, LLVMValueRef monitor) {
-	LLVMValueRef
-		indices[2] = {LLVM_CONSTANT_INTEGER(0), LLVM_CONSTANT_INTEGER(0)}
-	;
-	return LLVMBuildGEP(b, monitor, indices, 2, LLVM_TEMPORARY_MONITOR_LOCK);
+	return LLVMBuildStructGEP(b, monitor, 0, LLVM_TEMPORARY);
 }
 
 // int pthread_create(...)
@@ -352,7 +353,7 @@ static void pt_declare_cond_broadcast(LLVMModuleRef m) {
 	LLVMAddFunction(m, NAME_PTHREAD_COND_BROADCAST, function_ty);
 }
 
-static void pt_call_create(IRState* s, LLVMValueRef spawn_function) {
+static void pt_call_create(IRState* s, LLVMValueRef func, LLVMValueRef arg) {
 	LLVMValueRef
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_CREATE),
 		args[4] = {
@@ -361,9 +362,9 @@ static void pt_call_create(IRState* s, LLVMValueRef spawn_function) {
 			// const pthread_attr_t *attr
 			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID),
 			// void *(*start_routine)(void*)
-			spawn_function,
+			func,
 			// void *arg
-			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
+			arg
 		}
 	;
 	LLVMBuildCall(s->builder, fn, args, 4, LLVM_TEMPORARY_NONE);
@@ -440,38 +441,83 @@ static void pt_call_cond_broadcast(IRState* s, LLVMValueRef cond) {
 	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
-static LLVMValueRef pt_define_spawn_function(IRState* s, Block* block) {
-	IRState spawn_state = NEW_IR_STATE;
-	spawn_state.module = s->module;
-	spawn_state.builder = s->builder;
-
-	spawn_state.function = LLVMAddFunction(
-		/* Module		*/ spawn_state.module,
-		/* FunctionName	*/ NAME_SPAWN_FUNCTION,
-		/* FunctionType	*/ pt_type_spawn_function()
-	);
-	spawn_state.block = LLVMAppendBasicBlock(
-		/* Function		*/ spawn_state.function,
-		/* BlockName	*/ LABEL "spawn_function_entry"
-	);
-	LLVMPositionBuilderAtEnd(spawn_state.builder, spawn_state.block);
-	backend_block(&spawn_state, block);
-	LLVMBuildRet(
-		/* Builder		*/ spawn_state.builder,
-		/* ReturnValue	*/ LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
-	);
-
-	// Going back to the original state builder position
-	LLVMPositionBuilderAtEnd(s->builder, s->block);
-
-	return spawn_state.function;
-}
-
 // ==================================================
 //
 //	Implementation
 //
 // ==================================================
+
+// TODO: Move / Rename
+static void todospawn(IRState* state, FunctionCall* call) {
+	// Defining the structure to be used for argument passing
+	LLVMTypeRef fields[call->argument_count];
+	unsigned int n = 0;
+	for (Expression* e = call->arguments; e; e = e->next, n++) {
+		fields[n] = llvm_type(e->type);
+	}
+	LLVMTypeRef type_structure = llvm_structure(
+		fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
+	);
+
+	// Allocating memory for the structure
+	LLVMValueRef structure = LLVMBuildMalloc(
+		state->builder, type_structure, LLVM_TEMPORARY
+	);
+
+	// Filling the structure with values from the arguments
+	n = 0;
+	for (Expression* e = call->arguments; e; e = e->next, n++) {
+		backend_expression(state, e);
+		LLVMBuildStore(state->builder, e->llvm_value, LLVMBuildStructGEP(
+			state->builder, structure, n, LLVM_TEMPORARY_NONE
+		));
+	}
+
+	// Defining the spawn function
+	IRState spawn_state = NEW_IR_STATE;
+	spawn_state.module = state->module;
+	spawn_state.builder = state->builder;
+
+	spawn_state.function = LLVMAddFunction(
+		spawn_state.module, NAME_SPAWN_FUNCTION, pt_type_spawn_function()
+	);
+	spawn_state.block = LLVMAppendBasicBlock(
+		spawn_state.function, LABEL "spawn_function_entry"
+	);
+	LLVMPositionBuilderAtEnd(spawn_state.builder, spawn_state.block);
+
+	// Parameters
+	LLVMValueRef parameter = LLVMBuildBitCast(
+		spawn_state.builder,
+		LLVMGetParam(spawn_state.function, 0),
+		LLVM_TYPE_POINTER(type_structure),
+		LLVM_TEMPORARY
+	);
+	Definition* p = call->function_definition->function.parameters;
+	for (unsigned int n = 0; p; p = p->next, n++) {
+		p->variable.variable->llvm_value = LLVMBuildLoad(
+			spawn_state.builder,
+			LLVMBuildStructGEP(spawn_state.builder, parameter, n, LLVM_TEMPORARY),
+			LLVM_TEMPORARY
+		);
+	}
+
+	// Block
+	backend_block(&spawn_state, call->function_definition->function.block);
+
+	LLVMBuildFree(state->builder, parameter);
+	LLVMBuildRet(
+		spawn_state.builder, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
+	);
+
+	// Going back to the original state builder position
+	LLVMPositionBuilderAtEnd(state->builder, state->block);
+
+	// Calling pthread_create
+	pt_call_create(state, spawn_state.function, LLVMBuildBitCast(
+		state->builder, structure, LLVM_TYPE_POINTER_VOID, LLVM_TEMPORARY
+	));
+}
 
 LLVMModuleRef backend_compile(AST* ast) {
 	// Setup
@@ -528,7 +574,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 			);
 			backend_expression(state, expression);
 			LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
-		} else if (variable->llvm_structure_index) { // Attributes
+		} else if (variable->llvm_structure_index > -1) { // Attributes
 			// TODO: "else if not variable->llvm_structure_index" below
 		} else { // Common scoped variables
 			if (variable->value) { // values
@@ -540,12 +586,14 @@ static void backend_definition(IRState* state, Definition* definition) {
 					llvm_type(variable->type),
 					variable->id->name
 				);
-				backend_expression(state, expression);
-				LLVMBuildStore(
-					state->builder,
-					expression->llvm_value,
-					variable->llvm_value
-				);
+				if (expression) {
+					backend_expression(state, expression);
+					LLVMBuildStore(
+						state->builder,
+						expression->llvm_value,
+						variable->llvm_value
+					);
+				}
 			}
 		}
 		break;
@@ -646,7 +694,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 
 		Type* type = definition->type;
 		Definition* monitor_definitions = type->monitor.definitions;
-		int n = 1; // attribute count
+		unsigned int n = 1; // attribute count
 
 		for (Definition* d = monitor_definitions; d; d = d->next, n++) {
 			if (d->tag != DEFINITION_VARIABLE) {
@@ -662,18 +710,14 @@ static void backend_definition(IRState* state, Definition* definition) {
 		// Attributes
 		n = 1;
 		for (Definition* d = monitor_definitions; d; d = d->next) {
-			if (d->tag == DEFINITION_VARIABLE) {
-				d->variable.variable->llvm_structure_index =
-					LLVM_CONSTANT_INTEGER(n);
-				attributes[n++] = llvm_type(d->variable.variable->type);
+			if (d->tag != DEFINITION_VARIABLE) {
+				continue;
 			}
+			d->variable.variable->llvm_structure_index = n;
+			attributes[n++] = llvm_type(d->variable.variable->type);
 		}
 
-		type->llvm_type = LLVMStructCreateNamed(
-			LLVMGetGlobalContext(),
-			type->monitor.id->name
-		);
-		LLVMStructSetBody(type->llvm_type, attributes, n, false); // TODO: Packed?
+		type->llvm_type = llvm_structure(attributes, n, type->monitor.id->name);
 
 		for (Definition* d = monitor_definitions; d; d = d->next) {
 			switch (d->tag) {
@@ -773,8 +817,10 @@ static void backend_statement(IRState* state, Statement* statement) {
 		// If
 		position_builder(state, bt);
 		backend_block(state, statement->if_.block);
-		LLVMBuildBr(state->builder, be);
-		state_close_block(state);
+		if (state->block) {
+			LLVMBuildBr(state->builder, be);
+			state_close_block(state);
+		}
 		// End
 		position_builder(state, be);
 		break;
@@ -788,13 +834,17 @@ static void backend_statement(IRState* state, Statement* statement) {
 		// If
 		position_builder(state, bt);
 		backend_block(state, statement->if_else.if_block);
-		LLVMBuildBr(state->builder, be);
-		state_close_block(state);
+		if (state->block) {
+			LLVMBuildBr(state->builder, be);
+			state_close_block(state);
+		}
 		// Else
 		position_builder(state, bf);
 		backend_block(state, statement->if_else.else_block);
-		LLVMBuildBr(state->builder, be);
-		state_close_block(state);
+		if (state->block) {
+			LLVMBuildBr(state->builder, be);
+			state_close_block(state);
+		}
 		// End
 		position_builder(state, be);
 		break;
@@ -812,18 +862,16 @@ static void backend_statement(IRState* state, Statement* statement) {
 		// Loop
 		position_builder(state, bl);
 		backend_block(state, statement->while_.block);
-		LLVMBuildBr(state->builder, bw);
-		state_close_block(state);
+		if (state->block) {
+			LLVMBuildBr(state->builder, bw);
+			state_close_block(state);
+		}
 		// End
 		position_builder(state, be);
 		break;
 	}
 	case STATEMENT_SPAWN: {
-		LLVMValueRef spawn_function = pt_define_spawn_function(
-			state,
-			statement->spawn
-		);
-		pt_call_create(state, spawn_function);
+		todospawn(state, statement->spawn);
 		break;
 	}
 	case STATEMENT_BLOCK:
@@ -838,18 +886,13 @@ static void backend_variable(IRState* state, Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID:
 		// llvm_value dealt with already, unless if attribute
-		if (variable->llvm_structure_index) {
+		if (variable->llvm_structure_index > -1) {
 			assert(state->self);
 
-			LLVMValueRef indexes[2] = {
-				LLVM_CONSTANT_INTEGER(0),
-				variable->llvm_structure_index
-			};
-			variable->llvm_value = LLVMBuildGEP(
+			variable->llvm_value = LLVMBuildStructGEP(
 				state->builder,
 				state->self,
-				indexes,
-				2,
+				variable->llvm_structure_index,
 				LLVM_TEMPORARY
 			);
 		}
@@ -883,8 +926,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 			LLVM_CONSTANT_INTEGER(expression->literal_integer);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->llvm_value = LLVMConstReal(LLVM_TYPE_FLOAT,
-			expression->literal_float);
+		expression->llvm_value = LLVM_CONSTANT_FLOAT(expression->literal_float);
 		break;
 	case EXPRESSION_LITERAL_STRING: {
 		expression->llvm_value = llvm_string_literal(
@@ -1156,12 +1198,12 @@ static void backend_condition(IRState* state, Expression* expression,
 
 static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	// Arguments
-	assert(call->arguments_count >= 0);
+	assert(call->argument_count >= 0);
 	Expression* e;
 	for (e = call->arguments; e; e = e->next) {
 		backend_expression(state, e);
 	}
-	LLVMValueRef args[call->arguments_count];
+	LLVMValueRef args[call->argument_count];
 	for (int n = (e = call->arguments, 0); e; e = e->next, n++) {
 		args[n] = e->llvm_value;
 	}
@@ -1174,7 +1216,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 				state->builder,
 				LLVMGetNamedFunction(state->module, NAME_PRINTF),
 				args,
-				call->arguments_count,
+				call->argument_count,
 				LLVM_TEMPORARY_NONE
 			);
 		}
@@ -1190,7 +1232,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 			/* Builder */	state->builder,
 			/* Function */	call->function_definition->llvm_value,
 			/* Arguments */	args,
-			/* NumArgs */	call->arguments_count,
+			/* NumArgs */	call->argument_count,
 			/* TempName */	LLVM_TEMPORARY_NONE /* TODO: Look down for OBS */
 		);
 		pt_call_mutex_unlock(state, mutex);
@@ -1200,7 +1242,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	case FUNCTION_CALL_CONSTRUCTOR:
 		switch (call->type->tag) {
 		case TYPE_ARRAY: // new array
-			assert(call->arguments_count == 1);
+			assert(call->argument_count == 1);
 			return LLVMBuildArrayMalloc(
 				/* Builder */		state->builder,
 				/* ElementType */	llvm_type(call->type->array),
@@ -1227,7 +1269,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 		/* Builder */	state->builder,
 		/* Function */	call->function_definition->llvm_value,
 		/* Arguments */	args,
-		/* NumArgs */	call->arguments_count,
+		/* NumArgs */	call->argument_count,
 		/* TempName */	LLVM_TEMPORARY_NONE
 	);
 }
@@ -1239,6 +1281,8 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 // ==================================================
 
 static LLVMTypeRef llvm_type(Type* type) {
+	assert(type);
+
 	switch (type->tag) {
 	case TYPE_VOID:
 		return LLVM_TYPE_VOID;
@@ -1318,6 +1362,15 @@ static LLVMValueRef llvm_string_literal(IRState* state, const char* string) {
 	);
 }
 
+// TODO: Doc
+static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], unsigned int length,
+	const char* name) {
+
+	LLVMTypeRef type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
+	LLVMStructSetBody(type, fields, length, false); // TODO: Packed?
+	return type;
+}
+
 // ==================================================
 //
 //	Auxiliary
@@ -1338,13 +1391,12 @@ static LLVMValueRef zerovalue(IRState* state, Type* type) {
 			return LLVM_CONSTANT_INTEGER(0);
 		}
 		if (type == __float) {
-			return LLVMConstReal(LLVM_TYPE_FLOAT, 0.0);
+			return LLVM_CONSTANT_FLOAT(0);
 		}
 		if (type == __string) {
 			return llvm_string_literal(state, "");
 		}
-		if (type == __condition_queue) {
-			// TODO: Which one?
+		if (type == __condition_queue) { // TODO: Which one?
 			return LLVMConstNull(LLVM_TYPE_PTHREAD_COND_T);
 			// return LLVMConstPointerNull(LLVM_TYPE_PTHREAD_COND_T);
 		}

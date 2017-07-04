@@ -218,7 +218,7 @@ struct Variable {
 	bool value; // default false
 
 	LLVMValueRef llvm_value;
-	LLVMValueRef llvm_structure_index; // TODO: default -1
+	int llvm_structure_index; // default -1
 
 	union {
 		// VariableId

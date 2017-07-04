@@ -1,0 +1,3 @@
+function foo {
+	print("File has no main...");
+}
