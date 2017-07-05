@@ -1,5 +1,5 @@
 // Outside a monitor
 function foo {
 	variable a: ConditionQueue;
-	while true wait in a;
+	wait for true in a;
 }

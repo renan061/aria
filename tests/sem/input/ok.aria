@@ -119,8 +119,8 @@ monitor Monitor1 {
 	}
 
 	function bar {
-		// While Wait
-		while true wait in queue;
+		// Wait for in
+		wait for true in queue;
 
 		// Signal
 		signal queue;

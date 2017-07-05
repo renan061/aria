@@ -2,6 +2,6 @@
 monitor M {
 	variable a: ConditionQueue;
 	initializer {
-		while true wait in a;
+		wait for true in a;
 	}
 }

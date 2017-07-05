@@ -104,8 +104,8 @@ function foo {
 	Monitor(a);
 	Monitor(a, b, c);
 
-	// StatementWhileWait
-	while true wait in a;
+	// StatementWaitForIn
+	wait for true in a;
 
 	// StatementSignal
 	signal a;

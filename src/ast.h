@@ -48,7 +48,7 @@ typedef enum BlockTag {
 typedef enum StatementTag {
 	STATEMENT_ASSIGNMENT,
 	STATEMENT_FUNCTION_CALL,
-	STATEMENT_WHILE_WAIT,
+	STATEMENT_WAIT_FOR_IN,
 	STATEMENT_SIGNAL,
 	STATEMENT_BROADCAST,
 	STATEMENT_RETURN,
@@ -176,15 +176,15 @@ struct Statement {
 		} assignment;
 		// StatementFunctionCall
 		FunctionCall* function_call;
-		// StatementWhileWait
+		// StatementWaitForIn
 		struct {
-			Expression* expression;
-			Variable* variable;
-		} while_wait;
+			Expression* condition;
+			Expression* queue;
+		} wait_for_in;
 		// StatementSignal
-		Variable* signal;
+		Expression* signal;
 		// StatementBroadcast
-		Variable* broadcast;
+		Expression* broadcast;
 		// StatementReturn
 		Expression* return_;
 		// StatementIf
@@ -318,9 +318,9 @@ extern Block* ast_block_statement(Statement*);
 
 extern Statement* ast_statement_assignment(Line, Variable*, Expression*);
 extern Statement* ast_statement_function_call(FunctionCall*);
-extern Statement* ast_statement_while_wait(Line, Expression*, Variable*);
-extern Statement* ast_statement_signal(Line, Variable*);
-extern Statement* ast_statement_broadcast(Line, Variable*);
+extern Statement* ast_statement_wait_for_in(Line, Expression*, Expression*);
+extern Statement* ast_statement_signal(Line, Expression*);
+extern Statement* ast_statement_broadcast(Line, Expression*);
 extern Statement* ast_statement_return(Line, Expression*);
 extern Statement* ast_statement_if(Line, Expression*, Block*);
 extern Statement* ast_statement_if_else(Line, Expression*, Block*, Block*);

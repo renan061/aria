@@ -45,7 +45,7 @@ static int executeModule(LLVMModuleRef module) {
 	LLVMLinkInMCJIT();
 	LLVMInitializeNativeTarget();
 	if (LLVMCreateExecutionEngineForModule(&engine, module, &error) != 0) {
-		printf("error: failed to create execution engine");
+		printf("error: failed to create execution engine\n");
 		exit(1);
 	}
 	if (error) {
@@ -55,7 +55,7 @@ static int executeModule(LLVMModuleRef module) {
 	}
 	LLVMValueRef main_function = LLVMGetNamedFunction(module, "main");
 	if (!main_function) {
-		printf("error: main function not found");
+		printf("error: main function not found\n");
 		exit(1);
 	}
 

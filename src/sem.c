@@ -1,13 +1,8 @@
 /*
  * TODO
  *
- *	- Immutable Monitor1 is wrong
+ *	- Immutable Monitor1 is wrong (TODO: being filtered by the parser)
  *	- Return statements with no expressions should return the 'nil' expression
- *	- Shouldn't be able to return inside a spawn block
- *	- semantic error: monitor 'String' has no defined initializer
- *		- From doing 'value s = String();'
- *	- ConditionQueue constructor call?
- *	- Monitors can call functions that return mutable arrays (types in general)
  *
  */
 #include <assert.h>
@@ -25,12 +20,13 @@
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL)
 
-// TODO
+// TODO: Also check if TODOERR errors have matching tests
 #define TODOERR(line, err) \
 	printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
 
 // TODO
-#define PREPEND(Type, head, element) { \
+#define PREPEND(Type, head, element) \
+	{ \
 		Type* _temporary = head; \
 		head = element; \
 		head->next = _temporary; \
@@ -334,19 +330,19 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 	case STATEMENT_FUNCTION_CALL:
 		sem_function_call(state, statement->function_call);
 		break;
-	case STATEMENT_WHILE_WAIT:
+	case STATEMENT_WAIT_FOR_IN:
 		if (!state->monitor) {
-			err_monitor_statements(statement->line, "while-wait");
+			err_monitor_statements(statement->line, "wait-for-in");
 		}
 		if (state->initializer) {
-			err_monitor_statements_constructor(statement->line, "while-wait");
+			err_monitor_statements_constructor(statement->line, "wait-for-in");
 		}
-		sem_expression(state, statement->while_wait.expression);
-		if (!conditiontype(statement->while_wait.expression->type)) {
-			err_invalid_condition_type(statement->while_wait.expression);
+		sem_expression(state, statement->wait_for_in.condition);
+		if (!conditiontype(statement->wait_for_in.condition->type)) {
+			err_invalid_condition_type(statement->wait_for_in.condition);
 		}
-		sem_variable(state, &statement->while_wait.variable);
-		if (statement->while_wait.variable->type != __condition_queue) {
+		sem_expression(state, statement->wait_for_in.queue);
+		if (statement->wait_for_in.queue->type != __condition_queue) {
 			TODOERR(
 				statement->line,
 				"wait-for-in second expression must be of type ConditionQueue"
@@ -360,7 +356,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "signal");
 		}
-		sem_variable(state, &statement->signal);
+		sem_expression(state, statement->signal);
 		if (statement->signal->type != __condition_queue) {
 			TODOERR(
 				statement->line,
@@ -375,7 +371,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "broadcast");
 		}
-		sem_variable(state, &statement->broadcast);
+		sem_expression(state, statement->broadcast);
 		if (statement->broadcast->type != __condition_queue) {
 			TODOERR(
 				statement->line,
@@ -437,7 +433,10 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		symtable_leave_scope(state->table);
 		break;
 	case STATEMENT_SPAWN: {
-		// TODO: Should not be able to spawn inside a monitor and initializer
+		if (state->monitor) {
+			TODOERR(statement->line, "can't spawn inside monitors");
+		}
+
 		Scope* previous_spawn_scope = state->spawn.scope;
 		FunctionCall* previous_spawn_function_call = state->spawn.function_call;
 
@@ -679,6 +678,8 @@ static Definition* findmethod(FunctionCall* call) {
 }
 
 static void sem_function_call(SemanticState* state, FunctionCall* call) {
+	// TODO: calculate argument_count here
+
 	switch (call->tag) {
 	case FUNCTION_CALL_BASIC:
 		// MEGA TODO: Fix this master gambiarra
@@ -712,6 +713,16 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 		call->type = call->function_definition->function.type;
 		free(call->id);
 		call->id = NULL;
+
+		// Can't call non-safe functions from inside a monitor
+		if (state->monitor && !safetype(call->type)) {
+			TODOERR(
+				call->line,
+				"can't call a function that returns a "
+				"non-safe type from inside a monitor"
+			);
+		}
+
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(state, call->instance);
@@ -735,12 +746,23 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	case FUNCTION_CALL_CONSTRUCTOR: // initializers and arrays
 		linktype(state->table, &call->type);
 
+		if (call->type->tag == TYPE_ID) {
+			if (call->type != __condition_queue) {
+				// TODO: Create test cases for this
+				TODOERR(call->line, "type has no known initializer");
+			}
+			// TODO: Check number of arguments passed (must be zero)
+			call->argument_count = 0;
+			return;
+		}
+
 		// Array constructors must have no arguments or one numeric argument
 		if (call->type->tag == TYPE_ARRAY) {
 			call->argument_count = 0;
 			for (Expression* e = call->arguments; e; e = e->next,
 				call->argument_count++);
 			if (call->argument_count == 0) { // defaults to 8
+				call->argument_count = 1;
 				call->arguments = ast_expression_literal_integer(call->line, 8);
 				call->arguments->type = __integer;
 			} else if (call->argument_count == 1) {
@@ -1061,7 +1083,7 @@ static const char* tokenstring(Token token) {
 	}
 }
 
-// TODO: This errs with variadic functions
+// TODO: These errs with variadic functions
 
 // Creates a formatted error with one dynamic string
 static const char* err1(const char* format, const char* name) {

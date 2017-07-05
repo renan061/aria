@@ -12,10 +12,10 @@
 
 /*
  * TODO
- *	- Locking on monitor method call -> Can this be a problem?
- *		- Check when the lock is lost due to condition variables.
  *	- Create macro for declares?
  *	- Create macro for function calls?
+ *	- malloc error: mallocs que vc da na main podem ser perdidos quando a main
+ *		termina e vc está usando esse malloc em outra thread?
  */
 
 #define UNREACHABLE assert(NULL)	// TODO: Move this and look for assert(NULL)
@@ -203,11 +203,13 @@ static void position_builder(IRState* state, LLVMBasicBlockRef block) {
 //
 // ==================================================
 
+// TODO: Move defs
 #define NAME_SPAWN_FUNCTION	"_spawn_block"
 
 #define LLVM_TYPE_PTHREAD_T			LLVM_TYPE_POINTER_VOID
 #define LLVM_TYPE_PTHREAD_MUTEX_T	LLVM_TYPE_POINTER_VOID
 #define LLVM_TYPE_PTHREAD_COND_T	LLVM_TYPE_POINTER_VOID
+#define LLVM_TYPE_CONDITION_QUEUE	LLVM_TYPE_POINTER(LLVM_TYPE_PTHREAD_COND_T)
 
 // TODO: Docs
 static LLVMTypeRef pt_type_spawn_function(void);
@@ -247,9 +249,11 @@ static LLVMTypeRef pt_type_spawn_function(void) {
 	);
 }
 
-// Returns the lock from a monitor
+// Returns the mutex lock from a monitor
 static LLVMValueRef pt_monitor_mutex(LLVMBuilderRef b, LLVMValueRef monitor) {
-	return LLVMBuildStructGEP(b, monitor, 0, LLVM_TEMPORARY);
+	return LLVMBuildLoad(
+		b, LLVMBuildStructGEP(b, monitor, 0, LLVM_TEMPORARY), LLVM_TEMPORARY
+	);
 }
 
 // int pthread_create(...)
@@ -354,11 +358,12 @@ static void pt_declare_cond_broadcast(LLVMModuleRef m) {
 }
 
 static void pt_call_create(IRState* s, LLVMValueRef func, LLVMValueRef arg) {
+	// TODO: Should the p_thread_t really be allocated with malloc?
 	LLVMValueRef
 		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_CREATE),
 		args[4] = {
-			// pthread_t *thread // TODO: Isn't this local memory?
-			LLVMBuildAlloca(s->builder, LLVM_TYPE_PTHREAD_T, LLVM_TEMPORARY),
+			// pthread_t *thread
+			LLVMBuildMalloc(s->builder, LLVM_TYPE_PTHREAD_T, LLVM_TEMPORARY),
 			// const pthread_attr_t *attr
 			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID),
 			// void *(*start_routine)(void*)
@@ -505,7 +510,8 @@ static void todospawn(IRState* state, FunctionCall* call) {
 	// Block
 	backend_block(&spawn_state, call->function_definition->function.block);
 
-	LLVMBuildFree(state->builder, parameter);
+	// TODO: Should free, but weird error (not this...)
+	// LLVMBuildFree(state->builder, parameter);
 	LLVMBuildRet(
 		spawn_state.builder, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
 	);
@@ -566,7 +572,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 		Variable* variable = definition->variable.variable;
 		Expression* expression = definition->variable.expression;
 
-		if (variable->global) { // Globals
+		if (variable->global) {
+			// Globals
 			variable->llvm_value = LLVMAddGlobal(
 				state->module,
 				llvm_type(variable->type),
@@ -574,9 +581,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 			);
 			backend_expression(state, expression);
 			LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
-		} else if (variable->llvm_structure_index > -1) { // Attributes
-			// TODO: "else if not variable->llvm_structure_index" below
-		} else { // Common scoped variables
+		} else if (!(variable->llvm_structure_index > -1)) {
+			// Common scoped variables
 			if (variable->value) { // values
 				backend_expression(state, expression);
 				variable->llvm_value = expression->llvm_value;
@@ -653,13 +659,19 @@ static void backend_definition(IRState* state, Definition* definition) {
 		Type* monitor_type = definition->function.type;
 		// Creating the instance
 		state->self = LLVMBuildMalloc(
-			state->builder,
-			monitor_type->llvm_type,
-			LLVM_TEMPORARY
+			state->builder, monitor_type->llvm_type, LLVM_TEMPORARY
 		);
-		// Initializing the monitor lock (TODO: destroy the lock one day)
-		LLVMValueRef lock = pt_monitor_mutex(state->builder, state->self);
-		pt_call_mutex_init(state, lock);
+		// Allocating memory and initializing the monitor's mutex
+		// TODO: free and destroy the mutex one day
+		LLVMValueRef mutex = LLVMBuildMalloc(
+			state->builder, LLVM_TYPE_PTHREAD_MUTEX_T, LLVM_TEMPORARY
+		);
+		pt_call_mutex_init(state, mutex);
+		LLVMBuildStore(
+			state->builder, mutex, LLVMBuildStructGEP(
+				state->builder, state->self, 0, LLVM_TEMPORARY
+			)
+		);		
 		// Initializing attributes (that have values)
 		Definition* monitor_definitions = monitor_type->monitor.definitions;
 		for (Definition* d = monitor_definitions; d; d = d->next) {
@@ -672,9 +684,6 @@ static void backend_definition(IRState* state, Definition* definition) {
 						d->variable.expression->llvm_value,
 						d->variable.variable->llvm_value
 					);
-				} else if (d->variable.variable->type == __condition_queue) {
-					backend_variable(state, d->variable.variable);
-					pt_call_cond_init(state, d->variable.variable->llvm_value);
 				}
 			}
 		}
@@ -704,8 +713,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 
 		LLVMTypeRef attributes[n];
 
-		// Monitor lock
-		attributes[0] = LLVM_TYPE_PTHREAD_MUTEX_T;
+		// Monitor's mutex
+		attributes[0] = LLVM_TYPE_POINTER(LLVM_TYPE_PTHREAD_MUTEX_T);
 
 		// Attributes
 		n = 1;
@@ -770,23 +779,29 @@ static void backend_statement(IRState* state, Statement* statement) {
 	case STATEMENT_FUNCTION_CALL:
 		backend_function_call(state, statement->function_call);
 		break;
-	case STATEMENT_WHILE_WAIT: {
+	case STATEMENT_WAIT_FOR_IN: {
 		LLVMBasicBlockRef
 			bw = LLVMAppendBasicBlock(state->function, LABEL_WHILE),
 			bl = LLVMAppendBasicBlock(state->function, LABEL_WHILE_LOOP),
 			be = LLVMAppendBasicBlock(state->function, LABEL_WHILE_END);
-		// while not conditionExpression { TODO: Remember to invert exp with not
 		LLVMBuildBr(state->builder, bw);
 		state_close_block(state);
 		// While
 		position_builder(state, bw);
-		backend_condition(state, statement->while_wait.expression, bl, be);
+		backend_condition(state, statement->wait_for_in.condition, be, bl);
 		// Loop
 		position_builder(state, bl);
-		backend_variable(state, statement->while_wait.variable);
+		backend_expression(state, statement->wait_for_in.queue);
 		LLVMValueRef
 			mutex = pt_monitor_mutex(state->builder, state->self),
-			cond = statement->while_wait.variable->llvm_value
+			indices[1] = {LLVM_CONSTANT_INTEGER(0)},
+			cond = LLVMBuildGEP(
+				state->builder,
+				statement->wait_for_in.queue->llvm_value,
+				indices,
+				1,
+				LLVM_TEMPORARY
+			)
 		;
 		pt_call_cond_wait(state, cond, mutex);
 		LLVMBuildBr(state->builder, bw);
@@ -795,13 +810,34 @@ static void backend_statement(IRState* state, Statement* statement) {
 		position_builder(state, be);
 		break;
 	}
-	case STATEMENT_SIGNAL:
-		backend_variable(state, statement->signal);
-		pt_call_cond_signal(state, statement->signal->llvm_value);
+	case STATEMENT_SIGNAL: {
+		backend_expression(state, statement->signal);
+		LLVMValueRef
+			indices[1] = {LLVM_CONSTANT_INTEGER(0)},
+			cond = LLVMBuildGEP(
+				state->builder,
+				statement->signal->llvm_value,
+				indices,
+				1,
+				LLVM_TEMPORARY
+			)
+		;
+		pt_call_cond_signal(state, cond);
 		break;
+	}
 	case STATEMENT_BROADCAST:
-		backend_variable(state, statement->broadcast);
-		pt_call_cond_broadcast(state, statement->broadcast->llvm_value);
+		backend_expression(state, statement->broadcast);
+		LLVMValueRef
+			indices[1] = {LLVM_CONSTANT_INTEGER(0)},
+			cond = LLVMBuildGEP(
+				state->builder,
+				statement->broadcast->llvm_value,
+				indices,
+				1,
+				LLVM_TEMPORARY
+			)
+		;
+		pt_call_cond_broadcast(state, cond);
 		break;
 	case STATEMENT_RETURN:
 		if (statement->return_) {
@@ -888,9 +924,8 @@ static void backend_variable(IRState* state, Variable* variable) {
 	switch (variable->tag) {
 	case VARIABLE_ID:
 		// llvm_value dealt with already, unless if attribute
-		if (variable->llvm_structure_index > -1) {
+		if (variable->llvm_structure_index > -1) { // for attributes
 			assert(state->self);
-
 			variable->llvm_value = LLVMBuildStructGEP(
 				state->builder,
 				state->self,
@@ -939,7 +974,14 @@ static void backend_expression(IRState* state, Expression* expression) {
 	}
 	case EXPRESSION_VARIABLE:
 		backend_variable(state, expression->variable);
-		if (expression->variable->value) { // values
+		// TODO: Find better way to write this
+		if (expression->variable->llvm_structure_index > -1) { // attributes
+			expression->llvm_value = LLVMBuildLoad(
+				state->builder,
+				expression->variable->llvm_value,
+				LLVM_TEMPORARY
+			);
+		} else if (expression->variable->value) { // values
 			expression->llvm_value = expression->variable->llvm_value;
 		} else { // variables
 			expression->llvm_value = LLVMBuildLoad(
@@ -1243,6 +1285,17 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	}
 	case FUNCTION_CALL_CONSTRUCTOR:
 		switch (call->type->tag) {
+		case TYPE_ID:
+			if (call->type != __condition_queue) {
+				UNREACHABLE;
+			}
+			// ConditionQueue initializer
+			LLVMValueRef cond = LLVMBuildMalloc(
+				state->builder, LLVM_TYPE_PTHREAD_COND_T, LLVM_TEMPORARY
+			);
+			pt_call_cond_init(state, cond);
+			return cond;
+			break;
 		case TYPE_ARRAY: // new array
 			assert(call->argument_count == 1);
 			return LLVMBuildArrayMalloc(
@@ -1302,7 +1355,7 @@ static LLVMTypeRef llvm_type(Type* type) {
 			return LLVM_TYPE_STRING;
 		}
 		if (type == __condition_queue) {
-			return LLVM_TYPE_PTHREAD_COND_T;
+			return LLVM_TYPE_CONDITION_QUEUE;
 		}
 		UNREACHABLE;
 	case TYPE_ARRAY:
@@ -1380,7 +1433,7 @@ static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], unsigned int length,
 // ==================================================
 
 // TODO: Find a better way to write this...
-// TODO: Check for llvm zeroinitalizer
+// TODO: Read about llvm zeroinitalizer
 static LLVMValueRef zerovalue(IRState* state, Type* type) {
 	switch (type->tag) {
 	case TYPE_VOID:

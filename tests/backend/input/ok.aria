@@ -735,21 +735,6 @@ function testShortCircuitEvaluation {
 
 // ==================================================
 //
-//	Monitors & Concurrency
-//
-// ==================================================
-
-// wait-for-in
-// signal
-// broadcast
-// spawn
-
-function testMonitorsAndConcurrency {
-	// TODO: Change to wait-for-in
-}
-
-// ==================================================
-//
 //	Wild
 //
 // ==================================================
@@ -805,7 +790,6 @@ function main {
 	testStatements();
 	testExpressions();
 	testShortCircuitEvaluation();
-	testMonitorsAndConcurrency();
 
 	// wild
 	print("wild\n");

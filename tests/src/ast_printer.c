@@ -182,19 +182,19 @@ static void print_ast_statement(Statement* statement) {
 		print_ast_function_call(statement->function_call);
 		printtype(statement->function_call->type);
 		break;
-	case STATEMENT_WHILE_WAIT:
-		printf("while ");
-		print_ast_expression(statement->while_wait.expression);
-		printf(" wait in ");
-		print_ast_variable(statement->while_wait.variable);
+	case STATEMENT_WAIT_FOR_IN:
+		printf("wait for ");
+		print_ast_expression(statement->wait_for_in.condition);
+		printf(" in ");
+		print_ast_expression(statement->wait_for_in.queue);
 		break;
 	case STATEMENT_SIGNAL:
 		printf("signal ");
-		print_ast_variable(statement->signal);
+		print_ast_expression(statement->signal);
 		break;
 	case STATEMENT_BROADCAST:
 		printf("broadcast ");
-		print_ast_variable(statement->broadcast);
+		print_ast_expression(statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
 		printf("return");
@@ -248,7 +248,7 @@ static void print_ast_statement(Statement* statement) {
 				}
 			}
 		}
-		printf(");");
+		printf(")");
 		break;
 	}
 	case STATEMENT_BLOCK:

@@ -155,7 +155,19 @@ Type* ast_type_string(void) {
 }
 
 Type* ast_type_condition_queue(void) {
-	NATIVE_TYPE(type_string, SCANNER_NATIVE_CONDITION_QUEUE);
+	// TODO: Refactor
+	static Type* type_condition_queue = NULL;
+	if (!type_condition_queue) {
+		MALLOC(type_condition_queue, Type);
+		type_condition_queue->tag = TYPE_ID;
+		type_condition_queue->primitive = true;
+		type_condition_queue->immutable = false;
+		type_condition_queue->llvm_type = NULL;
+		type_condition_queue->id = ast_id(
+			-1, native_types[SCANNER_NATIVE_CONDITION_QUEUE]
+		);
+	}
+	return type_condition_queue;
 }
 
 static Type* checknative(Id* id) {
@@ -270,31 +282,31 @@ Statement* ast_statement_function_call(FunctionCall* function_call) {
 	return statement;
 }
 
-Statement* ast_statement_while_wait(Line ln, Expression* exp, Variable* var) {
+Statement* ast_statement_wait_for_in(Line ln, Expression* c, Expression* q) {
 	Statement* statement;
 	MALLOC(statement, Statement);
-	statement->tag = STATEMENT_WHILE_WAIT;
+	statement->tag = STATEMENT_WAIT_FOR_IN;
 	statement->line = ln;
-	statement->while_wait.expression = exp;
-	statement->while_wait.variable = var;
+	statement->wait_for_in.condition = c;
+	statement->wait_for_in.queue = q;
 	return statement;
 }
 
-Statement* ast_statement_signal(Line ln, Variable* variable) {
+Statement* ast_statement_signal(Line ln, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SIGNAL;
 	statement->line = ln;
-	statement->signal = variable;
+	statement->signal = expression;
 	return statement;
 }
 
-Statement* ast_statement_broadcast(Line ln, Variable* variable) {
+Statement* ast_statement_broadcast(Line ln, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_BROADCAST;
 	statement->line = ln;
-	statement->broadcast = variable;
+	statement->broadcast = expression;
 	return statement;
 }
 

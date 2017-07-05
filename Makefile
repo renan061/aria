@@ -116,4 +116,5 @@ clean:
 	@- rm -f obj/*
 	@- rm -f bin/*
 	@- rm -f *.bc
+	@- rm -f tests/backend/*.bc
 	@- rm -f *.ll

@@ -7,6 +7,7 @@
  */
 
 %{
+	#include <assert.h>
 	#include <stdlib.h>
 
 	#include "ast.h"
@@ -229,12 +230,12 @@ monitor_definition
 //
 // ==================================================
 
+/* TODO: Error handling for TK_IMMUTABLE TK_UPPER_ID */
 type
 	: TK_UPPER_ID
 		{
 			$$ = ast_type_id($1);
 		}
-	/* TODO: Error handling for TK_IMMUTABLE TK_UPPER_ID */
 	| '[' type ']'
 		{
 			$$ = ast_type_array($2);
@@ -242,7 +243,28 @@ type
 	| TK_IMMUTABLE '[' type ']'
 		{
 			$$ = ast_type_array($3);
-			$$->immutable = true;
+
+			// TODO: Recursive immutability
+			Type* type = $$;
+			while (type) {
+				switch (type->tag) {
+				case TYPE_VOID:
+					type = NULL;
+					break;
+				case TYPE_ID:
+					type = NULL;
+					break;
+				case TYPE_ARRAY:
+					type->immutable = true;
+					type = type->array;
+					break;
+				case TYPE_MONITOR:
+					type = NULL;
+					break;
+				default:
+					assert(0); // TODO
+				}
+			}
 		}
 	;
 
@@ -311,15 +333,15 @@ simple_statement
 		{
 			$$ = ast_statement_function_call($1);
 		}
-	| TK_WHILE expression TK_WAIT TK_IN variable
+	| TK_WAIT TK_FOR expression TK_IN expression
 		{
-			$$ = ast_statement_while_wait($1, $2, $5);
+			$$ = ast_statement_wait_for_in($1, $3, $5);
 		}
-	| TK_SIGNAL variable
+	| TK_SIGNAL expression
 		{
 			$$ = ast_statement_signal($1, $2);
 		}
-	| TK_BROADCAST variable
+	| TK_BROADCAST expression
 		{
 			$$ = ast_statement_broadcast($1, $2);
 		}

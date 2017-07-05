@@ -78,7 +78,7 @@ function foo: Void {
 		while ((x: Integer) <: Boolean (10: Integer)) {
 			x: Integer = ((x: Integer) +: Integer (1: Integer))
 		}
-	}((nestedSafeType: Immutable [Immutable [Immutable [Integer]]]), (value1: Integer), (spawnMonitor: SpawnMonitor));
+	}((nestedSafeType: Immutable [Immutable [Immutable [Integer]]]), (value1: Integer), (spawnMonitor: SpawnMonitor))
 	{
 		value a: Integer = (1: Integer)
 		value b: Integer = (2: Integer)
@@ -99,9 +99,9 @@ monitor Monitor1 {
 		return ("string": String)
 	}
 	function bar(value self: Monitor1): Void {
-		while (true: Boolean) wait in queue: ConditionQueue
-		signal queue: ConditionQueue
-		broadcast queue: ConditionQueue
+		wait for (true: Boolean) in (queue: ConditionQueue)
+		signal (queue: ConditionQueue)
+		broadcast (queue: ConditionQueue)
 	}
 }
 monitor Monitor2 {
