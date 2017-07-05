@@ -37,6 +37,8 @@ function foo: Void {
 	variable variable4: Float
 	variable variable5: Float
 	variable variable6: Float
+	variable5: Float = (5.000000: Float)
+	variable6: Float = (6.000000: Float)
 	value syntacticSugarDefinition1: Boolean = (false: Boolean)
 	value syntacticSugarDefinition2: Void = (foo(): Void)
 	value value1: Integer = (1: Integer)

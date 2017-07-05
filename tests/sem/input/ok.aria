@@ -32,6 +32,9 @@ function foo {
 	variable variable1: Boolean;
 	variable variable2, variable3: Integer;
 	variable variable4, variable5, variable6: Float;
+	// Testing insertion in the symbol table
+	variable5 = 5.0;
+	variable6 = 6.0;
 
 	// Definition of variables and values (specific to blocks)
 	syntacticSugarDefinition1 := false;

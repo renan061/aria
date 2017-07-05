@@ -307,7 +307,9 @@ static void sem_block(SemanticState* state, Block* block) {
 	for (Block* b = block->next; b; b = b->next) {
 		switch (b->tag) {
 		case BLOCK_DEFINITION:
-			sem_definition(state, b->definition);
+			for (Definition* d = b->definition; d; d = d->next) {
+				sem_definition(state, d);
+			}
 			continue;
 		case BLOCK_STATEMENT:
 			sem_statement(state, b->statement);

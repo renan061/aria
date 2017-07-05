@@ -743,7 +743,9 @@ static void backend_block(IRState* state, Block* block) {
 	for (Block* b = block->next; b; b = b->next) {
 		switch (b->tag) {
 		case BLOCK_DEFINITION:
-			backend_definition(state, b->definition);
+			for (Definition* d = b->definition; d; d = d->next) {
+				backend_definition(state, d);
+			}
 			continue;
 		case BLOCK_STATEMENT:
 			backend_statement(state, b->statement);
