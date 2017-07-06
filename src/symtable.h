@@ -9,21 +9,22 @@
 #include "ast.h"
 
 typedef struct SymbolTable SymbolTable;
+typedef struct Scope Scope;
 
 extern SymbolTable* symtable_new();
 extern void symtable_free(SymbolTable*);
 
-extern void symtable_enter_scope(SymbolTable*);
-extern void symtable_leave_scope(SymbolTable*);
+extern Scope* symtable_enter_scope(SymbolTable*);
+extern Scope* symtable_leave_scope(SymbolTable*);
 
 // TODO: A better name
 // Only works for declarations
-bool symtable_contains_in_current_scope(SymbolTable*, Id*);
+Definition* symtable_find_in_scope(Scope*, Id*);
 
 /*
  * Returns NULL if id could not be found.
  */
-extern Definition* symtable_find(SymbolTable*, Id*, int*);
+extern Definition* symtable_find(SymbolTable*, Id*);
 
 /*
  * Returns false if definition is already inside and true otherwise.

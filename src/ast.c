@@ -4,7 +4,7 @@
 
 #include "ast.h"
 #include "alloc.h"
-#include "scanner.h" // for primitive_types
+#include "scanner.h" // for native_types
 
 // ==================================================
 //
@@ -61,11 +61,11 @@ Definition* ast_definition_function(Id* id, Definition* ps, Type* t, Block* b) {
 	return definition;
 }
 
-Definition* ast_definition_method(bool private, Definition* method) {
-	assert(method->tag == DEFINITION_FUNCTION);
-	method->tag = DEFINITION_METHOD;
-	method->function.private = private;
-	return method;
+Definition* ast_definition_method(bool private, Definition* function) {
+	assert(function->tag == DEFINITION_FUNCTION);
+	function->tag = DEFINITION_METHOD;
+	function->function.private = private;
+	return function;
 }
 
 Definition* ast_definition_constructor(Definition* parameters, Block* block) {
@@ -113,14 +113,15 @@ Id* ast_id(Line line, const char* name) {
 // ==================================================
 
 // TODO: Test static
-#define PRIMITIVE_TYPE(v, i)					\
+#define NATIVE_TYPE(v, i)						\
 	static Type* v = NULL;						\
 	if (!v) {									\
 		MALLOC(v, Type);						\
 		v->tag = TYPE_ID;						\
 		v->primitive = true;					\
 		v->immutable = true;					\
-		v->id = ast_id(-1, primitive_types[i]);	\
+		v->llvm_type = NULL;					\
+		v->id = ast_id(-1, native_types[i]);	\
 	}											\
 	return v;									\
 
@@ -131,43 +132,61 @@ Type* ast_type_void(void) {
 		type_void->tag = TYPE_VOID;
 		type_void->primitive = true;
 		type_void->immutable = true;
+		type_void->llvm_type = NULL;
 		type_void->id = NULL; // just in case
 	}
 	return type_void;
 }
 
 Type* ast_type_boolean(void) {
-	PRIMITIVE_TYPE(type_boolean, SCANNER_BOOLEAN);
+	NATIVE_TYPE(type_boolean, SCANNER_NATIVE_BOOLEAN);
 }
 
 Type* ast_type_integer(void) {
-	PRIMITIVE_TYPE(type_integer, SCANNER_INTEGER);
+	NATIVE_TYPE(type_integer, SCANNER_NATIVE_INTEGER);
 }
 
 Type* ast_type_float(void) {
-	PRIMITIVE_TYPE(type_float, SCANNER_FLOAT);
+	NATIVE_TYPE(type_float, SCANNER_NATIVE_FLOAT);
 }
 
 Type* ast_type_string(void) {
-	PRIMITIVE_TYPE(type_string, SCANNER_STRING);
+	NATIVE_TYPE(type_string, SCANNER_NATIVE_STRING);
 }
 
-static Type* checkprimitive(Id* id) {
+Type* ast_type_condition_queue(void) {
+	// TODO: Refactor
+	static Type* type_condition_queue = NULL;
+	if (!type_condition_queue) {
+		MALLOC(type_condition_queue, Type);
+		type_condition_queue->tag = TYPE_ID;
+		type_condition_queue->primitive = true;
+		type_condition_queue->immutable = false;
+		type_condition_queue->llvm_type = NULL;
+		type_condition_queue->id = ast_id(
+			-1, native_types[SCANNER_NATIVE_CONDITION_QUEUE]
+		);
+	}
+	return type_condition_queue;
+}
+
+static Type* checknative(Id* id) {
 	#define CHECK_TYPE(i, v)					\
-		if (primitive_types[i] == id->name) {	\
+		if (native_types[i] == id->name) {		\
 			return free(id), v;					\
 		}										\
 
-	CHECK_TYPE(SCANNER_BOOLEAN, ast_type_boolean());
-	CHECK_TYPE(SCANNER_INTEGER, ast_type_integer());
-	CHECK_TYPE(SCANNER_FLOAT, ast_type_float());
-	CHECK_TYPE(SCANNER_STRING, ast_type_string());
+	CHECK_TYPE(SCANNER_NATIVE_BOOLEAN, ast_type_boolean());
+	CHECK_TYPE(SCANNER_NATIVE_INTEGER, ast_type_integer());
+	CHECK_TYPE(SCANNER_NATIVE_FLOAT, ast_type_float());
+	CHECK_TYPE(SCANNER_NATIVE_STRING, ast_type_string());
+	CHECK_TYPE(SCANNER_NATIVE_CONDITION_QUEUE, ast_type_condition_queue());
 	return NULL;
 }
 
 Type* ast_type_id(Id* id) {
 	Type* type;
-	if ((type = checkprimitive(id))) {
+	if ((type = checknative(id))) {
 		return type;
 	}
 
@@ -175,6 +194,7 @@ Type* ast_type_id(Id* id) {
 	type->tag = TYPE_ID;
 	type->primitive = false;
 	type->immutable = false;
+	type->llvm_type = NULL;
 	type->id = id;
 	return type;
 }
@@ -185,6 +205,7 @@ Type* ast_type_array(Type* type) {
 	arrayType->tag = TYPE_ARRAY;
 	arrayType->primitive = false;
 	arrayType->immutable = false;
+	arrayType->llvm_type = NULL;
 	arrayType->array = type;
 	return arrayType;
 }
@@ -195,6 +216,7 @@ Type* ast_type_monitor(Id* id, Definition* definitions) {
 	type->tag = TYPE_MONITOR;
 	type->primitive = false;
 	type->immutable = false;
+	type->llvm_type = NULL;
 	type->monitor.id = id;
 	type->monitor.definitions = definitions;
 	return type;
@@ -260,31 +282,31 @@ Statement* ast_statement_function_call(FunctionCall* function_call) {
 	return statement;
 }
 
-Statement* ast_statement_while_wait(Line ln, Expression* exp, Variable* var) {
+Statement* ast_statement_wait_for_in(Line ln, Expression* c, Expression* q) {
 	Statement* statement;
 	MALLOC(statement, Statement);
-	statement->tag = STATEMENT_WHILE_WAIT;
+	statement->tag = STATEMENT_WAIT_FOR_IN;
 	statement->line = ln;
-	statement->while_wait.expression = exp;
-	statement->while_wait.variable = var;
+	statement->wait_for_in.condition = c;
+	statement->wait_for_in.queue = q;
 	return statement;
 }
 
-Statement* ast_statement_signal(Line ln, Variable* variable) {
+Statement* ast_statement_signal(Line ln, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SIGNAL;
 	statement->line = ln;
-	statement->signal = variable;
+	statement->signal = expression;
 	return statement;
 }
 
-Statement* ast_statement_broadcast(Line ln, Variable* variable) {
+Statement* ast_statement_broadcast(Line ln, Expression* expression) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_BROADCAST;
 	statement->line = ln;
-	statement->broadcast = variable;
+	statement->broadcast = expression;
 	return statement;
 }
 
@@ -338,7 +360,10 @@ Statement* ast_statement_spawn(Line ln, Block* block) {
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_SPAWN;
 	statement->line = ln;
-	statement->spawn = block;
+	statement->spawn = ast_call(ln, /* id */ NULL, /* arguments */ NULL);
+	statement->spawn->function_definition = ast_definition_function(
+		/* id */ NULL, /* parameters */ NULL, ast_type_void(), block
+	);
 	return statement;
 }
 
@@ -367,6 +392,7 @@ Variable* ast_variable_id(Id* id) {
 	variable->global = false;
 	variable->value = false;
 	variable->llvm_value = NULL;
+	variable->llvm_structure_index = -1;
 	variable->id = id;
 	return variable;
 }
@@ -380,6 +406,7 @@ Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
 	variable->global = false;
 	variable->value = false;
 	variable->llvm_value = NULL;
+	variable->llvm_structure_index = -1;
 	variable->indexed.array = array;
 	variable->indexed.index = index;
 	return variable;
@@ -532,7 +559,7 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
 	function_call->instance = NULL;
 	function_call->id = id;
 	function_call->arguments = arguments;
-	function_call->arguments_count = -1;
+	function_call->argument_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }
@@ -546,7 +573,7 @@ FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
 	function_call->instance = i;
 	function_call->id = id;
 	function_call->arguments = a;
-	function_call->arguments_count = -1;
+	function_call->argument_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }
@@ -560,7 +587,7 @@ FunctionCall* ast_call_constructor(Line ln, Type* type, Expression* arguments) {
 	function_call->instance = NULL;
 	function_call->id = NULL;
 	function_call->arguments = arguments;
-	function_call->arguments_count = -1;
+	function_call->argument_count = -1;
 	function_call->function_definition = NULL;
 	return function_call;
 }

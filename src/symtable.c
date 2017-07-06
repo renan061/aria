@@ -10,15 +10,18 @@
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL)
 
+/*
+ * TODO:
+ *	- Docs
+ *	- More asserts
+ */
+
 // ==================================================
 //
 //	Auxiliary
 //
 // ==================================================
 
-// TODO: Docs
-
-typedef struct Scope Scope;
 typedef struct Symbol Symbol;
 
 struct SymbolTable {
@@ -26,8 +29,9 @@ struct SymbolTable {
 };
 
 struct Scope {
-	Scope* next;
 	Symbol* first_symbol;
+	Scope* next;
+	Scope* previous;
 };
 
 struct Symbol {
@@ -95,19 +99,30 @@ void symtable_free(SymbolTable* table) {
 	free(table);
 }
 
-void symtable_enter_scope(SymbolTable* table) {
+Scope* symtable_enter_scope(SymbolTable* table) {
 	Scope* scope;
 	MALLOC(scope, Scope);
 
+	scope->first_symbol = NULL;
 	scope->next = table->top_scope;
+	scope->previous = NULL;
+
+	if (scope->next) {
+		scope->next->previous = scope;
+	}
 	table->top_scope = scope;
 
-	scope->first_symbol = NULL;
+	return table->top_scope;
 }
 
-void symtable_leave_scope(SymbolTable* table) {
+Scope* symtable_leave_scope(SymbolTable* table) {
+	assert(!table->top_scope->previous);
+
 	Scope* scope = table->top_scope;
 	table->top_scope = scope->next;
+	if (table->top_scope) {
+		table->top_scope->previous = NULL;
+	}
 
 	for (Symbol* symbol = scope->first_symbol; symbol;) {
 		scope->first_symbol = symbol;
@@ -115,20 +130,22 @@ void symtable_leave_scope(SymbolTable* table) {
 		free(scope->first_symbol);
 	}
 	free(scope);
+
+	return table->top_scope;
 }
 
-bool symtable_contains_in_current_scope(SymbolTable* tb, Id* id) {
-	return (bool) finddefinition(tb->top_scope, id->name);
-}
-
-Definition* symtable_find(SymbolTable* table, Id* id, int* counter) {
+Definition* symtable_find_in_scope(Scope* scope, Id* id) {
 	Definition* found = NULL;
-	int n = 0;
-	for (Scope* s = table->top_scope; s && !found; s = s->next, n++) {
+	for (Scope* s = scope; s && !found; s = s->previous) {
 		found = finddefinition(s, id->name);
 	}
-	if (counter) {
-		*counter = n;		
+	return found;
+}
+
+Definition* symtable_find(SymbolTable* table, Id* id) {	
+	Definition* found = NULL;
+	for (Scope* s = table->top_scope; s && !found; s = s->next) {
+		found = finddefinition(s, id->name);
 	}
 	return found;
 }

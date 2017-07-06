@@ -1,0 +1,822 @@
+
+function printTestCaseDivider {
+	print("-----\n");
+}
+
+function printTestDivider {
+	print("\n----------------------------------------\n\n");
+}
+
+// ==================================================
+//
+//	Definitions
+//
+// ==================================================
+
+function testVariableDefinition {
+	print("testVariableDefinition\n");
+
+	{ // value
+		printTestCaseDivider();
+		value valInteger = 1;
+		print("definition: value Integer (%d)\n", valInteger);
+		value valFloat: Float = 10;
+		print("definition: value Float (%.1f)\n", valFloat);
+	}
+
+	{ // variable
+		printTestCaseDivider();
+		variable varInteger = 2;
+		print("definition: variable Integer (%d)\n", varInteger);
+		variable varFloat: Float = 20;
+		print("definition: variable Float (%.1f)\n", varFloat);
+	}
+
+	printTestDivider();
+}
+
+function testDefinitions {
+	testVariableDefinition();
+}
+
+// ==================================================
+//
+//	Statements
+//
+// ==================================================
+
+function testAssignment {
+	print("testAssignment\n");
+	
+	{ // initialized
+		printTestCaseDivider();
+		variable varInitialized = true;
+		varInitialized = false;
+		print("assignment: variable initialized (%d)\n", varInitialized);
+	}
+
+	{ // not initialized 1
+		printTestCaseDivider();
+		variable varNotInitialized1: String;
+		varNotInitialized1 = "string";
+		print("assignment: variable not initialized 1 (%s)\n", varNotInitialized1);
+		varNotInitialized1 = "another string";
+		print("assignment: variable not initialized 1 (%s)\n", varNotInitialized1);
+	}
+
+	{ // not initialized 2
+		printTestCaseDivider();
+		variable varNotInitialized2: Float;
+		varNotInitialized2 = 1.2;
+		print("assignment: variable not initialized 2 (%.1f)\n", varNotInitialized2);
+		varNotInitialized2 = 1;
+		print("assignment: variable not initialized 2 (%.1f)\n", varNotInitialized2);
+	}
+
+	printTestDivider();
+}
+
+// Auxiliary
+function callZeroParameters: String {
+	return "zero parameters";
+}
+
+// Auxiliary
+function callOneParameter(string: String): String {
+	return string;
+}
+
+// Auxiliary
+function callManyParameters(a: Integer, b: Float, c: Integer): Integer {
+	variable number: Float;
+	number = a + c;
+	number = number * a - b - c;
+	return number;
+}
+
+// Auxiliary
+function callRecursive(n: Integer): Integer {
+	// factorial
+	if n == 0 {
+		return 1;
+	}
+	return n * callRecursive(n - 1);
+}
+
+function testCall {
+	print("testCall\n");
+
+	{ // zero parameters
+		printTestCaseDivider();
+		print("call: %s\n", callZeroParameters());
+	}
+
+	{ // one parameter
+		printTestCaseDivider();
+		print("call: %s\n", callOneParameter("one parameter"));
+	}
+
+	{ // many parameters
+		printTestCaseDivider();
+		print("call: many parameters (%d)\n", callManyParameters(1.5, 10, -0.5));
+	}
+
+	{ // recursive
+		printTestCaseDivider();
+		print("call: recursive (%d)\n", callRecursive(5));
+	}
+
+	printTestDivider();
+}
+
+// Auxiliary
+function returnBooleanTrue: Boolean	{ return true;		}
+function returnInteger15: Integer	{ return 15;		}
+function returnFloatMinus0_5: Float	{ return -0.5;		}
+function returnStringAria: String	{ return "Aria";	}
+
+// Auxiliary
+function returnArray(a, b, c: Integer): [Integer] {
+	value array = [Integer](3);
+	array[0] = a;
+	array[1] = b;
+	array[2] = c;
+	return array;
+}
+
+// Auxiliary
+monitor M {
+	initializer {}
+
+	function name: String {
+		return "M";
+	}
+}
+
+// Auxiliary
+function returnMonitor: M {
+	return M();
+}
+
+function testReturn {
+	print("testReturn\n");
+
+	{ // primitive type
+		printTestCaseDivider();
+		print("return: boolean (%d)\n", returnBooleanTrue());
+		print("return: integer (%d)\n", returnInteger15());
+		print("return: float (%.1f)\n", returnFloatMinus0_5());
+		print("return: string (%s)\n", returnStringAria());
+	}
+
+	{ // array
+		printTestCaseDivider();
+		array := returnArray(105, 205, 305);
+		print("return: array [0] (%d)\n", array[0]);
+		print("return: array [1] (%d)\n", array[1]);
+		print("return: array [2] (%d)\n", array[2]);
+	}
+
+	{ // monitor
+		printTestCaseDivider();
+		print("return: monitor (%s)\n", returnMonitor().name());
+	}
+
+	printTestDivider();
+}
+
+function testIf {
+	print("testIf\n");
+
+	{ // if true
+		printTestCaseDivider();
+		print("if true: before\n");
+		if true {
+			print("if true: inside\n");
+		}
+		print("if true: after\n");
+	}
+
+	
+	{ // if false
+		printTestCaseDivider();
+		print("if false: before\n");
+		if false {
+			print("if false: inside (error)\n");
+		}
+		print("if false: after\n");
+	}
+
+	printTestDivider();
+}
+
+function testIfElse {
+	print("testIfElse\n");
+
+	{ // if-else true
+		printTestCaseDivider();
+		print("if-else true: before\n");
+		if true {
+			print("if-else true: inside if\n");
+		} else {
+			print("if-else true: inside else (error)\n");
+		}
+		print("if-else true: after\n");
+	}
+
+	{ // if-else false
+		printTestCaseDivider();
+		print("if-else false: before\n");
+		if false {
+			print("if-else false: inside if (error)\n");
+		} else {
+			print("if-else false: inside else\n");
+		}
+		print("if-else false: after\n");
+	}
+
+	printTestDivider();
+}
+
+function testWhile {
+	print("testWhile\n");
+
+	{ // while false
+		printTestCaseDivider();
+		print("while false: before\n");
+		while false {
+			print("while false: inside (error)\n");
+		}
+		print("while false: after\n");
+	}
+
+	{ // while lopp
+		printTestCaseDivider();
+		variable i = 0;
+		counter := 5;
+		print("while loop: before\n");
+		while i < counter {
+			i = i + 1;
+			print("while loop: inside (%d)\n", i);
+		}
+		print("while loop: after\n");
+		if i == counter {
+			print("while loop: ok\n");
+		} else {
+			print("while loop: error\n");
+		}
+	}
+
+	printTestDivider();
+}
+
+function testBlock {
+	print("testBlock\n");
+
+	{ // scoping
+		printTestCaseDivider();
+		a := 10;
+		{
+			a := 12;
+			print("block: inside (%d)\n", a);
+		}
+		print("block: outside (%d)\n", a);
+	}
+
+	printTestDivider();
+}
+
+function testStatements {
+	testAssignment();
+	testCall();
+	// wait-for-in
+	// signal
+	// broadcast
+	testReturn();
+	testIf();
+	testIfElse();
+	testWhile();
+	// spawn
+	testBlock();
+}
+
+// ==================================================
+//
+//	Expressions
+//
+// ==================================================
+
+// Auxiliary
+function trueFunction: Boolean	{ return true;	}
+function falseFunction: Boolean	{ return false;	}
+
+function testBooleans {
+	print("testBooleans\n");
+
+	{ // literal
+		printTestCaseDivider();
+		print("literal boolean: %d\n", true);
+		print("literal boolean: %d\n", false);
+	}
+	
+	{ // variable
+		printTestCaseDivider();
+		variable boolean: Boolean;
+		boolean = true;
+		print("variable boolean: %d\n", boolean);
+		boolean = false;
+		print("variable boolean: %d\n", boolean);
+	}
+
+	{ // call
+		printTestCaseDivider();
+		print("call boolean: %d\n", trueFunction());
+		print("call boolean: %d\n", falseFunction());
+	}
+
+	{ // or
+		printTestCaseDivider();
+		print("or boolean: true-true (%d)\n", true or true);
+		print("or boolean: true-false (%d)\n", true or false);
+		print("or boolean: false-true (%d)\n", false or true);
+		print("or boolean: false-false (%d)\n", false or false);
+	}
+
+	{ // and
+		printTestCaseDivider();
+		print("and boolean: true-true (%d)\n", true and true);
+		print("and boolean: true-false (%d)\n", true and false);
+		print("and boolean: false-true (%d)\n", false and true);
+		print("and boolean: false-false (%d)\n", false and false);
+	}
+
+	{ // equal
+		printTestCaseDivider();
+		print("== boolean: true == true (%d)\n", true == true);
+		print("== boolean: true == false (%d)\n", true == false);
+		print("== boolean: false == true (%d)\n", false == true);
+		print("== boolean: false == false (%d)\n", false == false);
+
+		printTestCaseDivider();
+		print("== boolean: 10 == 10 (%d)\n", 10 == 10);
+		print("== boolean: 10 == 20 (%d)\n", 10 == 20);
+		print("== boolean: 20 == 10 (%d)\n", 20 == 10);
+		print("== boolean: 20 == 20 (%d)\n", 20 == 20);
+
+		printTestCaseDivider();
+		print("== boolean: 5.5 == 5.5 (%d)\n", 5.5 == 5.5);
+		print("== boolean: 5.5 == 3.7 (%d)\n", 5.5 == 3.7);
+		print("== boolean: 3.7 == 5.5 (%d)\n", 3.7 == 5.5);
+		print("== boolean: 3.7 == 3.7 (%d)\n", 3.7 == 3.7);
+
+		printTestCaseDivider();
+		print("== boolean: 15.0 == 15 (%d)\n", 15.0 == 15);
+		print("== boolean: 6 == 6.0 (%d)\n", 6 == 6.0);
+		print("== boolean: 2.0000000001 == 2 (%d)\n", 2.0000000001 == 2);
+		print("== boolean: 1 == 0.9999999999 (%d)\n", 1 == 0.9999999999);
+	}
+
+	{ // less equal
+		printTestCaseDivider();
+		print("<= boolean: 10 <= 11 (%d)\n", 10 <= 11);
+		print("<= boolean: 18 <= 19.0 (%d)\n", 18 <= 19.0);
+		print("<= boolean: 109.9999999999 <= 110 (%d)\n", 109.9999999999 <= 110);
+		print("<= boolean: 10.2344 <= 10.23442 (%d)\n", 10.2344 <= 10.23442);
+		print("<= boolean: 20 <= 20 (%d)\n", 20 <= 20);
+		print("<= boolean: 2200 <= 2200.0 (%d)\n", 2200 <= 2200.0);
+		print("<= boolean: 234.0 <= 234 (%d)\n", 234.0 <= 234);
+		print("<= boolean: 00.192947 <= 00.192947 (%d)\n", 00.192947 <= 00.192947);
+		print("<= boolean: 32 <= 31 (%d)\n", 32 <= 31);
+		print("<= boolean: 3.0000000001 <= 3 (%d)\n", 3.0000000001 <= 3);
+		print("<= boolean: 3112 <= 3111.9999999999 (%d)\n", 3112 <= 3111.9999999999);
+		print("<= boolean: 0.00000001 <= 0.000000001 (%d)\n", 0.00000001 <= 0.000000001);
+	}
+
+	{ // greater equal
+		printTestCaseDivider();
+		print(">= boolean: 10 >= 11 (%d)\n", 10 >= 11);
+		print(">= boolean: 18 >= 19.0 (%d)\n", 18 >= 19.0);
+		print(">= boolean: 109.9999999999 >= 110 (%d)\n", 109.9999999999 >= 110);
+		print(">= boolean: 10.2344 >= 10.23442 (%d)\n", 10.2344 >= 10.23442);
+		print(">= boolean: 20 >= 20 (%d)\n", 20 >= 20);
+		print(">= boolean: 2200 >= 2200.0 (%d)\n", 2200 >= 2200.0);
+		print(">= boolean: 234.0 >= 234 (%d)\n", 234.0 >= 234);
+		print(">= boolean: 00.192947 >= 00.192947 (%d)\n", 00.192947 >= 00.192947);
+		print(">= boolean: 32 >= 31 (%d)\n", 32 >= 31);
+		print(">= boolean: 3.0000000001 >= 3 (%d)\n", 3.0000000001 >= 3);
+		print(">= boolean: 3112 >= 3111.9999999999 (%d)\n", 3112 >= 3111.9999999999);
+		print(">= boolean: 0.00000001 >= 0.000000001 (%d)\n", 0.00000001 >= 0.000000001);
+	}
+
+	{ // less than
+		printTestCaseDivider();
+		print("< boolean: 10 < 11 (%d)\n", 10 < 11);
+		print("< boolean: 18 < 19.0 (%d)\n", 18 < 19.0);
+		print("< boolean: 109.9999999999 < 110 (%d)\n", 109.9999999999 < 110);
+		print("< boolean: 10.2344 < 10.23442 (%d)\n", 10.2344 < 10.23442);
+		print("< boolean: 20 < 20 (%d)\n", 20 < 20);
+		print("< boolean: 2200 < 2200.0 (%d)\n", 2200 < 2200.0);
+		print("< boolean: 234.0 < 234 (%d)\n", 234.0 < 234);
+		print("< boolean: 00.192947 < 00.192947 (%d)\n", 00.192947 < 00.192947);
+		print("< boolean: 32 < 31 (%d)\n", 32 < 31);
+		print("< boolean: 3.0000000001 < 3 (%d)\n", 3.0000000001 < 3);
+		print("< boolean: 3112 < 3111.9999999999 (%d)\n", 3112 < 3111.9999999999);
+		print("< boolean: 0.00000001 < 0.000000001 (%d)\n", 0.00000001 < 0.000000001);
+	}
+
+	{ // greater than
+		printTestCaseDivider();
+		print("> boolean: 10 > 11 (%d)\n", 10 > 11);
+		print("> boolean: 18 > 19.0 (%d)\n", 18 > 19.0);
+		print("> boolean: 109.9999999999 > 110 (%d)\n", 109.9999999999 > 110);
+		print("> boolean: 10.2344 > 10.23442 (%d)\n", 10.2344 > 10.23442);
+		print("> boolean: 20 > 20 (%d)\n", 20 > 20);
+		print("> boolean: 2200 > 2200.0 (%d)\n", 2200 > 2200.0);
+		print("> boolean: 234.0 > 234 (%d)\n", 234.0 > 234);
+		print("> boolean: 00.192947 > 00.192947 (%d)\n", 00.192947 > 00.192947);
+		print("> boolean: 32 > 31 (%d)\n", 32 > 31);
+		print("> boolean: 3.0000000001 > 3 (%d)\n", 3.0000000001 > 3);
+		print("> boolean: 3112 > 3111.9999999999 (%d)\n", 3112 > 3111.9999999999);
+		print("> boolean: 0.00000001 > 0.000000001 (%d)\n", 0.00000001 > 0.000000001);
+	}
+
+	{ // not
+		printTestCaseDivider();
+		print("not boolean: not true (%d)\n", not true);
+		print("not boolean: not false (%d)\n", not false);
+	}
+
+	printTestDivider();
+}
+
+// Auxiliary
+function arrayFunction: [String] {
+	array := [String](3);
+	array[0] = "one";
+	array[1] = "two";
+	array[2] = "three";
+	return array;
+}
+
+function testVariables {
+	print("testVariables\n");
+
+	{ // value
+		printTestCaseDivider();
+		val := 1;
+		print("variable: value (%d)\n", val);
+	}
+
+	{ // variable
+		printTestCaseDivider();
+		variable var = 1.0;
+		var = 3.5;
+		print("variable: variable (%.1f)\n", var);
+	}
+
+	{ // indexed function
+		printTestCaseDivider();
+		print("variable: indexed function (%s)\n", arrayFunction()[0]);
+		print("variable: indexed function (%s)\n", arrayFunction()[1]);
+		print("variable: indexed function (%s)\n", arrayFunction()[2]);
+		print("variable: indexed function (%s)\n", arrayFunction()[0 + 1 - 1 * 1]);
+	}
+
+	{ // indexed variable
+		printTestCaseDivider();
+		strings := arrayFunction();
+		print("variable: indexed variable (%s)\n", strings[0]);
+		print("variable: indexed variable (%s)\n", strings[1]);
+		print("variable: indexed variable (%s)\n", strings[2]);
+		print("variable: indexed variable (%s)\n", strings[0 + 1 - 1 * 1]);
+	}
+
+	printTestDivider();
+}
+
+function testArithmetics {
+	print("testArithmetics\n");
+
+	{ // unary minus
+		printTestCaseDivider();
+		print("unary minus: -0 (%d)\n", -0);
+		print("unary minus: -1 (%d)\n", -1);
+		print("unary minus: -1000 (%d)\n", -1000);
+		print("unary minus: -0.0 (%.1f)\n", -0.0);
+		print("unary minus: -0.7 (%.1f)\n", -0.7);
+	}
+	
+	{ // binary +
+		printTestCaseDivider();
+		print("binary +: 0 + 0 (%d)\n", 0 + 0);
+		print("binary +: 155 + 12 (%d)\n", 155 + 12);
+		print("binary +: -25 + 100 (%d)\n", -25 + 100);
+		print("binary +: -2 + -78 (%d)\n", -2 + -78);
+		print("binary +: 2.67 + -12.33 (%.2f)\n", 2.67 + -12.33);
+	}
+
+	{ // binary -
+		printTestCaseDivider();
+		print("binary -: 1 - 1 (%d)\n", 1 - 1);
+		print("binary -: 155 - 12 (%d)\n", 155 - 12);
+		print("binary -: -25 - 100 (%d)\n", -25 - 100);
+		print("binary -: -2 - -78 (%d)\n", -2 - -78);
+		print("binary -: 2.67 - -12.33 (%.1f)\n", 2.67 - -12.33);
+	}
+
+	{ // binary *
+		printTestCaseDivider();
+		print("binary *: -1 * 0 (%d)\n", -1 * 0);
+		print("binary *: 0 * 1 (%d)\n", 0 * 1);
+		print("binary *: 1 * 1 (%d)\n", 1 * 1);
+		print("binary *: 155 * 12 (%d)\n", 155 * 12);
+		print("binary *: -25 * 100 (%d)\n", -25 * 100);
+		print("binary *: -2 * -78 (%d)\n", -2 * -78);
+		print("binary *: 2.67 * -12.33 (%.4f)\n", 2.67 * -12.33);
+	}
+
+	{ // binary /
+		printTestCaseDivider();
+		print("binary /: 0 / 1 (%d)\n", 0 / 1);
+		print("binary /: 1 / 1 (%d)\n", 1 / 1);
+		print("binary /: 10 / 5 (%d)\n", 10 / 5);
+		print("binary /: 155.0 / 12 (%.5f)\n", 155.0 / 12);
+		print("binary /: -25 / 100.0 (%.2f)\n", -25 / 100.0);
+		print("binary /: -2.0 / -78 (%.5f)\n", -2.0 / -78);
+		print("binary /: 2.67 / -12.33 (%.4f)\n", 2.67 / -12.33);
+		// OBS: Check failing tests
+	}
+
+	printTestDivider();
+}
+
+function functionReceivesInteger(n: Integer): Integer {
+	return n;
+}
+
+function testCasts {
+	print("testCasts\n");
+
+	{ // integer to float
+		printTestCaseDivider();
+		print("cast: integer to float (%.1f)\n", 1 + 0.0);
+	}
+
+	{ // float to integer
+		printTestCaseDivider();
+		print("cast: float to integer (%.d)\n", functionReceivesInteger(1.0));	
+	}
+
+	printTestDivider();
+}
+
+// Auxiliary
+function callInteger(n: Integer): Integer {
+	return n;
+}
+
+function testExpressions {
+	testBooleans();
+
+	{ // literal integer
+		print("testIntegers\n");
+		printTestCaseDivider();
+		print("literal integer: (%d)\n", -1);
+		print("literal integer: (%d)\n", 0);
+		print("literal integer: (%d)\n", -0);
+		print("literal integer: (%d)\n", 1);
+		max := 2147483647;
+		print("literal integer: (%d)\n", -max - 1);
+		print("literal integer: (%d)\n", max);
+		printTestDivider();
+	}
+
+	{ // literal float
+		print("testFloats\n");
+		printTestCaseDivider();
+		print("literal float: (%f)\n", -0.583747);
+		print("literal float: (%f)\n", 00.0000);
+		print("literal float: (%f)\n", -000000.0);
+		print("literal float: (%.10f)\n", 0.9999999999);
+		printTestDivider();
+	}
+
+	{ // literal string
+		print("testStrings\n");
+		printTestCaseDivider();
+		print("literal string: (%s)\n", "");
+		print("literal string: (%s)\n", "string");
+		print("literal string: (%s)\n", "new\nline");
+		printTestDivider();
+	}
+
+	testVariables();
+
+	{ // call
+		print("testCalls\n");
+		printTestCaseDivider();
+		print("call: (%d)\n", callInteger(3));
+		printTestDivider();
+	}
+
+	testArithmetics();
+	testCasts();
+}
+
+// ==================================================
+//
+//	Short-circuit evaluation
+//
+// ==================================================
+
+monitor ShortCircuitMonitor {
+	variable counter = 0;
+
+	initializer {}
+
+	function incrementAndReturnTrue: Boolean {
+		counter = counter + 3;
+		return true;
+	}
+
+	function decrementAndReturnFalse: Boolean {
+		counter = counter - 5;
+		return false;
+	}
+
+	function setCounter(n: Integer) {
+		counter = n;
+	}
+
+	function getCounter: Integer {
+		return counter;
+	}
+}
+	
+function testShortCircuitEvaluation {
+	print("testShortCircuitEvaluation\n");
+
+	m := ShortCircuitMonitor();
+
+	{ // and
+		printTestCaseDivider();
+
+		{ // true and true
+			m.setCounter(0);
+			if not (m.incrementAndReturnTrue() and m.incrementAndReturnTrue()) {
+				print("short-circuit: true and true (if error)\n");
+			}
+			print("short-circuit: true and true (%d)\n", m.getCounter());
+		}
+
+		{ // true and false
+			m.setCounter(0);
+			if m.incrementAndReturnTrue() and m.decrementAndReturnFalse() {
+				print("short-circuit: true and false (if error)\n");
+			}
+			print("short-circuit: true and false (%d)\n", m.getCounter());
+		}
+
+		{ // false and true
+			m.setCounter(0);
+			if m.decrementAndReturnFalse() and m.incrementAndReturnTrue() {
+				print("short-circuit: false and true (if error)\n");
+			}
+			print("short-circuit: false and true (%d)\n", m.getCounter());
+		}
+
+		{ // false and false
+			m.setCounter(0);
+			if m.decrementAndReturnFalse() and m.decrementAndReturnFalse() {
+				print("short-circuit: false and false (if error)\n");
+			}
+			print("short-circuit: false and false (%d)\n", m.getCounter());
+		}
+	}
+
+	{ // or
+		printTestCaseDivider();
+
+		{ // true or true
+			m.setCounter(0);
+			if not (m.incrementAndReturnTrue() or m.incrementAndReturnTrue()) {
+				print("short-circuit: true or true (if error)\n");
+			}
+			print("short-circuit: true or true (%d)\n", m.getCounter());	
+		}
+
+		{ // true or false
+			m.setCounter(0);
+			if not (m.incrementAndReturnTrue() or m.decrementAndReturnFalse()) {
+				print("short-circuit: true or false (if error)\n");
+			}
+			print("short-circuit: true or false (%d)\n", m.getCounter());	
+		}
+
+		{ // false or true
+			m.setCounter(0);
+			if not (m.decrementAndReturnFalse() or m.incrementAndReturnTrue()) {
+				print("short-circuit: false or true (if error)\n");
+			}
+			print("short-circuit: false or true (%d)\n", m.getCounter());	
+		}
+
+		{ // false or false
+			m.setCounter(0);
+			if m.decrementAndReturnFalse() or m.decrementAndReturnFalse() {
+				print("short-circuit: false or false (if error)\n");
+			}
+			print("short-circuit: false or false (%d)\n", m.getCounter());	
+		}
+	}
+
+	printTestDivider();
+}
+
+// ==================================================
+//
+//	Wild
+//
+// ==================================================
+
+function newMatrix(size: Integer): [[Integer]] {
+	variable i, j: Integer;
+	matrix := [[Integer]](size);
+	
+	i = 0;
+	while i < size {
+		j = 0;
+		matrix[i] = [Integer](size);
+		while j < size {
+			if i >= j {
+				matrix[i][j] = 1;
+			} else {
+				matrix[i][j] = 0;
+			}
+			j = j + 1;
+		}
+		i = i + 1;
+	}
+
+	return matrix;
+}
+
+function printMatrix(matrix: [[Integer]], size: Integer) {
+	variable i, j: Integer;
+	
+	i = 0;
+	while i < size {
+		j = 0;
+		while j < size {
+			print("[%d]", matrix[i][j]);
+			j = j + 1;
+			if not (j == size) {
+				print(" - ");
+			}
+		}
+		print("\n");
+		i = i + 1;
+	}
+}
+
+// ==================================================
+//
+//	Runs all tests
+//
+// ==================================================
+
+function main {
+	testDefinitions();
+	testStatements();
+	testExpressions();
+	testShortCircuitEvaluation();
+
+	// wild
+	print("wild\n");
+
+	{ // matrix
+		printTestCaseDivider();
+		size := 5;
+		print("print matrix: a(ij) = (i >= j)\n");
+		printMatrix(newMatrix(size), size);
+	}
+
+	{ // nested conditions
+		printTestCaseDivider();
+
+		print(
+			"nested condition: not (1 > 4.9) and (3 == 1) (%d)\n",
+			not (1 > 4.9) and (3 == 1)
+		);
+
+		print(
+			"nested condition: (-0.0001 <= 0) or (-0.0001 >= -0.01) (%d)\n",
+			(-0.0001 <= 0) or (-0.0001 >= -0.01)
+		);
+
+		print(
+			"nested condition: ((19.5 - 18.5) / 2.0) > 0 and not true (%d)\n",
+			((19.5 - 18.5) / 2.0) > 0 and not true
+		);
+	}
+}

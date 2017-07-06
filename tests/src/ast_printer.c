@@ -182,19 +182,19 @@ static void print_ast_statement(Statement* statement) {
 		print_ast_function_call(statement->function_call);
 		printtype(statement->function_call->type);
 		break;
-	case STATEMENT_WHILE_WAIT:
-		printf("while ");
-		print_ast_expression(statement->while_wait.expression);
-		printf(" wait in ");
-		print_ast_variable(statement->while_wait.variable);
+	case STATEMENT_WAIT_FOR_IN:
+		printf("wait for ");
+		print_ast_expression(statement->wait_for_in.condition);
+		printf(" in ");
+		print_ast_expression(statement->wait_for_in.queue);
 		break;
 	case STATEMENT_SIGNAL:
 		printf("signal ");
-		print_ast_variable(statement->signal);
+		print_ast_expression(statement->signal);
 		break;
 	case STATEMENT_BROADCAST:
 		printf("broadcast ");
-		print_ast_variable(statement->broadcast);
+		print_ast_expression(statement->broadcast);
 		break;
 	case STATEMENT_RETURN:
 		printf("return");
@@ -223,10 +223,34 @@ static void print_ast_statement(Statement* statement) {
 		printf(" ");
 		print_ast_block(statement->while_.block);
 		break;
-	case STATEMENT_SPAWN:
-		printf("spawn ");
-		print_ast_block(statement->spawn);
+	case STATEMENT_SPAWN: {
+		Definition* function = statement->spawn->function_definition;
+		
+		printf("spawn function");
+		if (function->function.parameters) {
+			printf("(");
+			for (Definition* p = function->function.parameters; p;) {
+				print_ast_definition(p);
+				if ((p = p->next)) {
+					printf(", ");
+				}
+			}
+			printf(")");
+		}
+		printf(" ");
+		print_ast_block(function->function.block);
+		printf("(");
+		if (statement->spawn->arguments) {
+			for (Expression* e = statement->spawn->arguments; e;) {
+				print_ast_expression(e);
+				if ((e = e->next)) {
+					printf(", ");
+				}
+			}
+		}
+		printf(")");
 		break;
+	}
 	case STATEMENT_BLOCK:
 		print_ast_block(statement->block);
 		break;

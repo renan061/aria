@@ -1,7 +1,7 @@
-// In 'while-wait's
+// In 'wait-for-in's
 monitor M {
 	function foo {
-		x := "TODO"; // TODO: Condition Variables
-		while 1 wait in x;
+		variable queue: ConditionQueue;
+		wait for 1 in queue;
 	}
 }

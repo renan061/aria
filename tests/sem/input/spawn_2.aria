@@ -1,7 +1,7 @@
 // Spawn trying to access a value outside its scope that
 // is neither immutable nor a monitor
 function foo {
-	a := Immutable [[Integer]]();
+	a := [Immutable [Integer]]();
 	spawn {
 		b := a;
 	}

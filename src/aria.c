@@ -35,32 +35,31 @@ int main(int argc, char* argv[]) {
 	return executeModule(module);
 }
 
-static int executeModule(LLVMModuleRef module)
-{
+static int executeModule(LLVMModuleRef module) {
 	// TODO: "LLVM ERROR: Target does not support MC emission!"
 	LLVMInitializeNativeAsmPrinter();
 	// LLVMInitializeNativeAsmParser();
 
 	LLVMExecutionEngineRef engine;
-	char* error_msg = NULL;
-
+	char* error = NULL;
 	LLVMLinkInMCJIT();
 	LLVMInitializeNativeTarget();
-	if (LLVMCreateExecutionEngineForModule(&engine, module, &error_msg) != 0) {
-		printf("failed to create execution engine");
+	if (LLVMCreateExecutionEngineForModule(&engine, module, &error) != 0) {
+		printf("error: failed to create execution engine\n");
 		exit(1);
 	}
-	if (error_msg != NULL) {
-		LLVMDisposeMessage(error_msg);
-		printf("error: %s", error_msg);
+	if (error) {
+		LLVMDisposeMessage(error);
+		printf("error: %s", error);
 		exit(1);
 	}
 	LLVMValueRef main_function = LLVMGetNamedFunction(module, "main");
-	if (main_function == NULL) {
-		printf("main function not found");
+	if (!main_function) {
+		printf("error: main function not found\n");
 		exit(1);
 	}
+
 	LLVMGenericValueRef result = LLVMRunFunction(engine, main_function, 0, NULL);
 	LLVMDisposeExecutionEngine(engine);
-	return (int)LLVMGenericValueToInt(result, 0);
+	return (int) LLVMGenericValueToInt(result, 0);
 }

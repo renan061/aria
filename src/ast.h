@@ -5,6 +5,7 @@
  * TODO:
  *
  *	- Put line numbers in all structures (except for declarations and types)
+ *	- signal, broadcast and wait-for-in must be exp not var
  */
 
 #include <stdbool.h>
@@ -47,7 +48,7 @@ typedef enum BlockTag {
 typedef enum StatementTag {
 	STATEMENT_ASSIGNMENT,
 	STATEMENT_FUNCTION_CALL,
-	STATEMENT_WHILE_WAIT,
+	STATEMENT_WAIT_FOR_IN,
 	STATEMENT_SIGNAL,
 	STATEMENT_BROADCAST,
 	STATEMENT_RETURN,
@@ -137,6 +138,8 @@ struct Type {
 	bool primitive;
 	bool immutable; // default false
 
+	LLVMTypeRef llvm_type; // TODO: Always set
+
 	union {
 		// TypeID
 		Id* id;
@@ -173,15 +176,15 @@ struct Statement {
 		} assignment;
 		// StatementFunctionCall
 		FunctionCall* function_call;
-		// StatementWhileWait
+		// StatementWaitForIn
 		struct {
-			Expression* expression;
-			Variable* variable;
-		} while_wait;
+			Expression* condition;
+			Expression* queue;
+		} wait_for_in;
 		// StatementSignal
-		Variable* signal;
+		Expression* signal;
 		// StatementBroadcast
-		Variable* broadcast;
+		Expression* broadcast;
 		// StatementReturn
 		Expression* return_;
 		// StatementIf
@@ -201,7 +204,7 @@ struct Statement {
 			Block* block;
 		} while_;
 		// StatementSpawn
-		Block* spawn;
+		FunctionCall* spawn;
 		// StatementBlock
 		Block* block;
 	};
@@ -213,7 +216,9 @@ struct Variable {
 	Type* type;
 	bool global; // default false
 	bool value; // default false
+
 	LLVMValueRef llvm_value;
+	int llvm_structure_index; // default -1
 
 	union {
 		// VariableId
@@ -268,13 +273,13 @@ struct FunctionCall {
 
 	// Used by constructor calls before semantic analysis
 	Type* type;
-	// Only used by method (NULL for other types of calls)
+	// Only used by methods (NULL for other types of calls)
 	Expression* instance;
 	// Name of the function being called (NULL for constructors)
 	Id* id;
 	Expression* arguments;
 	// Initialized with -1
-	int arguments_count;
+	int argument_count;
 
 	// Used in the backend module
 	Definition* function_definition;
@@ -302,6 +307,7 @@ extern Type* ast_type_boolean(void);
 extern Type* ast_type_integer(void);
 extern Type* ast_type_float(void);
 extern Type* ast_type_string(void);
+extern Type* ast_type_condition_queue(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
 extern Type* ast_type_monitor(Id*, Definition*);
@@ -312,9 +318,9 @@ extern Block* ast_block_statement(Statement*);
 
 extern Statement* ast_statement_assignment(Line, Variable*, Expression*);
 extern Statement* ast_statement_function_call(FunctionCall*);
-extern Statement* ast_statement_while_wait(Line, Expression*, Variable*);
-extern Statement* ast_statement_signal(Line, Variable*);
-extern Statement* ast_statement_broadcast(Line, Variable*);
+extern Statement* ast_statement_wait_for_in(Line, Expression*, Expression*);
+extern Statement* ast_statement_signal(Line, Expression*);
+extern Statement* ast_statement_broadcast(Line, Expression*);
 extern Statement* ast_statement_return(Line, Expression*);
 extern Statement* ast_statement_if(Line, Expression*, Block*);
 extern Statement* ast_statement_if_else(Line, Expression*, Block*, Block*);

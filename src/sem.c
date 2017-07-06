@@ -1,7 +1,7 @@
 /*
  * TODO
  *
- *	- Immutable Monitor1 is wrong
+ *	- Immutable Monitor1 is wrong (TODO: being filtered by the parser)
  *	- Return statements with no expressions should return the 'nil' expression
  *
  */
@@ -20,9 +20,17 @@
 // TODO: Move this somewhere else and look for assert(NULL) in the code
 #define UNREACHABLE assert(NULL)
 
-// TODO
+// TODO: Also check if TODOERR errors have matching tests
 #define TODOERR(line, err) \
 	printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
+
+// TODO
+#define PREPEND(Type, head, element) \
+	{ \
+		Type* _temporary = head; \
+		head = element; \
+		head->next = _temporary; \
+	} \
 
 // Stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
@@ -38,16 +46,21 @@ typedef struct SemanticState {
 	// <true> if currently analysing a monitor's initializer, <false> otherwise
 	bool initializer;
 
-	// <true> if currently analysing a spawn statement block, <false> otherwise
-	bool spawn;
+	// The spawn scope if currently analysing a spawn statement block, NULL
+	// otherwise
+	struct {
+		Scope* scope;
+		FunctionCall* function_call;
+	} spawn;
 } SemanticState;
 
-// Primitive types
-static Type* void_;
-static Type* boolean_;
-static Type* integer_;
-static Type* float_;
-static Type* string_;
+// Native types
+static Type* __void;
+static Type* __boolean;
+static Type* __integer;
+static Type* __float;
+static Type* __string;
+static Type* __condition_queue;
 
 // Functions that analyse the abstract syntax tree recursively
 static void sem_definition(SemanticState*, Definition*);
@@ -124,30 +137,35 @@ static void err_expression(ErrorType, Expression*);
  */
 void sem_analyse(AST* ast) {
 	// Setup
-	void_ = ast_type_void();
-	boolean_ = ast_type_boolean();
-	integer_ = ast_type_integer();
-	float_ = ast_type_float();
-	string_ = ast_type_string();
-	Definition* definition_boolean = ast_definition_type(boolean_);
-	Definition* definition_integer = ast_definition_type(integer_);
-	Definition* definition_float = ast_definition_type(float_);
-	Definition* definition_string = ast_definition_type(string_);
+	__void = ast_type_void();
+	__boolean = ast_type_boolean();
+	__integer = ast_type_integer();
+	__float = ast_type_float();
+	__string = ast_type_string();
+	__condition_queue = ast_type_condition_queue();
+
+	Definition* def_boolean = ast_definition_type(__boolean);
+	Definition* def_integer = ast_definition_type(__integer);
+	Definition* def_float = ast_definition_type(__float);
+	Definition* def_string = ast_definition_type(__string);
+	Definition* def_condition_queue = ast_definition_type(__condition_queue);
 
 	SemanticState state = {
 		/* symbol table			*/ symtable_new(),
 		/* current monitor		*/ NULL,
 		/* return type			*/ NULL,
 		/* inside initializer	*/ false,
-		/* inside spawn			*/ false
 	};
+	state.spawn.scope = NULL;
+	state.spawn.function_call = NULL;
 
 	// Analysis
 	symtable_enter_scope(state.table);
-	symtable_insert(state.table, definition_boolean);
-	symtable_insert(state.table, definition_integer);
-	symtable_insert(state.table, definition_float);
-	symtable_insert(state.table, definition_string);
+	symtable_insert(state.table, def_boolean);
+	symtable_insert(state.table, def_integer);
+	symtable_insert(state.table, def_float);
+	symtable_insert(state.table, def_string);
+	symtable_insert(state.table, def_condition_queue);
 	for (Definition* d = ast->definitions; d; d = d->next) {
 		sem_definition(&state, d);
 	}
@@ -155,15 +173,17 @@ void sem_analyse(AST* ast) {
 
 	// Teardown
 	symtable_free(state.table);
-	free(definition_boolean);
-	free(definition_integer);
-	free(definition_float);
-	free(definition_string);
+	free(def_boolean);
+	free(def_integer);
+	free(def_float);
+	free(def_string);
+	free(def_condition_queue);
 
 	assert(!state.monitor);
 	assert(!state.return_);
 	assert(!state.initializer);
-	assert(!state.spawn);
+	assert(!state.spawn.scope);
+	assert(!state.spawn.function_call);
 }
 
 // ==================================================
@@ -171,6 +191,15 @@ void sem_analyse(AST* ast) {
 //	Implementation
 //
 // ==================================================
+
+// TODO
+static Variable* astself(Line line) {
+	static const char* keyword_self = "self";
+	Variable* variable = ast_variable_id(ast_id(line, keyword_self));
+	variable->global = false;
+	variable->value = true;
+	return variable;
+}
 
 static void sem_definition(SemanticState* state, Definition* definition) {
 	switch (definition->tag) {
@@ -194,27 +223,14 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		}
 		break;
 	}
-	case DEFINITION_CONSTRUCTOR:
-		state->initializer = true;
-		/* fallthrough */
 	case DEFINITION_FUNCTION:
 		assert(!definition->function.private);
-		/* fallthrough */
-	case DEFINITION_METHOD:
-		if (definition->function.id) { // Functions and methods
-			if (!symtable_insert(state->table, definition)) {
-				err_redeclaration(definition->function.id);
-			}
-			if (state->monitor && !safetype(definition->function.type)) {
-				err_monitor_function_type(definition->function.id->line);
-			}
-			linktype(state->table, &definition->function.type);
-		} else { // Constructors
-			assert(state->monitor);
-			definition->function.id = state->monitor->monitor.id;
-			definition->function.type = state->monitor;
+		if (!symtable_insert(state->table, definition)) {
+			err_redeclaration(definition->function.id);
 		}
+		linktype(state->table, &definition->function.type);
 
+	DEFAULT_DEFINITION_FUNCTION: {
 		// Parameters
 		symtable_enter_scope(state->table);
 		for (Definition* p = definition->function.parameters; p; p = p->next) {
@@ -234,7 +250,38 @@ static void sem_definition(SemanticState* state, Definition* definition) {
 		symtable_leave_scope(state->table);
 		state->initializer = false;
 		break;
+	}
+	case DEFINITION_METHOD: {
+		assert(state->monitor);
+		
+		// TODO: Take line (-1) from definition
+		Variable* variable = astself(-1);
+		variable->type = ast_type_id(ast_id(
+			-1,
+			state->monitor->monitor.id->name)
+		);
+
+		PREPEND(Definition, definition->function.parameters,
+			ast_definition_variable(variable, NULL));
+
+		if (!symtable_insert(state->table, definition)) {
+			err_redeclaration(definition->function.id);
+		}
+		if (!safetype(definition->function.type)) {
+			err_monitor_function_type(definition->function.id->line);
+		}
+		linktype(state->table, &definition->function.type);
+
+		goto DEFAULT_DEFINITION_FUNCTION;
+	}
+	case DEFINITION_CONSTRUCTOR:
+		assert(state->monitor);
+		state->initializer = true;
+		definition->function.id = state->monitor->monitor.id;
+		definition->function.type = state->monitor;	
+		goto DEFAULT_DEFINITION_FUNCTION;
 	case DEFINITION_TYPE:
+		assert(definition->type->tag == TYPE_MONITOR);
 		if (!symtable_insert(state->table, definition)) {
 			err_redeclaration(definition->type->monitor.id);
 		}
@@ -256,7 +303,9 @@ static void sem_block(SemanticState* state, Block* block) {
 	for (Block* b = block->next; b; b = b->next) {
 		switch (b->tag) {
 		case BLOCK_DEFINITION:
-			sem_definition(state, b->definition);
+			for (Definition* d = b->definition; d; d = d->next) {
+				sem_definition(state, d);
+			}
 			continue;
 		case BLOCK_STATEMENT:
 			sem_statement(state, b->statement);
@@ -281,19 +330,24 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 	case STATEMENT_FUNCTION_CALL:
 		sem_function_call(state, statement->function_call);
 		break;
-	case STATEMENT_WHILE_WAIT:
+	case STATEMENT_WAIT_FOR_IN:
 		if (!state->monitor) {
-			err_monitor_statements(statement->line, "while-wait");
+			err_monitor_statements(statement->line, "wait-for-in");
 		}
 		if (state->initializer) {
-			err_monitor_statements_constructor(statement->line, "while-wait");
+			err_monitor_statements_constructor(statement->line, "wait-for-in");
 		}
-		sem_expression(state, statement->while_wait.expression);
-		if (!conditiontype(statement->while_wait.expression->type)) {
-			err_invalid_condition_type(statement->while_wait.expression);
+		sem_expression(state, statement->wait_for_in.condition);
+		if (!conditiontype(statement->wait_for_in.condition->type)) {
+			err_invalid_condition_type(statement->wait_for_in.condition);
 		}
-		// TODO: Special semantics for condition variables
-		sem_variable(state, &statement->while_wait.variable);
+		sem_expression(state, statement->wait_for_in.queue);
+		if (statement->wait_for_in.queue->type != __condition_queue) {
+			TODOERR(
+				statement->line,
+				"wait-for-in second expression must be of type ConditionQueue"
+			);
+		}
 		break;
 	case STATEMENT_SIGNAL:
 		if (!state->monitor) {
@@ -302,8 +356,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "signal");
 		}
-		// TODO: Special semantics for condition variables
-		sem_variable(state, &statement->signal);
+		sem_expression(state, statement->signal);
+		if (statement->signal->type != __condition_queue) {
+			TODOERR(
+				statement->line,
+				"signal must receive expression of type ConditionQueue"
+			);
+		}
 		break;
 	case STATEMENT_BROADCAST:
 		if (!state->monitor) {
@@ -312,12 +371,17 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (state->initializer) {
 			err_monitor_statements_constructor(statement->line, "broadcast");
 		}
-		// TODO: Special semantics for condition variables
-		sem_variable(state, &statement->broadcast);
+		sem_expression(state, statement->broadcast);
+		if (statement->broadcast->type != __condition_queue) {
+			TODOERR(
+				statement->line,
+				"broadcast must receive expression of type ConditionQueue"
+			);
+		}
 		break;
 	case STATEMENT_RETURN:
 		// Can't return inside a spawn block
-		if (state->spawn) {
+		if (state->spawn.scope) {
 			err_return_inside_spawn(statement->line);
 		}
 		// Can't return an expression inside an initializer
@@ -329,7 +393,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 			}
 		}
 		// Can't return empty when the function expects a return type
-		if (state->return_ != void_ && !statement->return_) {	
+		if (state->return_ != __void && !statement->return_) {	
 			err_return_void(statement->line, state->return_);
 		}
 
@@ -368,14 +432,23 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		sem_block(state, statement->while_.block);
 		symtable_leave_scope(state->table);
 		break;
-	case STATEMENT_SPAWN:
-		// TODO: Should not be able to spawn inside a monitor and initializer
-		symtable_enter_scope(state->table);
-		state->spawn = true;
-		sem_block(state, statement->spawn);
-		state->spawn = false;
+	case STATEMENT_SPAWN: {
+		if (state->monitor) {
+			TODOERR(statement->line, "can't spawn inside monitors");
+		}
+
+		Scope* previous_spawn_scope = state->spawn.scope;
+		FunctionCall* previous_spawn_function_call = state->spawn.function_call;
+
+		state->spawn.scope = symtable_enter_scope(state->table);
+		state->spawn.function_call = statement->spawn;
+		sem_block(state, statement->spawn->function_definition->function.block);
 		symtable_leave_scope(state->table);
+
+		state->spawn.scope = previous_spawn_scope;
+		state->spawn.function_call = previous_spawn_function_call;
 		break;
+	}
 	case STATEMENT_BLOCK:
 		symtable_enter_scope(state->table);
 		sem_block(state, statement->block);
@@ -388,33 +461,78 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 
 static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 	Variable* variable = *variable_pointer;
+	assert(!variable->type);
 
 	switch (variable->tag) {
 	case VARIABLE_ID: {
-		int n = 0;
-		Definition* definition = symtable_find(state->table, variable->id, &n);
+		Definition* definition = symtable_find(state->table, variable->id);
 		if (!definition) {
 			err_variable_unknown(variable->id);
-		} else if (definition->tag != DEFINITION_VARIABLE) {
+		}
+		if (definition->tag != DEFINITION_VARIABLE) {
 			err_variable_misuse(variable->id);
 		}
 
 		assert(definition->variable.variable->tag == VARIABLE_ID);
-		assert(!variable->type);
-		Line line = variable->line;
-		free(variable->id);
-		free(variable);
-		*variable_pointer = variable = definition->variable.variable;
 
-		// If accessing variables from outside a spawn block
-		if (state->spawn && n != 1) {
-			if (!variable->value) {
-				err_spawn_variable(line);
-			}
-			if (!safetype(variable->type)) {
-				err_spawn_unsafe(line);
+		bool from_outside_spawn_scope = false;
+		if (state->spawn.scope) {
+			if (!symtable_find_in_scope(state->spawn.scope, variable->id)) {
+				if (!definition->variable.variable->value) {
+					err_spawn_variable(variable->line);
+				}
+				if (!safetype(definition->variable.variable->type)) {
+					err_spawn_unsafe(variable->line);
+				}
+				from_outside_spawn_scope = true;
 			}
 		}
+
+		// TODO: This is messy (define lambdas someday)
+		if (from_outside_spawn_scope && !variable->global) {
+			FunctionCall* call = state->spawn.function_call;
+			Definition* function = call->function_definition;
+			Type* type = definition->variable.variable->type;
+
+			Variable* parameter_variable = ast_variable_id(
+				ast_id(variable->line, variable->id->name)
+			);
+			parameter_variable->type = type;
+			Definition* parameter = ast_definition_variable(
+				parameter_variable, NULL
+			);
+			parameter->variable.variable->value = true;
+			parameter->variable.variable->type = type;
+			symtable_insert(state->table, parameter);
+
+			Expression* argument = ast_expression_variable(
+				definition->variable.variable
+			);
+			argument->type = type;
+
+			if (call->argument_count == -1) {
+				call->arguments = argument;
+				call->argument_count = 1;
+				function->function.parameters = parameter;
+			} else if (call->argument_count > 0) {
+				argument->next = call->arguments;
+				call->arguments = argument;
+				call->argument_count++;
+				parameter->next = function->function.parameters;
+				function->function.parameters = parameter;
+			} else {
+				UNREACHABLE;
+			}
+
+			free(variable->id);
+			free(variable);
+			*variable_pointer = parameter->variable.variable;
+		} else {
+			free(variable->id);
+			free(variable);
+			*variable_pointer = definition->variable.variable;
+		}
+		
 		break;
 	}
 	case VARIABLE_INDEXED:
@@ -436,16 +554,16 @@ static void sem_variable(SemanticState* state, Variable** variable_pointer) {
 static void sem_expression(SemanticState* state, Expression* expression) {
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		expression->type = boolean_;
+		expression->type = __boolean;
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		expression->type = integer_;
+		expression->type = __integer;
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		expression->type = float_;
+		expression->type = __float;
 		break;
 	case EXPRESSION_LITERAL_STRING:
-		expression->type = string_;
+		expression->type = __string;
 		break;
 	case EXPRESSION_VARIABLE:
 		sem_variable(state, &expression->variable);
@@ -468,7 +586,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			if (!conditiontype(expression->unary.expression->type)) {
 				err_expression(ERR_EXPRESSION_NOT, expression);
 			}
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		default:
 			UNREACHABLE;
@@ -487,7 +605,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			if (!conditiontype((*rp)->type)) {
 				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		case TK_EQUAL:
 			if (!equatabletype((*lp)->type)) {
@@ -499,7 +617,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			if (!typecheck2(lp, rp)) {
 				err_expression(ERR_EXPRESSION_TYPECHECK_EQUAL, expression);
 			}
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
 			if (!numerictype((*lp)->type)) {
@@ -509,7 +627,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 				err_expression(ERR_EXPRESSION_RIGHT, expression);
 			}
 			assert(typecheck2(lp, rp)); // for casting, if necessary
-			expression->type = boolean_;
+			expression->type = __boolean;
 			break;
 		case '+': case '-': case '*': case '/':
 			if (!numerictype((*lp)->type)) {
@@ -533,59 +651,94 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 	}
 }
 
+// TODO: Doc
+// TODO: Currently checking only the first matching method
+// TODO: Currently no overloading
+static Definition* findmethod(FunctionCall* call) {
+	Definition* method_definition = NULL;
+	Type* monitor = call->instance->type;
+
+	for (Definition* d = monitor->monitor.definitions; d; d = d->next) {
+		if (d->tag == DEFINITION_METHOD) {
+			if (d->function.id->name == call->id->name) {
+				if (d->function.private) {
+					err_function_call_private(call->line, call->id, monitor);
+				}
+				method_definition = d;
+				break;
+			}
+		}
+	}
+
+	if (!method_definition) {
+		err_function_call_no_method(call->line, monitor, call->id);
+	}
+
+	return method_definition;
+}
+
 static void sem_function_call(SemanticState* state, FunctionCall* call) {
+	// TODO: calculate argument_count here
+
 	switch (call->tag) {
 	case FUNCTION_CALL_BASIC:
 		// MEGA TODO: Fix this master gambiarra
 		if (!strcmp(call->id->name, "print")) {
-			call->arguments_count = 0;
+			call->argument_count = 0;
 			for (Expression* e = call->arguments; e; e = e->next) {
 				sem_expression(state, e);
-				call->arguments_count++;
+				call->argument_count++;
 			}
-			call->type = integer_;
+			call->type = __integer;
 			return;
 		}
 
-		call->function_definition = symtable_find(state->table, call->id, NULL);
+		call->function_definition = symtable_find(state->table, call->id);
 		if (!call->function_definition) {
 			err_function_call_unknown(call->id);
-		} else if (call->function_definition->tag != DEFINITION_FUNCTION &&
+		}
+		if (call->function_definition->tag != DEFINITION_FUNCTION &&
 			call->function_definition->tag != DEFINITION_METHOD) {
 			// TODO: Can't call constructor from inside a Monitor
 			err_function_call_misuse(call->id);
 		}
 
+		// Implicit self for method calls inside monitors
+		if (call->function_definition->tag == DEFINITION_METHOD) {
+			assert(state->monitor);
+			PREPEND(Expression, call->arguments,
+				ast_expression_variable(astself(call->line)));
+		}
+
 		call->type = call->function_definition->function.type;
 		free(call->id);
 		call->id = NULL;
+
+		// Can't call non-safe functions from inside a monitor
+		if (state->monitor && !safetype(call->type)) {
+			TODOERR(
+				call->line,
+				"can't call a function that returns a "
+				"non-safe type from inside a monitor"
+			);
+		}
+
 		break;
 	case FUNCTION_CALL_METHOD:
 		sem_expression(state, call->instance);
 		if (call->instance->type->tag != TYPE_MONITOR) {
 			err_function_call_no_monitor(call->line);
 		}
-		// Instance type is already linked
-		for (Definition* d = call->instance->type->monitor.definitions; d;
-			d = d->next) {
+		// OBS: Instance type is already linked
 
-			if (d->tag == DEFINITION_METHOD) {
-				if (d->function.id->name == call->id->name) {
-					// TODO: Currently checking only the first matching method
-					// TODO: Currently no overloading
-					if (d->function.private) {
-						err_function_call_private(call->line, call->id,
-							call->instance->type);
-					}
-					call->function_definition = d;
-				}
-				break;
-			}
+		// Finding the function definition in the monitor
+		call->function_definition = findmethod(call);
+		// Prepending self to arguments
+		PREPEND(Expression, call->arguments, call->instance);
+		if (call->arguments->next) {
+			call->arguments->next->previous = call->instance;
 		}
-		
-		if (!call->function_definition) {
-			err_function_call_no_method(call->line, call->instance->type, call->id);
-		}
+
 		call->type = call->function_definition->function.type;
 		free(call->id);
 		call->id = NULL;
@@ -593,21 +746,32 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	case FUNCTION_CALL_CONSTRUCTOR: // initializers and arrays
 		linktype(state->table, &call->type);
 
+		if (call->type->tag == TYPE_ID) {
+			if (call->type != __condition_queue) {
+				// TODO: Create test cases for this
+				TODOERR(call->line, "type has no known initializer");
+			}
+			// TODO: Check number of arguments passed (must be zero)
+			call->argument_count = 0;
+			return;
+		}
+
 		// Array constructors must have no arguments or one numeric argument
 		if (call->type->tag == TYPE_ARRAY) {
-			call->arguments_count = 0;
+			call->argument_count = 0;
 			for (Expression* e = call->arguments; e; e = e->next,
-				call->arguments_count++);
-			if (call->arguments_count == 0) { // defaults to 8
+				call->argument_count++);
+			if (call->argument_count == 0) { // defaults to 8
+				call->argument_count = 1;
 				call->arguments = ast_expression_literal_integer(call->line, 8);
-				call->arguments->type = integer_;
-			} else if (call->arguments_count == 1) {
+				call->arguments->type = __integer;
+			} else if (call->argument_count == 1) {
 				sem_expression(state, call->arguments);
-				typecheck1(integer_, &call->arguments);
+				typecheck1(__integer, &call->arguments);
 			} else {
 				err_function_call_array_constructor(
 					call->line,
-					call->arguments_count
+					call->argument_count
 				);
 			}
 			return;
@@ -638,9 +802,18 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 	Definition* parameter = call->function_definition->function.parameters;
 	Expression* argument = call->arguments;
 	Expression** pointer = &call->arguments;
+	call->argument_count = 0;
+
+	// Skips comparing between the first parameter and argument of a method
+	if (call->tag == FUNCTION_CALL_METHOD) {
+		assert(parameter && argument);
+		call->argument_count++;
+		parameter = parameter->next;
+		argument = (*pointer)->next;
+		pointer = &argument;
+	}
 
 	// Comparing arguments with parameters
-	call->arguments_count = 0;
 	while (parameter || argument) {
 		if (parameter && !argument) {
 			err_function_call_few_args(call->line);
@@ -649,7 +822,7 @@ static void sem_function_call(SemanticState* state, FunctionCall* call) {
 			err_function_call_excess_args(call->line);
 		}
 
-		call->arguments_count++;
+		call->argument_count++;
 
 		sem_expression(state, argument);
 		typecheck1(parameter->variable.variable->type, pointer);
@@ -726,7 +899,7 @@ static void linktype(SymbolTable* table, Type** pointer) {
 		// TypeVoid instance is not provided by the user as an id
 		break;
 	case TYPE_ID: {
-		Definition* definition = symtable_find(table, (*pointer)->id, NULL);
+		Definition* definition = symtable_find(table, (*pointer)->id);
 		if (!definition) {
 			err_unkown_type_name((*pointer)->id);
 		}
@@ -797,30 +970,30 @@ static Type* typecheck2(Expression** l, Expression** r) {
 	}
 
 	// Performs casts
-	if (t1 == float_) {
-		return (*r = ast_expression_cast(*r, float_))->type;
+	if (t1 == __float) {
+		return (*r = ast_expression_cast(*r, __float))->type;
 	}
-	if (t2 == float_) {
-		return (*l = ast_expression_cast(*l, float_))->type;
+	if (t2 == __float) {
+		return (*l = ast_expression_cast(*l, __float))->type;
 	}
 
 	UNREACHABLE;
 }
 
 static bool indextype(Type* type) {
-	return type == integer_; // TODO: Float also
+	return type == __integer; // TODO: Float also
 }
 
 static bool numerictype(Type* type) {
-	return type == integer_ || type == float_;
+	return type == __integer || type == __float;
 }
 
 static bool conditiontype(Type* type) {
-	return type == boolean_;
+	return type == __boolean;
 }
 
 static bool equatabletype(Type* type) { // TODO: Strings?
-	return type == boolean_ || type == integer_ || type == float_;
+	return type == __boolean || type == __integer || type == __float;
 }
 
 static bool safetype(Type *type) {
@@ -910,7 +1083,7 @@ static const char* tokenstring(Token token) {
 	}
 }
 
-// TODO: This errs with variadic functions
+// TODO: These errs with variadic functions
 
 // Creates a formatted error with one dynamic string
 static const char* err1(const char* format, const char* name) {

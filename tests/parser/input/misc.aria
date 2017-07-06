@@ -139,8 +139,8 @@ function foo {
 
 	foo();
 
-	// While-Wait
-	while not false wait in queue;
+	// Wait-for-in
+	wait for true in queue;
 
 	// Signal
 	signal queue;

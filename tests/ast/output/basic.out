@@ -69,9 +69,9 @@ function foo: Void {
 	Monitor()
 	Monitor((a))
 	Monitor((a), (b), (c))
-	while (true) wait in a
-	signal a
-	broadcast a
+	wait for (true) in (a)
+	signal (a)
+	broadcast (a)
 	return (true)
 	return
 	if (true) {
@@ -81,8 +81,8 @@ function foo: Void {
 	}
 	while (true) {
 	}
-	spawn {
-	}
+	spawn function {
+	}()
 	{
 	}
 	var = (a)

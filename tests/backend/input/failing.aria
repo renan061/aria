@@ -1,0 +1,17 @@
+function printDivider {
+	print("-----\n");
+}
+
+function main {
+	{
+		printDivider();
+		// LLVM optimization seems to delete 155 and
+		// reduce the whole expression to 12
+		print("Division not working: 155 / 12 = %.5f\n", 155 / 12);
+		// Works fine if one of the numbers
+		// is a float (155.0 / 12 or 155 / 12.0)
+		print("Works with floats: (155.0 / 12 = %.5f) ", 155.0 / 12);
+		print("(155 / 12.0 = %.5f)\n", 155 / 12);
+		// Also works fine in monga because it forces sdiv
+	}
+}

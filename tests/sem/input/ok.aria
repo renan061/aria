@@ -32,6 +32,9 @@ function foo {
 	variable variable1: Boolean;
 	variable variable2, variable3: Integer;
 	variable variable4, variable5, variable6: Float;
+	// Testing insertion in the symbol table
+	variable5 = 5.0;
+	variable6 = 6.0;
 
 	// Definition of variables and values (specific to blocks)
 	syntacticSugarDefinition1 := false;
@@ -84,6 +87,9 @@ function foo {
 		variable x = 1;
 		variable y = 2;
 		x = y * 2 + value1;
+		while x < 10 {
+			x = x + 1;
+		}
 	}
 
 	// Block
@@ -101,7 +107,7 @@ function foo {
 
 // Others (monitor's and return) simple statements
 monitor Monitor1 {
-	value queue = "FIXME"; // FIXME: Condition Variables
+	variable queue: ConditionQueue;
 
 	initializer {
 		return;
@@ -113,8 +119,8 @@ monitor Monitor1 {
 	}
 
 	function bar {
-		// While Wait
-		while true wait in queue;
+		// Wait for in
+		wait for true in queue;
 
 		// Signal
 		signal queue;

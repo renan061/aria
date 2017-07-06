@@ -149,7 +149,7 @@ string 		"\""(\\.|[^\\"])*"\""
 
 %%
 
-const char* primitive_types[4];
+const char* native_types[5];
 
 // initializes strs vector and sets yyin
 void scanner_setup(const char* file) {
@@ -157,10 +157,18 @@ void scanner_setup(const char* file) {
     	scanner_error(line, ERR_FILE);
     }
 	strs = vector_new();
-	vector_append(strs, (void*)(primitive_types[SCANNER_BOOLEAN] = "Boolean"));
-	vector_append(strs, (void*)(primitive_types[SCANNER_INTEGER] = "Integer"));
-	vector_append(strs, (void*)(primitive_types[SCANNER_FLOAT] = "Float"));
-	vector_append(strs, (void*)(primitive_types[SCANNER_STRING] = "String"));
+
+	native_types[SCANNER_NATIVE_BOOLEAN]			= "Boolean";
+	native_types[SCANNER_NATIVE_INTEGER]			= "Integer";
+	native_types[SCANNER_NATIVE_FLOAT]				= "Float";
+	native_types[SCANNER_NATIVE_STRING]				= "String";
+	native_types[SCANNER_NATIVE_CONDITION_QUEUE]	= "ConditionQueue";
+
+	vector_append(strs, (void*) native_types[SCANNER_NATIVE_BOOLEAN]);
+	vector_append(strs, (void*) native_types[SCANNER_NATIVE_INTEGER]);
+	vector_append(strs, (void*) native_types[SCANNER_NATIVE_FLOAT]);
+	vector_append(strs, (void*) native_types[SCANNER_NATIVE_STRING]);
+	vector_append(strs, (void*) native_types[SCANNER_NATIVE_CONDITION_QUEUE]);
 }
 
 // frees strs vector and closes yyin

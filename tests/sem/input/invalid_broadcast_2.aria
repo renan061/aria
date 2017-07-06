@@ -1,7 +1,7 @@
 // Inside a monitor's initializer
 monitor M {
+	variable a: ConditionQueue;
 	initializer {
-		a := 1; // TODO: Condition Variable
 		broadcast a;
 	}
 }

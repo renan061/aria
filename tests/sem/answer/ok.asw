@@ -37,6 +37,8 @@ function foo: Void {
 	variable variable4: Float
 	variable variable5: Float
 	variable variable6: Float
+	variable5: Float = (5.000000: Float)
+	variable6: Float = (6.000000: Float)
 	value syntacticSugarDefinition1: Boolean = (false: Boolean)
 	value syntacticSugarDefinition2: Void = (foo(): Void)
 	value value1: Integer = (1: Integer)
@@ -66,14 +68,17 @@ function foo: Void {
 	}
 	value spawnMonitor: SpawnMonitor = (SpawnMonitor(): SpawnMonitor)
 	value nestedSafeType: Immutable [Immutable [Immutable [Integer]]] = (Immutable [Immutable [Immutable [Integer]]]((8: Integer)): Immutable [Immutable [Immutable [Integer]]])
-	spawn {
+	spawn function(value nestedSafeType: Immutable [Immutable [Immutable [Integer]]], value value1: Integer, value spawnMonitor: SpawnMonitor) {
 		variable a: SpawnMonitor = (spawnMonitor: SpawnMonitor)
 		value b: Integer = (value1: Integer)
 		value c: Immutable [Immutable [Immutable [Integer]]] = (nestedSafeType: Immutable [Immutable [Immutable [Integer]]])
 		variable x: Integer = (1: Integer)
 		variable y: Integer = (2: Integer)
 		x: Integer = (((y: Integer) *: Integer (2: Integer)) +: Integer (value1: Integer))
-	}
+		while ((x: Integer) <: Boolean (10: Integer)) {
+			x: Integer = ((x: Integer) +: Integer (1: Integer))
+		}
+	}((nestedSafeType: Immutable [Immutable [Immutable [Integer]]]), (value1: Integer), (spawnMonitor: SpawnMonitor))
 	{
 		value a: Integer = (1: Integer)
 		value b: Integer = (2: Integer)
@@ -86,29 +91,29 @@ function foo: Void {
 	}
 }
 monitor Monitor1 {
-	value queue: String = ("FIXME": String)
+	variable queue: ConditionQueue
 	function Monitor1: Monitor1 {
 		return
 	}
-	function foo: String {
+	function foo(value self: Monitor1): String {
 		return ("string": String)
 	}
-	function bar: Void {
-		while (true: Boolean) wait in queue: String
-		signal queue: String
-		broadcast queue: String
+	function bar(value self: Monitor1): Void {
+		wait for (true: Boolean) in (queue: ConditionQueue)
+		signal (queue: ConditionQueue)
+		broadcast (queue: ConditionQueue)
 	}
 }
 monitor Monitor2 {
 	function Monitor2(value n1: Integer, value n2: Integer): Monitor2 {
 	}
-	function foo(value n1: Integer, value n2: Integer): Void {
+	function foo(value self: Monitor2, value n1: Integer, value n2: Integer): Void {
 	}
 }
 monitor Monitor3 {
 	function Monitor3(value boolean: Boolean, value float: Float, value string: String): Monitor3 {
 	}
-	function foo(value boolean: Boolean, value float: Float, value string: String): Void {
+	function foo(value self: Monitor3, value boolean: Boolean, value float: Float, value string: String): Void {
 	}
 }
 function newMonitor3: Monitor3 {
@@ -117,11 +122,11 @@ function bar: Void {
 	value m1: Monitor1 = (Monitor1(): Monitor1)
 	value m2: Monitor2 = (Monitor2((1: Integer), (2: Integer)): Monitor2)
 	value m3: Monitor3 = (Monitor3((true: Boolean), (1.000000: Float), ("aria": String)): Monitor3)
-	(m1: Monitor1).foo(): String
-	(m2: Monitor2).foo((1: Integer), ((2.000000: Float) as: Integer)): Void
-	(Monitor2((1: Integer), (2: Integer)): Monitor2).foo(((1.000000: Float) as: Integer), (0: Integer)): Void
-	(m3: Monitor3).foo((false: Boolean), ((1: Integer) as: Float), ("aria-lang": String)): Void
-	(newMonitor3(): Monitor3).foo((true: Boolean), (1.000000: Float), ("aria language": String)): Void
+	(m1: Monitor1).foo((m1: Monitor1)): String
+	(m2: Monitor2).foo((m2: Monitor2), (1: Integer), ((2.000000: Float) as: Integer)): Void
+	(Monitor2((1: Integer), (2: Integer)): Monitor2).foo((Monitor2((1: Integer), (2: Integer)): Monitor2), ((1.000000: Float) as: Integer), (0: Integer)): Void
+	(m3: Monitor3).foo((m3: Monitor3), (false: Boolean), ((1: Integer) as: Float), ("aria-lang": String)): Void
+	(newMonitor3(): Monitor3).foo((newMonitor3(): Monitor3), (true: Boolean), (1.000000: Float), ("aria language": String)): Void
 }
 function expressions: Void {
 	variable a: Boolean = (true: Boolean)
@@ -152,18 +157,18 @@ function scoping: Void {
 }
 monitor Scoping1 {
 	value a: [Integer] = ([Integer]((8: Integer)): [Integer])
-	private function scoping(value a: Float): Float {
+	private function scoping(value self: Scoping1, value a: Float): Float {
 		return ((a: Float) *: Float ((2: Integer) as: Float))
 	}
-	function bar: Void {
+	function bar(value self: Scoping1): Void {
 		value b: Integer = (((a: [Integer])[(0: Integer)]: Integer))
 		{
-			value b: Float = (scoping((1.000000: Float)): Float)
+			value b: Float = (scoping((self: Scoping1), (1.000000: Float)): Float)
 		}
 	}
 }
 monitor Scoping2 {
-	function foo: Void {
+	function foo(value self: Scoping2): Void {
 		value a: Void = (scoping(): Void)
 	}
 }
