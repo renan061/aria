@@ -1,4 +1,4 @@
-backendtest(91535,0x7fffa602b3c0) malloc: *** error for object 0x7fe779c057b8: incorrect checksum for freed object - object was probably modified after being freed.
+backendtest(60867,0x101eb13c0) malloc: *** error for object 0x7fb456d000c8: incorrect checksum for freed object - object was probably modified after being freed.
 *** set a breakpoint in malloc_error_break to debug
 testBarrier
 -----
@@ -10,4 +10,38 @@ barrier: past the barrier...
 ----------------------------------------
 
 testMonitor
+-----
+monitor initializer: defined variable (2.5)
+monitor initializer: value (aria)
+monitor initializer: declared variable after initializer (10)
+-----
+monitor method: public
+monitor method: public method that calls a private method
+monitor method: private
+-----
+monitor variables: integer value 10
+monitor variables: float value 2.5
+monitor variables: change (15 and 15.5)
+monitor variables: integer value 15
+monitor variables: float value 15.5
+-----
+mutex: entering
+mutex: step 1
+mutex: leaving
+mutex: entering
+mutex: step 2
+mutex: leaving
+mutex: entering
+mutex: step 3
+mutex: leaving
+mutex: entering
+mutex: step 4
+mutex: leaving
+mutex: entering
+mutex: step 5
+mutex: leaving
+
+----------------------------------------
+
+testStack
 -----

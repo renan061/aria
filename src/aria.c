@@ -1,5 +1,6 @@
 #include <stdio.h> // TODO: Remove
 #include <stdlib.h> // TODO: Remove
+#include <strings.h>
 
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Core.h>
@@ -12,13 +13,43 @@
 #include "sem.h"
 #include "backend.h"
 
-static int executeModule(LLVMModuleRef module);
+#define TAG_HELP	'h'
+#define TAG_BUILD	'b'
+#define TAG_RUN		'r'
+
+#define TAG_BUILD_TEXT	"builds the program to LLVM IR"
+#define TAG_RUN_TEXT	"runs the program using LLVM's interpreter"
+
+static int execute_module(LLVMModuleRef module);
+static void checkargs(int argc, char* argv[]);
+static void checkhelp(int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-    	printf("error: missing arguments to main\n");
-    	return 1;
-    }
+	checkhelp(argc, argv);
+	checkargs(argc, argv);
+
+	bool build = false, run = false;
+
+	for (int i = 0; i < argc - 2; i++) {
+		char* flag = argv[i + 2];
+
+		if (flag[0] != '-') {
+			printf("error: invalid flag\n");
+			return 1;
+		}
+
+		switch (flag[1]) {
+		case TAG_BUILD:
+			build = true;
+			break;
+		case TAG_RUN:
+			run = build = true;
+			break;
+		default:
+			printf("error: invalid flag\n");
+			return 1;	
+		}
+	}
 
 	scanner_setup(argv[1]);
 	yyparse();
@@ -26,16 +57,50 @@ int main(int argc, char* argv[]) {
 	sem_analyse(ast);
 	LLVMModuleRef module = backend_compile(ast);
 
-	// Bytecode
-	if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {
-        printf("Error writing bitcode to file\n");
-        exit(1);
-    }
+	if (build) {
+		if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {
+			printf("Error writing bitcode to file\n");
+			exit(1);
+		}
+	}
+	
+	if (run) {
+		return execute_module(module);
+	}
 
-	return executeModule(module);
+	return 0;
 }
 
-static int executeModule(LLVMModuleRef module) {
+// ==================================================
+//
+//	Auxiliary
+//
+// ==================================================
+
+static void checkhelp(int argc, char* argv[]) {
+	if (argc != 2 || (argv[1][0] != '-' && argv[1][1] != TAG_HELP)) {
+		return;
+	}
+
+	printf("Usage:\n\n");
+	printf("\taria [input-file] [command-line-options]\n\n");
+
+	printf("Options:\n\n");
+	printf("\t-%c\t\t" TAG_BUILD_TEXT	"\n", TAG_BUILD);
+	printf("\t-%c\t\t" TAG_RUN_TEXT		"\n", TAG_RUN);
+
+	printf("\n");
+	exit(0);
+}
+
+static void checkargs(int argc, char* argv[]) {
+	if (argc < 2) {
+		printf("error: missing arguments to main\n");
+		exit(1);
+	}
+}
+
+static int execute_module(LLVMModuleRef module) {
 	// TODO: "LLVM ERROR: Target does not support MC emission!"
 	LLVMInitializeNativeAsmPrinter();
 	// LLVMInitializeNativeAsmParser();
@@ -59,7 +124,7 @@ static int executeModule(LLVMModuleRef module) {
 		exit(1);
 	}
 
-	LLVMGenericValueRef result = LLVMRunFunction(engine, main_function, 0, NULL);
+	LLVMGenericValueRef res = LLVMRunFunction(engine, main_function, 0, NULL);
 	LLVMDisposeExecutionEngine(engine);
-	return (int) LLVMGenericValueToInt(result, 0);
+	return (int) LLVMGenericValueToInt(res, 0);
 }

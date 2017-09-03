@@ -99,7 +99,7 @@ sem_test: errs vector parser scanner ast sem
 
 backend_test: main
 	@- mv bin/aria bin/backendtest
-	@- sh tests/test.sh backend
+	@- sh tests/test.sh backend -r
 
 test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
 

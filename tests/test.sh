@@ -23,7 +23,7 @@ do
 	OUTPUT=$NAME".out"
 	DIFF="diff.txt"
 
-	../../bin/"$1""test" $INPUT > $OUTPUT 2>&1
+	../../bin/"$1""test" $INPUT $2 > $OUTPUT 2>&1
 
 	diff -W 200 -a --suppress-common-lines $ANSWER $OUTPUT > $DIFF
 	if [ -s $DIFF ]
