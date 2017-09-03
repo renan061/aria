@@ -1,13 +1,13 @@
-0a1,2
-> backendtest(60867,0x101eb13c0) malloc: *** error for object 0x7fb456d000c8: incorrect checksum for freed object - object was probably modified after being freed.
-> *** set a breakpoint in malloc_error_break to debug
-46,54d47
-< test push 1
+47c47
 < test pop 1
-< stack wait for not empty: push
-< test push 2
+---
+> test pop 32653
+50,54c50,51
 < test pop 1
 < stack wait for not empty: pop (1)
 < 
 < ----------------------------------------
 < 
+---
+> test pop 32653
+> stack wait for not empty: pop (32653)
