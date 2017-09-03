@@ -47,8 +47,8 @@ test push 1
 test pop 1
 stack wait for not empty: push
 test push 2
-test pop 1
-stack wait for not empty: pop (1)
+test pop 2
+stack wait for not empty: pop (2)
 
 ----------------------------------------
 

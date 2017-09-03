@@ -219,9 +219,9 @@ monitor Stack {
 
     function pop: Integer {
         wait for length > 0 in emptyQueue;
+        length = length - 1;
         number := numbers[length];
         print("test pop %d\n", number);
-        length = length - 1;
         signal fullQueue;
         return number;
     }
@@ -229,6 +229,7 @@ monitor Stack {
 
 function testStack {
 	print("testStack\n");
+	barrier := Barrier(2);
 
 	{ // pop - wait for not empty
 		printTestCaseDivider();
@@ -241,11 +242,14 @@ function testStack {
 		spawn {
 			pop := stack.pop();
 			print("stack wait for not empty: pop (%d)\n", pop);
+			barrier.synchronize();
 		}
 		fakeWork();
 		print("stack wait for not empty: push\n");
 		stack.push(2);
 	}
+
+	// TODO: More tests
 
 	// variable i = 0;
 	// numberOfProducers := 2;
@@ -259,8 +263,8 @@ function testStack {
 	// 	i = i + 1;
 	// }
 
-	// TODO: Barrier
-	// printTestDivider();
+	barrier.synchronize();
+	printTestDivider();
 }
 
 // ==================================================
@@ -273,9 +277,4 @@ function main {
 	testBarrier();
 	testMonitor();
 	testStack();
-
-	variable i = 0;
-	while i < 1000000000000 {
-		i = i + 1;
-	}
 }
