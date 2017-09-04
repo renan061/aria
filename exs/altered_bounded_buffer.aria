@@ -1,0 +1,215 @@
+
+monitor Monitor {
+	// ==================================================
+	//
+	//	Private
+	//
+	// ==================================================
+
+	variable length = 0;
+	variable capacity: Integer;
+	variable numbers: [Integer];
+
+	value fullQueue = ConditionQueue();
+	value emptyQueue = ConditionQueue();
+
+	variable subscribersCount = 0;
+	variable subscribersCapacity = 0;
+	variable subscribers = [Integer](subscribersCapacity);
+	variable currents = [Integer](subscribersCapacity);
+
+	private function currentsIndexFor(id: Integer): Integer {
+		variable i = 0;
+		while i < subscribersCount {
+			if subscribers[i] == id {
+				return i;
+			}
+			i = i + 1;
+		}
+		return -1;
+	}
+
+	private function printConsumerStatus(id, val, index: Integer) {
+		print("Consumer %d called pop and got %d\n", id, val);
+
+		print("Internal array \t\t[");
+		variable i = 0;
+		while i < length {
+			print("%d", numbers[i]);
+			i = i + 1;
+			if i < length {
+				print(" ");
+			}
+		}
+		print("]\n");
+
+		i = 0;
+		while i < subscribersCount {
+			print("Consumer %d array \t[", subscribers[i]);
+			variable j = 0;
+			while j < currents[i] {
+				print("%d", numbers[j]);
+				j = j + 1;
+				if j < currents[i] {
+					print(" ");
+				}
+			}
+			print("]\n");
+			i = i + 1;
+		}
+		
+		print("\n");
+	}
+
+	private function notFull: Boolean {
+		// print("notFull %d\n", not (length == capacity));
+		return not (length == capacity);
+	}
+
+	private function notEmpty(id: Integer): Boolean {
+		// print("notEmpty (%d) %d\n", id, currents[currentsIndexFor(id)] > 0);
+		return currents[currentsIndexFor(id)] > 0;
+	}
+
+	// ==================================================
+	//
+	//	Public
+	//
+	// ==================================================
+
+	initializer(n: Integer) {
+		capacity = n;
+		numbers = [Integer](capacity);
+	}
+
+	function push(number: Integer) {
+		wait for notFull() in fullQueue;
+
+		variable i = length;
+		while i > 0 {
+			numbers[i] = numbers[i - 1];
+			i = i - 1;
+		}
+		numbers[0] = number;
+		length = length + 1;
+
+		i = 0;
+		while i < subscribersCount {
+			currents[i] = currents[i] + 1;
+			i = i + 1;
+		}
+
+		print("Producer called push with %d\n\n", number);
+		broadcast emptyQueue; // OBS: not signal
+	}
+
+	function pop(id: Integer): Integer {
+		wait for notEmpty(id) in emptyQueue;
+
+		index := currentsIndexFor(id);
+		currents[index] = currents[index] - 1;
+		number := numbers[currents[index]];
+
+		variable shouldDecrementLength = true;
+		variable i = 0;
+		while i < subscribersCount {
+			if currents[i] > currents[index] {
+				shouldDecrementLength = false;
+			}
+			i = i + 1;
+		}
+
+		if shouldDecrementLength {
+			length = length - 1;
+		}
+
+		printConsumerStatus(id, number, index);
+		signal fullQueue;
+		return number;
+	}
+
+	function subscribe(id: Integer) {
+		if subscribersCount == subscribersCapacity {
+			print("Growing subscribers array\n");
+
+			if subscribersCapacity == 0 {
+				subscribersCapacity = 1;
+			}
+
+			subscribersCapacity = subscribersCapacity * 2;
+			newSubscribers := [Integer](subscribersCapacity);
+			variable i = 0;
+			while i < subscribersCount {
+				newSubscribers[i] = subscribers[i];
+				i = i + 1;
+			}
+			subscribers = newSubscribers;
+
+			newCurrents := [Integer](subscribersCapacity);
+			i = 0;
+			while i < subscribersCount {
+				newCurrents[i] = currents[i];
+				i = i + 1;
+			}
+			currents = newCurrents;			
+		}
+
+		print("Subscribed ID %d to index %d\n\n", id, subscribersCount);
+		subscribers[subscribersCount] = id;
+		currents[subscribersCount] = length;
+		subscribersCount = subscribersCount + 1;
+	}
+}
+
+function fakeWork {
+	variable i = 0;
+	while i < 10000000 {
+		i = i + 1;
+	}
+}
+
+function main {
+	producers := 1;
+	consumers := 2;
+	capacity := 1;
+
+	m := Monitor(capacity);
+
+	{ // Producer
+		variable i = 0;
+		while i < producers {
+			spawn {
+				variable j = 0;
+				while true {
+					j = j + 1;
+					m.push(j);
+					fakeWork();
+				}
+			}
+			i = i + 1;
+		}
+	}
+
+	{ // Consumers
+		variable i = 0;
+		while i < consumers {
+			m.subscribe(i);
+			i = i + 1;
+			
+		}
+
+		i = 0;
+		while i < consumers {
+			id := i;
+			spawn {
+				variable j = 0;
+				while true {
+					m.pop(id);
+					j = j + 1;
+					fakeWork();
+				}
+			}
+			i = i + 1;
+		}
+	}
+}
