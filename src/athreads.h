@@ -14,7 +14,8 @@
 
 extern void ir_pthread_setup(LLVMModuleRef);
 
-extern LLVMTypeRef _create_start_routine_t; // TODO
+// The type pthread_create needs to receive as an argument
+extern LLVMTypeRef ir_spawn_t;
 
 // ==================================================
 //

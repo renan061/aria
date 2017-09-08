@@ -56,10 +56,10 @@ static void state_close_block(IRState* state) {
 // LLVM (TODO: New Module?)
 static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(IRState*, LLVMValueRef);
-static LLVMValueRef llvm_string_literal(IRState*, const char*);
 static LLVMTypeRef llvm_structure(LLVMTypeRef[], unsigned int, const char*);
 
 // Auxiliary
+static LLVMValueRef stringliteral(IRState*, const char*);
 static LLVMValueRef zerovalue(IRState*, Type*);
 
 // TODO
@@ -68,8 +68,12 @@ static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
 static void backend_variable(IRState*, Variable*);
 static void backend_expression(IRState*, Expression*);
-static void backend_condition(IRState*, Expression*,
-	LLVMBasicBlockRef, LLVMBasicBlockRef);
+static void backend_condition(
+	IRState*,
+	Expression*,
+	LLVMBasicBlockRef,
+	LLVMBasicBlockRef
+);
 static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // ==================================================
@@ -171,7 +175,7 @@ static void todospawn(IRState* state, FunctionCall* call) {
 	IRState* spawn_state = ir_state_new(state->module, state->builder);
 
 	spawn_state->function = LLVMAddFunction(
-		spawn_state->module, NAME_SPAWN_FUNCTION, _create_start_routine_t
+		spawn_state->module, NAME_SPAWN_FUNCTION, ir_spawn_t
 	);
 	spawn_state->block = LLVMAppendBasicBlock(
 		spawn_state->function, LABEL "spawn_function_entry"
@@ -647,9 +651,8 @@ static void backend_expression(IRState* state, Expression* expression) {
 		expression->llvm_value = LLVM_CONSTANT_FLOAT(expression->literal_float);
 		break;
 	case EXPRESSION_LITERAL_STRING: {
-		expression->llvm_value = llvm_string_literal(
-			state,
-			expression->literal_string
+		expression->llvm_value = stringliteral(
+			state, expression->literal_string
 		);
 		break;
 	}
@@ -1072,7 +1075,7 @@ static void llvm_return(IRState* state, LLVMValueRef llvm_value) {
 }
 
 // TODO: This functions is wrong, should use LLVMConstString and cast to pointer
-static LLVMValueRef llvm_string_literal(IRState* state, const char* string) {
+static LLVMValueRef stringliteral(IRState* state, const char* string) {
 	// Global
 	size_t len = strlen(string);
 	LLVMValueRef llvm_global = LLVMAddGlobal(
@@ -1124,7 +1127,7 @@ static LLVMValueRef zerovalue(IRState* state, Type* type) {
 			return LLVM_CONSTANT_FLOAT(0);
 		}
 		if (type == __string) {
-			return llvm_string_literal(state, "");
+			return stringliteral(state, "");
 		}
 		if (type == __condition_queue) {
 			return LLVMConstNull(LLVM_ARIA_TYPE_CONDITION_QUEUE);

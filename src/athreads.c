@@ -6,7 +6,7 @@
 #include "athreads.h"
 #include "ir.h"
 
-#define LLVM_TYPE_POINTER_PTHREAD_T			LLVM_TYPE_POINTER_VOID
+#define LLVM_TYPE_POINTER_PTHREAD_T	LLVM_TYPE_POINTER_VOID
 
 #define NAME_PTHREAD_CREATE			"pthread_create"
 #define NAME_PTHREAD_EXIT			"pthread_exit"
@@ -18,8 +18,6 @@
 #define NAME_PTHREAD_COND_SIGNAL	"pthread_cond_signal"
 #define NAME_PTHREAD_COND_BROADCAST	"pthread_cond_broadcast"
 
-#define LLVM_TYPE_CONDITION_QUEUE			LLVM_TYPE_PTHREAD_COND_T
-
 // ==================================================
 //
 //	Declares
@@ -27,8 +25,7 @@
 // ==================================================
 
 LLVMTypeRef
-	// the type the function pthread_create needs to receive as an argument
-	_create_start_routine_t = NULL
+	ir_spawn_t = NULL
 ;
 
 LLVMValueRef
@@ -44,9 +41,9 @@ LLVMValueRef
 ;
 
 void ir_pthread_setup(LLVMModuleRef module) {
-	{ // _create_start_routine_t
+	{ // ir_spawn_t
 		LLVMTypeRef paramtypes[1] = {LLVM_TYPE_POINTER_VOID};
-		_create_start_routine_t = LLVMFunctionType(
+		ir_spawn_t = LLVMFunctionType(
 			LLVM_TYPE_POINTER_VOID,
 			paramtypes,
 			1,
@@ -58,7 +55,7 @@ void ir_pthread_setup(LLVMModuleRef module) {
 		LLVMTypeRef paramtypes[4] = {
 			LLVM_TYPE_POINTER_PTHREAD_T,
 			LLVM_TYPE_POINTER_VOID,
-			LLVM_TYPE_POINTER(_create_start_routine_t),
+			LLVM_TYPE_POINTER(ir_spawn_t),
 			LLVM_TYPE_POINTER_VOID
 		};
 		ir_pthread_create_t = LLVMAddFunction(
