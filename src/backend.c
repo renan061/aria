@@ -6,7 +6,8 @@
 #include <llvm-c/Core.h>
 
 #include "alloc.h"
-#include "allvm.h"
+#include "athreads.h"
+#include "ir.h"
 #include "ast.h"
 #include "parser.h" // for the tokens
 
@@ -21,27 +22,10 @@
 #define UNREACHABLE assert(NULL)	// TODO: Move this and look for assert(NULL)
 #define TODO assert(NULL)			// TODO: Remove
 
-// Names of declared functions from external sources
-#define NAME_PRINTF					"printf"
-#define NAME_MALLOC					"malloc"
-#define NAME_PTHREAD_CREATE			"pthread_create"
-#define NAME_PTHREAD_EXIT			"pthread_exit"
-#define NAME_PTHREAD_MUTEX_INIT		"pthread_mutex_init"
-#define NAME_PTHREAD_MUTEX_LOCK		"pthread_mutex_lock"
-#define NAME_PTHREAD_MUTEX_UNLOCK	"pthread_mutex_unlock"
-#define NAME_PTHREAD_COND_INIT		"pthread_cond_init"
-#define NAME_PTHREAD_COND_WAIT		"pthread_cond_wait"
-#define NAME_PTHREAD_COND_SIGNAL	"pthread_cond_signal"
-#define NAME_PTHREAD_COND_BROADCAST	"pthread_cond_broadcast"
-
+// TODO: Move
 // Other names
 #define NAME_THREAD_ARGUMENTS_STRUCTURE	"_thread_arguments"
-
-// TODO
-#define LLVM_TEMPORARY				"_t_"
-#define LLVM_TEMPORARY_NONE			""
-#define LLVM_TEMPORARY_MONITOR_LOCK	LLVM_TEMPORARY "monitor_lock_"
-#define LLVM_TEMPORARY_PHI			LLVM_TEMPORARY "phi_"
+#define NAME_SPAWN_FUNCTION				"_spawn_block"
 
 #define LLVM_GLOBAL_STRING "_global_string"
 
@@ -94,14 +78,6 @@ static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 //
 // ==================================================
 
-static LLVMValueRef declare_printf(LLVMModuleRef module) {
-	LLVMTypeRef
-		param_types[1] = {LLVM_ARIA_TYPE_STRING},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 1, true)
-	;
-	return LLVMAddFunction(module, NAME_PRINTF, function_ty);
-}
-
 static LLVMValueRef declare_function(LLVMModuleRef m, Definition* function) {
 	assert(function->function.id);
 	assert(function->function.type);
@@ -146,281 +122,17 @@ static void position_builder(IRState* state, LLVMBasicBlockRef block) {
 	state->block = block;
 }
 
-// ==================================================
-//
-//	TODO: Posix threads
-//
-// ==================================================
+// TODO: Move to auxiliary area
+// returns the mutex lock from a monitor
+static LLVMValueRef monitormutex(
+	LLVMBuilderRef builder,
+	LLVMValueRef monitor) {
 
-// TODO: Move defs
-#define NAME_SPAWN_FUNCTION	"_spawn_block"
-
-#define LLVM_TYPE_PTHREAD_T			LLVM_TYPE_POINTER_VOID
-#define LLVM_TYPE_PTHREAD_MUTEX_T	LLVM_TYPE_POINTER_VOID
-#define LLVM_TYPE_PTHREAD_COND_T	LLVM_TYPE_POINTER_VOID
-#define LLVM_TYPE_CONDITION_QUEUE	LLVM_TYPE_PTHREAD_COND_T
-
-
-	// ==================================================
-	//
-	//	TODO: Workshop area
-	//
-	// ==================================================
-
-static LLVMValueRef workshop_malloc(IRState* s, size_t size) {
-	// pthread_t*, not pthread_t ???
-
-	LLVMValueRef
-		fn = LLVMGetNamedFunction(s->module, NAME_MALLOC),
-		args[1] = {/* size_t size */ LLVM_CONSTANT_INTEGER(size)}
-	;
-	return LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
-}
-
-static void workshop(IRState* state) {
-	// declaring void* malloc(size_t size);
-	LLVMTypeRef
-		param_types[1] = {/* size_t size */ LLVM_ARIA_TYPE_INTEGER},
-		function_ty =
-			LLVMFunctionType(LLVM_TYPE_POINTER_VOID, param_types, 1, false)
-	;
-	LLVMAddFunction(state->module, NAME_MALLOC, function_ty);
-}
-
-	// ==================================================
-	//
-	//	END Workshop
-	//
-	// ==================================================
-
-// TODO: Docs
-static LLVMTypeRef pt_type_spawn_function(void);
-static LLVMValueRef pt_monitor_mutex(LLVMBuilderRef, LLVMValueRef);
-
-// TODO: Docs
-static void pt_declare_create(LLVMModuleRef);
-static void pt_declare_exit(LLVMModuleRef);
-static void pt_declare_mutex_init(LLVMModuleRef);
-static void pt_declare_mutex_lock(LLVMModuleRef);
-static void pt_declare_mutex_unlock(LLVMModuleRef);
-static void pt_declare_cond_init(LLVMModuleRef);
-static void pt_declare_cond_wait(LLVMModuleRef);
-static void pt_declare_cond_signal(LLVMModuleRef);
-static void pt_declare_cond_broadcast(LLVMModuleRef);
-
-// TODO: Docs
-static void pt_call_create(IRState*, LLVMValueRef, LLVMValueRef);
-static void pt_call_exit(IRState*);
-static void pt_call_mutex_init(IRState*, LLVMValueRef);
-static void pt_call_mutex_lock(IRState*, LLVMValueRef);
-static void pt_call_mutex_unlock(IRState*, LLVMValueRef);
-static void pt_call_cond_init(IRState*, LLVMValueRef);
-static void pt_call_cond_wait(IRState*, LLVMValueRef, LLVMValueRef);
-static void pt_call_cond_signal(IRState*, LLVMValueRef);
-static void pt_call_cond_broadcast(IRState*, LLVMValueRef);
-
-// Returns the type the function pthread_create needs to receive as an argument
-static LLVMTypeRef pt_type_spawn_function(void) {
-	// void *(*start_routine)(void*)
-	LLVMTypeRef parameters[1] = {LLVM_TYPE_POINTER_VOID};
-	return LLVMFunctionType(
-		/* ReturnType	*/ LLVM_TYPE_POINTER_VOID,
-		/* ParamTypes	*/ parameters,
-		/* ParamCount	*/ 1,
-		/* IsVarArg		*/ false
-	);
-}
-
-// Returns the mutex lock from a monitor
-static LLVMValueRef pt_monitor_mutex(LLVMBuilderRef b, LLVMValueRef monitor) {
 	return LLVMBuildLoad(
-		b, LLVMBuildStructGEP(b, monitor, 0, LLVM_TEMPORARY), LLVM_TEMPORARY
+		builder,
+		LLVMBuildStructGEP(builder, monitor, 0, LLVM_TEMPORARY),
+		LLVM_TEMPORARY
 	);
-}
-
-// int pthread_create(...)
-static void pt_declare_create(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[4] = {
-			// pthread_t *thread
-			LLVM_TYPE_PTHREAD_T,
-			// const pthread_attr_t *attr
-			LLVM_TYPE_POINTER_VOID,
-			// void *(*start_routine)(void*)
-			LLVM_TYPE_POINTER(pt_type_spawn_function()),
-			// void *arg
-			LLVM_TYPE_POINTER_VOID
-		},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 4, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_CREATE, function_ty);
-}
-
-// void pthread_exit(void *value_ptr)
-static void pt_declare_exit(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[1] = {LLVM_TYPE_POINTER_VOID},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_VOID, param_types, 1, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_EXIT, function_ty);
-}
-
-// int pthread_mutex_init(...)
-static void pt_declare_mutex_init(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[2] = {
-			// pthread_mutex_t *mutex
-			LLVM_TYPE_PTHREAD_MUTEX_T,
-			// const pthread_mutexattr_t *attr
-			LLVM_TYPE_POINTER_VOID
-		},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 2, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_MUTEX_INIT, function_ty);
-}
-
-// int pthread_mutex_lock(pthread_mutex_t *mutex)
-static void pt_declare_mutex_lock(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[1] = {LLVM_TYPE_PTHREAD_MUTEX_T},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 1, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_MUTEX_LOCK, function_ty);
-}
-
-// int pthread_mutex_unlock(pthread_mutex_t *mutex)
-static void pt_declare_mutex_unlock(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[1] = {LLVM_TYPE_PTHREAD_MUTEX_T},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 1, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_MUTEX_UNLOCK, function_ty);
-}
-
-// int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr)
-static void pt_declare_cond_init(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[2] = {LLVM_TYPE_PTHREAD_COND_T, LLVM_TYPE_POINTER_VOID},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 2, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_COND_INIT, function_ty);
-}
-
-// int pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *mutex)
-static void pt_declare_cond_wait(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[2] = {LLVM_TYPE_PTHREAD_COND_T, LLVM_TYPE_PTHREAD_MUTEX_T},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 2, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_COND_WAIT, function_ty);
-}
-
-// int pthread_cond_signal(pthread_cond_t *cond)
-static void pt_declare_cond_signal(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[1] = {LLVM_TYPE_PTHREAD_COND_T},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 1, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_COND_SIGNAL, function_ty);
-}
-
-// int pthread_cond_broadcast(pthread_cond_t *cond)
-static void pt_declare_cond_broadcast(LLVMModuleRef m) {
-	LLVMTypeRef
-		param_types[1] = {LLVM_TYPE_PTHREAD_COND_T},
-		function_ty = LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, param_types, 1, false)
-	;
-	LLVMAddFunction(m, NAME_PTHREAD_COND_BROADCAST, function_ty);
-}
-
-static void pt_call_create(IRState* s, LLVMValueRef func, LLVMValueRef arg) {
-	// TODO: Should the p_thread_t really be allocated with malloc?
-	LLVMValueRef
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_CREATE),
-		args[4] = {
-			// pthread_t *thread
-			// WORK: New Malloc
-			workshop_malloc(s, sizeof(pthread_t)),
-			// const pthread_attr_t *attr
-			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID),
-			// void *(*start_routine)(void*)
-			func,
-			// void *arg
-			arg
-		}
-	;
-	LLVMBuildCall(s->builder, fn, args, 4, LLVM_TEMPORARY_NONE);
-}
-
-
-static void pt_call_exit(IRState* s) {
-	LLVMValueRef
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_EXIT),
-		args[1] = {LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)}
-	;
-	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_mutex_init(IRState* s, LLVMValueRef lock) {
-	LLVMValueRef 		
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_MUTEX_INIT),
-		args[2] = {
-			// pthread_mutex_t *mutex,
-			lock,
-			// const pthread_mutexattr_t *attr
-			LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
-		}
-	;
-	LLVMBuildCall(s->builder, fn, args, 2, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_mutex_lock(IRState* s, LLVMValueRef lock) {
-	LLVMValueRef
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_MUTEX_LOCK),
-		args[1] = {lock}
-	;
-	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_mutex_unlock(IRState* s, LLVMValueRef lock) {
-	LLVMValueRef
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_MUTEX_UNLOCK),
-		args[1] = {lock}
-	;
-	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_cond_init(IRState* s, LLVMValueRef cond) {
-	LLVMValueRef 		
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_INIT),
-		args[2] = {cond, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)}
-	;
-	LLVMBuildCall(s->builder, fn, args, 2, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_cond_wait(IRState* s, LLVMValueRef cond, LLVMValueRef mutex) {
-
-	LLVMValueRef 		
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_WAIT),
-		args[2] = {cond, mutex}
-	;
-	LLVMBuildCall(s->builder, fn, args, 2, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_cond_signal(IRState* s, LLVMValueRef cond) {
-	LLVMValueRef 		
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_SIGNAL),
-		args[1] = {cond}
-	;
-	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
-}
-
-static void pt_call_cond_broadcast(IRState* s, LLVMValueRef cond) {
-	LLVMValueRef 		
-		fn = LLVMGetNamedFunction(s->module, NAME_PTHREAD_COND_BROADCAST),
-		args[1] = {cond}
-	;
-	LLVMBuildCall(s->builder, fn, args, 1, LLVM_TEMPORARY_NONE);
 }
 
 // ==================================================
@@ -456,10 +168,10 @@ static void todospawn(IRState* state, FunctionCall* call) {
 	}
 
 	// Defining the spawn function
-	IRState* spawn_state = allvm_irstate_new(state->module, state->builder);
+	IRState* spawn_state = ir_state_new(state->module, state->builder);
 
 	spawn_state->function = LLVMAddFunction(
-		spawn_state->module, NAME_SPAWN_FUNCTION, pt_type_spawn_function()
+		spawn_state->module, NAME_SPAWN_FUNCTION, _create_start_routine_t
 	);
 	spawn_state->block = LLVMAppendBasicBlock(
 		spawn_state->function, LABEL "spawn_function_entry"
@@ -495,11 +207,15 @@ static void todospawn(IRState* state, FunctionCall* call) {
 	LLVMPositionBuilderAtEnd(state->builder, state->block);
 
 	// Calling pthread_create
-	pt_call_create(state, spawn_state->function, LLVMBuildBitCast(
-		state->builder, structure, LLVM_TYPE_POINTER_VOID, LLVM_TEMPORARY
-	));
+	ir_pthread_create(
+		state->builder,
+		spawn_state->function,
+			LLVMBuildBitCast(
+			state->builder, structure, LLVM_TYPE_POINTER_VOID, LLVM_TEMPORARY
+		)
+	);
 
-	allvm_irstate_free(spawn_state);
+	ir_state_free(spawn_state);
 }
 
 LLVMModuleRef backend_compile(AST* ast) {
@@ -511,23 +227,14 @@ LLVMModuleRef backend_compile(AST* ast) {
 	__condition_queue = ast_type_condition_queue();
 
 	// LLVM Setup
-	IRState* state = allvm_irstate_new(
+	IRState* state = ir_state_new(
 		LLVMModuleCreateWithName("main.aria"),
 		LLVMCreateBuilder()
 	);
 
 	// Includes
-	workshop(state);
-	declare_printf(state->module);
-	pt_declare_create(state->module);
-	pt_declare_exit(state->module);
-	pt_declare_mutex_init(state->module);
-	pt_declare_mutex_lock(state->module);
-	pt_declare_mutex_unlock(state->module);
-	pt_declare_cond_init(state->module);
-	pt_declare_cond_wait(state->module);
-	pt_declare_cond_signal(state->module);
-	pt_declare_cond_broadcast(state->module);
+	ir_setup(state->module);
+	ir_pthread_setup(state->module);
 
 	// IR
 	for (Definition* d = ast->definitions; d; d = d->next) {
@@ -535,9 +242,9 @@ LLVMModuleRef backend_compile(AST* ast) {
 	}
 
 	// Teardown
-	allvm_irstate_module_done(state);
+	ir_state_done(state);
 	LLVMModuleRef module = state->module;
-	allvm_irstate_free(state);
+	ir_state_free(state);
 	return module;
 }
 
@@ -639,11 +346,8 @@ static void backend_definition(IRState* state, Definition* definition) {
 		// Allocating memory and initializing the monitor's mutex
 		// TODO: free and destroy the mutex one day
 		// WORK: New Malloc
-		LLVMValueRef mutex = workshop_malloc(state, sizeof(pthread_mutex_t));
-		// LLVMBuildMalloc(
-		// 	state->builder, LLVM_TYPE_PTHREAD_MUTEX_T, LLVM_TEMPORARY
-		// );
-		pt_call_mutex_init(state, mutex);
+		LLVMValueRef mutex = ir_malloc(state->builder, sizeof(pthread_mutex_t));
+		ir_pthread_mutex_init(state->builder, mutex);
 		LLVMBuildStore(
 			state->builder, mutex, LLVMBuildStructGEP(
 				state->builder, state->self, 0, LLVM_TEMPORARY
@@ -691,7 +395,7 @@ static void backend_definition(IRState* state, Definition* definition) {
 		LLVMTypeRef attributes[n];
 
 		// Monitor's mutex
-		attributes[0] = LLVM_TYPE_PTHREAD_MUTEX_T;
+		attributes[0] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
 
 		// Attributes
 		n = 1;
@@ -770,7 +474,7 @@ static void backend_statement(IRState* state, Statement* statement) {
 		position_builder(state, bl);
 		backend_expression(state, statement->wait_for_in.queue);
 		LLVMValueRef
-			mutex = pt_monitor_mutex(state->builder, state->self),
+			mutex = monitormutex(state->builder, state->self),
 			indices[1] = {LLVM_CONSTANT_INTEGER(0)},
 			cond = LLVMBuildGEP(
 				state->builder,
@@ -780,7 +484,7 @@ static void backend_statement(IRState* state, Statement* statement) {
 				LLVM_TEMPORARY
 			)
 		;
-		pt_call_cond_wait(state, cond, mutex);
+		ir_pthread_cond_wait(state->builder, cond, mutex);
 		LLVMBuildBr(state->builder, bw);
 		state_close_block(state);
 		// End
@@ -799,7 +503,7 @@ static void backend_statement(IRState* state, Statement* statement) {
 				LLVM_TEMPORARY
 			)
 		;
-		pt_call_cond_signal(state, cond);
+		ir_pthread_cond_signal(state->builder, cond);
 		break;
 	}
 	case STATEMENT_BROADCAST:
@@ -814,7 +518,7 @@ static void backend_statement(IRState* state, Statement* statement) {
 				LLVM_TEMPORARY
 			)
 		;
-		pt_call_cond_broadcast(state, cond);
+		ir_pthread_cond_broadcast(state->builder, cond);
 		break;
 	case STATEMENT_RETURN:
 		if (statement->return_) {
@@ -1090,7 +794,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 
 		LLVMValueRef
 			phi = LLVMBuildPhi(
-				state->builder, LLVM_ARIA_TYPE_BOOLEAN, LLVM_TEMPORARY_PHI
+				state->builder, LLVM_TYPE_BOOLEAN, LLVM_TEMPORARY_PHI
 			),
 			incoming_values[2] = {LLVM_CONSTANT_TRUE, LLVM_CONSTANT_FALSE}
 		;
@@ -1233,22 +937,16 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 	case FUNCTION_CALL_BASIC:
 		// TODO: Remove this gambiarra
 		if (!call->function_definition && !strcmp(call->id->name, "print")) {
-			return LLVMBuildCall(
-				state->builder,
-				LLVMGetNamedFunction(state->module, NAME_PRINTF),
-				args,
-				call->argument_count,
-				LLVM_TEMPORARY_NONE
-			);
+			return ir_printf(state->builder, args, call->argument_count);
 		}
 		break;
 	case FUNCTION_CALL_METHOD: {
 		// Method calls need to acquire the monitor's mutex lock and release it
-		LLVMValueRef mutex = pt_monitor_mutex(
+		LLVMValueRef mutex = monitormutex(
 			state->builder, call->arguments->llvm_value
 		);
 
-		pt_call_mutex_lock(state, mutex);
+		ir_pthread_mutex_lock(state->builder, mutex);
 		LLVMValueRef call_llvm_value = LLVMBuildCall(
 			/* Builder */	state->builder,
 			/* Function */	call->function_definition->llvm_value,
@@ -1256,7 +954,7 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 			/* NumArgs */	call->argument_count,
 			/* TempName */	LLVM_TEMPORARY_NONE /* TODO: Look down for OBS */
 		);
-		pt_call_mutex_unlock(state, mutex);
+		ir_pthread_mutex_unlock(state->builder, mutex);
 
 		return call_llvm_value;
 	}
@@ -1267,12 +965,10 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
 				UNREACHABLE;
 			}
 			// ConditionQueue initializer
-			// WORK: New Malloc
-			LLVMValueRef cond = workshop_malloc(state, sizeof(pthread_cond_t));
-			// LLVMBuildMalloc(
-			// 	state->builder, LLVM_TYPE_PTHREAD_COND_T, LLVM_TEMPORARY
-			// );
-			pt_call_cond_init(state, cond);
+			LLVMValueRef cond = ir_malloc(
+				state->builder, sizeof(pthread_cond_t)
+			);
+			ir_pthread_cond_init(state->builder, cond);
 			return cond;
 			break;
 		case TYPE_ARRAY: // new array
@@ -1334,13 +1030,13 @@ static LLVMTypeRef llvm_type(Type* type) {
 			return LLVM_ARIA_TYPE_STRING;
 		}
 		if (type == __condition_queue) {
-			return LLVM_TYPE_CONDITION_QUEUE;
+			return LLVM_ARIA_TYPE_CONDITION_QUEUE;
 		}
 		UNREACHABLE;
 	case TYPE_ARRAY:
-		return LLVM_TYPE_POINTER(llvm_type(type->array));
+		return LLVM_ARIA_TYPE_ARRAY(llvm_type(type->array));
 	case TYPE_MONITOR:
-		return LLVM_TYPE_MONITOR(type->llvm_type);
+		return LLVM_ARIA_TYPE_MONITOR(type->llvm_type);
 	default:
 		UNREACHABLE;
 	}
@@ -1352,7 +1048,7 @@ static void llvm_return(IRState* state, LLVMValueRef llvm_value) {
 
 	// The main function always ends with a call to pthred_exit
 	if (state->main) {
-		pt_call_exit(state);
+		ir_pthread_exit(state->builder);
 		LLVMBuildRetVoid(state->builder);
 		state_close_block(state);
 		return;
@@ -1430,9 +1126,8 @@ static LLVMValueRef zerovalue(IRState* state, Type* type) {
 		if (type == __string) {
 			return llvm_string_literal(state, "");
 		}
-		if (type == __condition_queue) { // TODO: Which one?
-			return LLVMConstNull(LLVM_TYPE_PTHREAD_COND_T);
-			// return LLVMConstPointerNull(LLVM_TYPE_PTHREAD_COND_T);
+		if (type == __condition_queue) {
+			return LLVMConstNull(LLVM_ARIA_TYPE_CONDITION_QUEUE);
 		}
 		UNREACHABLE;
 	case TYPE_ARRAY:

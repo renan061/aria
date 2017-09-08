@@ -16,11 +16,11 @@ main: objs
 
 	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o	\
 	obj/scanner.o obj/parser.o obj/ast.o			\
-	obj/symtable.o obj/sem.o obj/allvm.o			\
-	obj/backend.o									\
+	obj/symtable.o obj/sem.o obj/ir.o				\
+	obj/athreads.o obj/backend.o					\
 	obj/aria.o -o bin/aria
 
-objs: errs vector parser scanner ast sem allvm athreads backend
+objs: errs vector parser scanner ast sem ir athreads backend
 
 # ==================================================
 # 
@@ -53,10 +53,11 @@ sem:
 	@- $(CC) $(CFLAGS) -c src/symtable.c -o obj/symtable.o
 	@- $(CC) $(CFLAGS) -c src/sem.c -o obj/sem.o
 
-allvm:
-	@- $(CC) $(CFLAGS) -c src/allvm.c -o obj/allvm.o
+ir:
+	@- $(CC) $(CFLAGS) -c src/ir.c -o obj/ir.o
 
 athreads:
+	@- $(CC) $(CFLAGS) -c src/athreads.c -o obj/athreads.o
 
 backend:
 	@- $(CC) $(CFLAGS) -c src/backend.c -o obj/backend.o
