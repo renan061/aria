@@ -110,25 +110,44 @@ monitor BasicMonitor {
 	}
 }
 
-monitor MutexMonitor {
-	variable steps: Immutable [String];
-	variable i = 0;
-	variable length: Integer;
+// TODO: Initialization of immutable arrays
 
-	initializer(strings: Immutable [String], n: Integer) {
-		steps = strings;
-		length = n;
-	}
+// -----
+// mutex: entering
+// mutex: step 1
+// mutex: leaving
+// mutex: entering
+// mutex: step 2
+// mutex: leaving
+// mutex: entering
+// mutex: step 3
+// mutex: leaving
+// mutex: entering
+// mutex: step 4
+// mutex: leaving
+// mutex: entering
+// mutex: step 5
+// mutex: leaving
 
-	function mutex {
-		print("mutex: entering\n");
-		fakeWork();
-		print("mutex: %s\n", steps[i]);
-		i = i + 1;
-		fakeWork();
-		print("mutex: leaving\n");
-	}
-}
+// monitor MutexMonitor {
+// 	variable steps: Immutable [String];
+// 	variable i = 0;
+// 	variable length: Integer;
+
+// 	initializer(strings: Immutable [String], n: Integer) {
+// 		steps = strings;
+// 		length = n;
+// 	}
+
+// 	function mutex {
+// 		print("mutex: entering\n");
+// 		fakeWork();
+// 		print("mutex: %s\n", steps[i]);
+// 		i = i + 1;
+// 		fakeWork();
+// 		print("mutex: leaving\n");
+// 	}
+// }
 
 function testMonitor {
 	print("testMonitor\n");
@@ -154,34 +173,34 @@ function testMonitor {
 		}	
 	}
 	
+	// TODO: Initialization of immutable arrays
+	// { // mutex
+	// 	printTestCaseDivider();
 
-	{ // mutex
-		printTestCaseDivider();
+	// 	counter := 5;
+	// 	barrier := Barrier(counter + 1);
+	// 	strings := Immutable [String](counter);
 
-		counter := 5;
-		barrier := Barrier(counter + 1);
-		strings := Immutable [String](counter);
+	// 	variable i = 0;
+	// 	strings[0] = "step 1";
+	// 	strings[1] = "step 2";
+	// 	strings[2] = "step 3";
+	// 	strings[3] = "step 4";
+	// 	strings[4] = "step 5";
 
-		variable i = 0;
-		strings[0] = "step 1";
-		strings[1] = "step 2";
-		strings[2] = "step 3";
-		strings[3] = "step 4";
-		strings[4] = "step 5";
-
-		m := MutexMonitor(strings, counter);
+	// 	m := MutexMonitor(strings, counter);
 		
-		i = 0;
-		while i < counter {
-			spawn {
-				m.mutex();
-				barrier.synchronize();
-			}
-			i = i + 1;
-		}
+	// 	i = 0;
+	// 	while i < counter {
+	// 		spawn {
+	// 			m.mutex();
+	// 			barrier.synchronize();
+	// 		}
+	// 		i = i + 1;
+	// 	}
 		
-		barrier.synchronize();
-	}
+	// 	barrier.synchronize();
+	// }
 
 	printTestDivider();
 }

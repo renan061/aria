@@ -323,6 +323,13 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		if (statement->assignment.variable->value) { // Can't be reassigned
 			err_assignment_value(statement);
 		}
+		if (statement->assignment.variable->tag == VARIABLE_INDEXED &&
+			statement->assignment.variable->indexed.array->type->immutable) {
+			TODOERR(
+				statement->line,
+				"can't assign to immutable arrays"
+			);
+		}
 		sem_expression(state, statement->assignment.expression);
 		assignment(statement->assignment.variable,
 			&statement->assignment.expression);
