@@ -54,9 +54,10 @@
 // Tokens
 %token <ival>
 	'{' '}' '[' ']' '(' ')' '=' ';'
-	TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_DEFINE TK_WHILE TK_WAIT
+	TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_WHILE TK_WAIT
 	TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
 	TK_FALSE TK_MONITOR TK_PRIVATE TK_INITIALIZER
+	TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -738,7 +739,7 @@ block_variable_definition
 
 		a := 1		->		value a: ? = 1
 	*/
-	| TK_LOWER_ID TK_DEFINE expression
+	| TK_LOWER_ID TK_DEF_ASG expression
 		{
 			Variable* variable = ast_variable_id($1);
 			variable->value = true;

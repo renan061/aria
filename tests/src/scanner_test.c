@@ -14,32 +14,40 @@ int main(int argc, char* argv[]) {
 	do {
 		token = yylex();
 		switch (token) {
-		case TK_IMMUTABLE:		printf("TK_IMMUTABLE");		break;
-		case TK_VALUE:			printf("TK_VALUE");			break;
-		case TK_VARIABLE:		printf("TK_VARIABLE");		break;
-		case TK_FUNCTION:		printf("TK_FUNCTION");		break;
-		case TK_DEFINE:			printf("TK_DEFINE");		break;
-		case TK_WHILE:			printf("TK_WHILE");			break;
-		case TK_WAIT:			printf("TK_WAIT");			break;
-		case TK_IN:				printf("TK_IN");			break;
-		case TK_SIGNAL:			printf("TK_SIGNAL");		break;
-		case TK_BROADCAST:		printf("TK_BROADCAST");		break;
-		case TK_RETURN:			printf("TK_RETURN");		break;
-		case TK_IF:				printf("TK_IF");			break;
-		case TK_ELSE:			printf("TK_ELSE");			break;
-		case TK_FOR:			printf("TK_FOR");			break;
-		case TK_SPAWN:			printf("TK_SPAWN");			break;
-		case TK_OR:				printf("TK_OR");			break;
-		case TK_AND:			printf("TK_AND");			break;
+		// operators
 		case TK_EQUAL:			printf("TK_EQUAL");			break;
+		case TK_NEQUAL:			printf("TK_NEQUAL");		break;
 		case TK_LEQUAL:			printf("TK_LEQUAL");		break;
 		case TK_GEQUAL:			printf("TK_GEQUAL");		break;
 		case TK_NOT:			printf("TK_NOT");			break;
-		case TK_TRUE:			printf("TK_TRUE");			break;
+		case TK_AND:			printf("TK_AND");			break;
+		case TK_OR:				printf("TK_OR");			break;
+		case TK_DEF_ASG:		printf("TK_DEF_ASG");		break;
+		case TK_ADD_ASG:		printf("TK_ADD_ASG");		break;
+		case TK_SUB_ASG:		printf("TK_SUB_ASG");		break;
+		case TK_MUL_ASG:		printf("TK_MUL_ASG");		break;
+		case TK_DIV_ASG:		printf("TK_DIV_ASG");		break;
+		// keywords
+		case TK_BROADCAST:		printf("TK_BROADCAST");		break;
+		case TK_ELSE:			printf("TK_ELSE");			break;
 		case TK_FALSE:			printf("TK_FALSE");			break;
+		case TK_FOR:			printf("TK_FOR");			break;
+		case TK_FUNCTION:		printf("TK_FUNCTION");		break;
+		case TK_IF:				printf("TK_IF");			break;
+		case TK_IMMUTABLE:		printf("TK_IMMUTABLE");		break;
+		case TK_IN:				printf("TK_IN");			break;
+		case TK_INITIALIZER:	printf("TK_INITIALIZER");	break;
 		case TK_MONITOR:		printf("TK_MONITOR");		break;
 		case TK_PRIVATE:		printf("TK_PRIVATE");		break;
-		case TK_INITIALIZER:	printf("TK_INITIALIZER");	break;
+		case TK_RETURN:			printf("TK_RETURN");		break;
+		case TK_SIGNAL:			printf("TK_SIGNAL");		break;
+		case TK_SPAWN:			printf("TK_SPAWN");			break;
+		case TK_TRUE:			printf("TK_TRUE");			break;
+		case TK_VALUE:			printf("TK_VALUE");			break;
+		case TK_VARIABLE:		printf("TK_VARIABLE");		break;
+		case TK_WAIT:			printf("TK_WAIT");			break;
+		case TK_WHILE:			printf("TK_WHILE");			break;
+		// with values
 		case TK_LOWER_ID:
 			printf("TK_LOWER_ID - %s", yylval.id->name);
 			break;

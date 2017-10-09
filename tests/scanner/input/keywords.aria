@@ -1,22 +1,20 @@
-/*
- * Keywords
- */
+// Keywords
 Immutable
 value
 variable
 function
-while wait in signal broadcast
+while
+wait
+in
+signal
+broadcast
 return
-if else
+if
+else
 for
 spawn
-or and not
-true false
+true
+false
 monitor
-private initializer
-
-/*
- * Others
- */
-:=
-== <= >=
+private
+initializer
