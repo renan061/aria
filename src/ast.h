@@ -316,7 +316,7 @@ extern Block* ast_block(Line, Block*);
 extern Block* ast_block_definition(Definition*);
 extern Block* ast_block_statement(Statement*);
 
-extern Statement* ast_statement_assignment(Line, Variable*, Expression*);
+extern Statement* ast_statement_assignment(Line, Token, Variable*, Expression*);
 extern Statement* ast_statement_function_call(FunctionCall*);
 extern Statement* ast_statement_wait_for_in(Line, Expression*, Expression*);
 extern Statement* ast_statement_signal(Line, Expression*);

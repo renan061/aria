@@ -17,8 +17,7 @@
 #include "parser.h" // for the tokens
 #include "symtable.h"
 
-// TODO: Move this somewhere else and look for assert(NULL) in the code
-#define UNREACHABLE assert(NULL)
+// TODO: Look for assert(NULL) in the code
 
 // TODO: Also check if TODOERR errors have matching tests
 #define TODOERR(line, err) \
@@ -320,7 +319,7 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
 		sem_variable(state, &statement->assignment.variable);
-		if (statement->assignment.variable->value) { // Can't be reassigned
+		if (statement->assignment.variable->value) { // can't be reassigned
 			err_assignment_value(statement);
 		}
 		if (statement->assignment.variable->tag == VARIABLE_INDEXED &&

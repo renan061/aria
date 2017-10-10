@@ -53,6 +53,10 @@ function foo: Void {
 	variable variable12: String = (topValue2: String)
 	variable1: Boolean = ((value3: Float) >: Boolean ((2: Integer) as: Float))
 	variable11: Void = (foo(): Void)
+	variable9 = ((variable9: Integer) +:Integer (1: Integer));
+	variable9 = ((variable9: Integer) -:Integer (1: Integer));
+	variable9 = ((variable9: Integer) *:Integer (1: Integer));
+	variable9 = ((variable9: Integer) /:Integer (1: Integer));
 	foo(): Void
 	topFunction3((((42: Integer) as: Float) ==: Boolean (1.000000: Float))): Void
 	topFunction6(((1: Integer) as: Float), (variable12: String), ((syntacticSugarDefinition1: Boolean) or: Boolean (topFunction2(): Boolean))): Integer
@@ -144,6 +148,7 @@ function expressions: Void {
 	a: Boolean = ((true: Boolean) or: Boolean (false: Boolean))
 	a: Boolean = ((true: Boolean) and: Boolean (false: Boolean))
 	a: Boolean = ((1: Integer) ==: Boolean (1: Integer))
+	a: Boolean = ((1: Integer) !=: Boolean (1: Integer))
 	a: Boolean = ((1: Integer) <=: Boolean (1: Integer))
 	a: Boolean = ((1: Integer) >=: Boolean (1: Integer))
 	a: Boolean = ((1: Integer) <: Boolean (1: Integer))

@@ -86,6 +86,10 @@ function foo {
 
 	// StatementAssignment
 	a = 1;
+	a += 1;
+	a -= 1;
+	a *= 1;
+	a /= 1;
 
 	// StatementDefinition
 	a := 1;
@@ -185,6 +189,7 @@ function foo {
 	a = true or false;
 	a = true and false;
 	a = 1 == 1;
+	a = 1 != 1;
 	a = 1 <= 1;
 	a = 1 >= 1;
 	a = 1 < 1;

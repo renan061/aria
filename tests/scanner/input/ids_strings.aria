@@ -1,18 +1,10 @@
-/*
- * Uppercase IDs
- */
-
+// Uppercase IDs
 Id AnotherId Underscore_id IdWithNum3er5 WithNums19_AndUndersc0r3
 
-/*
- * Lowercase IDs
- */
-
+// Lowercase IDs
 id anotherId underscore_id idWithNum3er5 withNums19_AndUndersc0r3
 
-/*
- * Strings
- */
+// Strings
 "a string" "another string"
 "a string with \ttwo \ttabs"
 "a string with \n newline"

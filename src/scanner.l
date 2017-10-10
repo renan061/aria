@@ -104,7 +104,7 @@ string 		"\""(\\.|[^\\"])*"\""
 "*="			return yylval.ival = line, TK_MUL_ASG;
 "/="			return yylval.ival = line, TK_DIV_ASG;
 
-"broadcast"		return yylval.ival = line, TK_BROADCAST;
+"broadcast"		return yylval.ival = line, TK_BROADCAST; // keywords
 "else"			return yylval.ival = line, TK_ELSE;
 "false"			return yylval.ival = line, TK_FALSE;
 "for"			return yylval.ival = line, TK_FOR;

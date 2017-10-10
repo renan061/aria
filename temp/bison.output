@@ -1,0 +1,3257 @@
+Grammar
+
+    0 $accept: program $end
+
+    1 program: file_definition_list
+
+    2 file_definition_list: /* empty */
+    3                     | file_definition_list file_definition
+
+    4 file_definition: variable_definition_value ';'
+    5                | function_definition
+    6                | monitor_definition
+
+    7 variable_declaration: TK_VARIABLE lower_ids_type
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' type '=' expression
+    9                                  | TK_LOWER_ID '=' expression
+
+   10 variable_definition_value: TK_VALUE lower_id_optional_type_expression
+
+   11 variable_definition_variable: TK_VARIABLE lower_id_optional_type_expression
+
+   12 variable_definition: variable_definition_value
+   13                    | variable_definition_variable
+
+   14 function_definition: TK_FUNCTION TK_LOWER_ID parameter_list ':' type block
+   15                    | TK_FUNCTION TK_LOWER_ID parameter_list block
+
+   16 monitor_definition: TK_MONITOR TK_UPPER_ID monitor_body
+
+   17 type: TK_UPPER_ID
+   18     | '[' type ']'
+   19     | TK_IMMUTABLE '[' type ']'
+
+   20 block: '{' block_content_list '}'
+
+   21 block_content_list: /* empty */
+   22                   | block_content_list block_content
+
+   23 block_content: variable_declaration ';'
+   24              | block_variable_definition ';'
+   25              | statement
+
+   26 statement: simple_statement ';'
+   27          | compound_statement
+
+   28 simple_statement: statement_assignment
+   29                 | function_call
+   30                 | TK_WAIT TK_FOR expression TK_IN expression
+   31                 | TK_SIGNAL expression
+   32                 | TK_BROADCAST expression
+   33                 | TK_RETURN
+   34                 | TK_RETURN expression
+
+   35 compound_statement: TK_IF expression block else
+   36                   | TK_WHILE expression block
+   37                   | TK_SPAWN block
+   38                   | block
+
+   39 else: /* empty */
+   40     | TK_ELSE TK_IF expression block else
+   41     | TK_ELSE block
+
+   42 statement_assignment: variable '=' expression
+   43                     | variable TK_ADD_ASG expression
+   44                     | variable TK_SUB_ASG expression
+   45                     | variable TK_MUL_ASG expression
+   46                     | variable TK_DIV_ASG expression
+
+   47 variable: TK_LOWER_ID
+   48         | primary_expression '[' expression ']'
+
+   49 expression: expression TK_OR expression
+   50           | expression TK_AND expression
+   51           | expression TK_EQUAL expression
+   52           | expression TK_NEQUAL expression
+   53           | expression TK_LEQUAL expression
+   54           | expression TK_GEQUAL expression
+   55           | expression '<' expression
+   56           | expression '>' expression
+   57           | expression '+' expression
+   58           | expression '-' expression
+   59           | expression '*' expression
+   60           | expression '/' expression
+   61           | '-' expression
+   62           | TK_NOT expression
+   63           | primary_expression
+
+   64 primary_expression: literal
+   65                   | variable
+   66                   | function_call
+   67                   | '(' expression ')'
+
+   68 literal: TK_TRUE
+   69        | TK_FALSE
+   70        | TK_INTEGER
+   71        | TK_FLOAT
+   72        | TK_STRING
+
+   73 function_call: TK_LOWER_ID '(' argument_list ')'
+   74              | primary_expression '.' TK_LOWER_ID '(' argument_list ')'
+   75              | type '(' argument_list ')'
+
+   76 argument_list: /* empty */
+   77              | arguments
+
+   78 arguments: expression
+   79          | arguments ',' expression
+
+   80 monitor_body: '{' monitor_body_definition_list '}'
+
+   81 monitor_body_definition_list: /* empty */
+   82                             | monitor_body_definition_list monitor_body_definition
+
+   83 monitor_body_definition: variable_declaration ';'
+   84                        | variable_definition ';'
+   85                        | method_definition
+   86                        | constructor_definition
+
+   87 method_definition: TK_PRIVATE function_definition
+   88                  | function_definition
+
+   89 constructor_definition: TK_INITIALIZER parameter_list block
+
+   90 lower_id_type: TK_LOWER_ID ':' type
+
+   91 lower_ids: TK_LOWER_ID
+   92          | lower_ids ',' TK_LOWER_ID
+
+   93 lower_ids_type: lower_id_type
+   94               | lower_ids ',' lower_id_type
+
+   95 parameter_list: /* empty */
+   96               | '(' parameters ')'
+
+   97 parameters: parameter
+   98           | parameters ',' parameter
+
+   99 parameter: lower_ids_type
+
+  100 block_variable_definition: variable_definition
+  101                          | TK_LOWER_ID TK_DEF_ASG expression
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+'(' (40) 67 73 74 75 96
+')' (41) 67 73 74 75 96
+'*' (42) 59
+'+' (43) 57
+',' (44) 79 92 94 98
+'-' (45) 58 61
+'.' (46) 74
+'/' (47) 60
+':' (58) 8 14 90
+';' (59) 4 23 24 26 83 84
+'<' (60) 55
+'=' (61) 8 9 42
+'>' (62) 56
+'[' (91) 18 19 48
+']' (93) 18 19 48
+'{' (123) 20 80
+'}' (125) 20 80
+error (256)
+TK_IMMUTABLE (258) 19
+TK_VALUE (259) 10
+TK_VARIABLE (260) 7 11
+TK_FUNCTION (261) 14 15
+TK_WHILE (262) 36
+TK_WAIT (263) 30
+TK_IN (264) 30
+TK_SIGNAL (265) 31
+TK_BROADCAST (266) 32
+TK_RETURN (267) 33 34
+TK_IF (268) 35 40
+TK_ELSE (269) 40 41
+TK_FOR (270) 30
+TK_SPAWN (271) 37
+TK_TRUE (272) 68
+TK_FALSE (273) 69
+TK_MONITOR (274) 16
+TK_PRIVATE (275) 87
+TK_INITIALIZER (276) 89
+TK_DEF_ASG (277) 101
+TK_ADD_ASG (278) 43
+TK_SUB_ASG (279) 44
+TK_MUL_ASG (280) 45
+TK_DIV_ASG (281) 46
+TK_INTEGER (282) 70
+TK_FLOAT (283) 71
+TK_STRING (284) 72
+TK_LOWER_ID (285) 8 9 14 15 47 73 74 90 91 92 101
+TK_UPPER_ID (286) 16 17
+TK_OR (287) 49
+TK_AND (288) 50
+TK_NEQUAL (289) 52
+TK_EQUAL (290) 51
+TK_GEQUAL (291) 54
+TK_LEQUAL (292) 53
+TK_NOT (293) 62
+
+
+Nonterminals, with rules where they appear
+
+$accept (56)
+    on left: 0
+program (57)
+    on left: 1, on right: 0
+file_definition_list (58)
+    on left: 2 3, on right: 1 3
+file_definition (59)
+    on left: 4 5 6, on right: 3
+variable_declaration (60)
+    on left: 7, on right: 23 83
+lower_id_optional_type_expression (61)
+    on left: 8 9, on right: 10 11
+variable_definition_value (62)
+    on left: 10, on right: 4 12
+variable_definition_variable (63)
+    on left: 11, on right: 13
+variable_definition (64)
+    on left: 12 13, on right: 84 100
+function_definition (65)
+    on left: 14 15, on right: 5 87 88
+monitor_definition (66)
+    on left: 16, on right: 6
+type (67)
+    on left: 17 18 19, on right: 8 14 18 19 75 90
+block (68)
+    on left: 20, on right: 14 15 35 36 37 38 40 41 89
+block_content_list (69)
+    on left: 21 22, on right: 20 22
+block_content (70)
+    on left: 23 24 25, on right: 22
+statement (71)
+    on left: 26 27, on right: 25
+simple_statement (72)
+    on left: 28 29 30 31 32 33 34, on right: 26
+compound_statement (73)
+    on left: 35 36 37 38, on right: 27
+else (74)
+    on left: 39 40 41, on right: 35 40
+statement_assignment (75)
+    on left: 42 43 44 45 46, on right: 28
+variable (76)
+    on left: 47 48, on right: 42 43 44 45 46 65
+expression (77)
+    on left: 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63,
+    on right: 8 9 30 31 32 34 35 36 40 42 43 44 45 46 48 49 50 51 52
+    53 54 55 56 57 58 59 60 61 62 67 78 79 101
+primary_expression (78)
+    on left: 64 65 66 67, on right: 48 63 74
+literal (79)
+    on left: 68 69 70 71 72, on right: 64
+function_call (80)
+    on left: 73 74 75, on right: 29 66
+argument_list (81)
+    on left: 76 77, on right: 73 74 75
+arguments (82)
+    on left: 78 79, on right: 77 79
+monitor_body (83)
+    on left: 80, on right: 16
+monitor_body_definition_list (84)
+    on left: 81 82, on right: 80 82
+monitor_body_definition (85)
+    on left: 83 84 85 86, on right: 82
+method_definition (86)
+    on left: 87 88, on right: 85
+constructor_definition (87)
+    on left: 89, on right: 86
+lower_id_type (88)
+    on left: 90, on right: 93 94
+lower_ids (89)
+    on left: 91 92, on right: 92 94
+lower_ids_type (90)
+    on left: 93 94, on right: 7 99
+parameter_list (91)
+    on left: 95 96, on right: 14 15 89
+parameters (92)
+    on left: 97 98, on right: 96 98
+parameter (93)
+    on left: 99, on right: 97 98
+block_variable_definition (94)
+    on left: 100 101, on right: 24
+
+
+state 0
+
+    0 $accept: . program $end
+
+    $default  reduce using rule 2 (file_definition_list)
+
+    program               go to state 1
+    file_definition_list  go to state 2
+
+
+state 1
+
+    0 $accept: program . $end
+
+    $end  shift, and go to state 3
+
+
+state 2
+
+    1 program: file_definition_list .
+    3 file_definition_list: file_definition_list . file_definition
+
+    TK_VALUE     shift, and go to state 4
+    TK_FUNCTION  shift, and go to state 5
+    TK_MONITOR   shift, and go to state 6
+
+    $default  reduce using rule 1 (program)
+
+    file_definition            go to state 7
+    variable_definition_value  go to state 8
+    function_definition        go to state 9
+    monitor_definition         go to state 10
+
+
+state 3
+
+    0 $accept: program $end .
+
+    $default  accept
+
+
+state 4
+
+   10 variable_definition_value: TK_VALUE . lower_id_optional_type_expression
+
+    TK_LOWER_ID  shift, and go to state 11
+
+    lower_id_optional_type_expression  go to state 12
+
+
+state 5
+
+   14 function_definition: TK_FUNCTION . TK_LOWER_ID parameter_list ':' type block
+   15                    | TK_FUNCTION . TK_LOWER_ID parameter_list block
+
+    TK_LOWER_ID  shift, and go to state 13
+
+
+state 6
+
+   16 monitor_definition: TK_MONITOR . TK_UPPER_ID monitor_body
+
+    TK_UPPER_ID  shift, and go to state 14
+
+
+state 7
+
+    3 file_definition_list: file_definition_list file_definition .
+
+    $default  reduce using rule 3 (file_definition_list)
+
+
+state 8
+
+    4 file_definition: variable_definition_value . ';'
+
+    ';'  shift, and go to state 15
+
+
+state 9
+
+    5 file_definition: function_definition .
+
+    $default  reduce using rule 5 (file_definition)
+
+
+state 10
+
+    6 file_definition: monitor_definition .
+
+    $default  reduce using rule 6 (file_definition)
+
+
+state 11
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID . ':' type '=' expression
+    9                                  | TK_LOWER_ID . '=' expression
+
+    '='  shift, and go to state 16
+    ':'  shift, and go to state 17
+
+
+state 12
+
+   10 variable_definition_value: TK_VALUE lower_id_optional_type_expression .
+
+    $default  reduce using rule 10 (variable_definition_value)
+
+
+state 13
+
+   14 function_definition: TK_FUNCTION TK_LOWER_ID . parameter_list ':' type block
+   15                    | TK_FUNCTION TK_LOWER_ID . parameter_list block
+
+    '('  shift, and go to state 18
+
+    $default  reduce using rule 95 (parameter_list)
+
+    parameter_list  go to state 19
+
+
+state 14
+
+   16 monitor_definition: TK_MONITOR TK_UPPER_ID . monitor_body
+
+    '{'  shift, and go to state 20
+
+    monitor_body  go to state 21
+
+
+state 15
+
+    4 file_definition: variable_definition_value ';' .
+
+    $default  reduce using rule 4 (file_definition)
+
+
+state 16
+
+    9 lower_id_optional_type_expression: TK_LOWER_ID '=' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 36
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 17
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' . type '=' expression
+
+    '['           shift, and go to state 22
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_UPPER_ID   shift, and go to state 31
+
+    type  go to state 40
+
+
+state 18
+
+   96 parameter_list: '(' . parameters ')'
+
+    TK_LOWER_ID  shift, and go to state 41
+
+    lower_id_type   go to state 42
+    lower_ids       go to state 43
+    lower_ids_type  go to state 44
+    parameters      go to state 45
+    parameter       go to state 46
+
+
+state 19
+
+   14 function_definition: TK_FUNCTION TK_LOWER_ID parameter_list . ':' type block
+   15                    | TK_FUNCTION TK_LOWER_ID parameter_list . block
+
+    '{'  shift, and go to state 47
+    ':'  shift, and go to state 48
+
+    block  go to state 49
+
+
+state 20
+
+   80 monitor_body: '{' . monitor_body_definition_list '}'
+
+    $default  reduce using rule 81 (monitor_body_definition_list)
+
+    monitor_body_definition_list  go to state 50
+
+
+state 21
+
+   16 monitor_definition: TK_MONITOR TK_UPPER_ID monitor_body .
+
+    $default  reduce using rule 16 (monitor_definition)
+
+
+state 22
+
+   18 type: '[' . type ']'
+
+    '['           shift, and go to state 22
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_UPPER_ID   shift, and go to state 31
+
+    type  go to state 51
+
+
+state 23
+
+   67 primary_expression: '(' . expression ')'
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 52
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 24
+
+   19 type: TK_IMMUTABLE . '[' type ']'
+
+    '['  shift, and go to state 53
+
+
+state 25
+
+   68 literal: TK_TRUE .
+
+    $default  reduce using rule 68 (literal)
+
+
+state 26
+
+   69 literal: TK_FALSE .
+
+    $default  reduce using rule 69 (literal)
+
+
+state 27
+
+   70 literal: TK_INTEGER .
+
+    $default  reduce using rule 70 (literal)
+
+
+state 28
+
+   71 literal: TK_FLOAT .
+
+    $default  reduce using rule 71 (literal)
+
+
+state 29
+
+   72 literal: TK_STRING .
+
+    $default  reduce using rule 72 (literal)
+
+
+state 30
+
+   47 variable: TK_LOWER_ID .
+   73 function_call: TK_LOWER_ID . '(' argument_list ')'
+
+    '('  shift, and go to state 54
+
+    $default  reduce using rule 47 (variable)
+
+
+state 31
+
+   17 type: TK_UPPER_ID .
+
+    $default  reduce using rule 17 (type)
+
+
+state 32
+
+   61 expression: '-' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 55
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 33
+
+   62 expression: TK_NOT . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 56
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 34
+
+   75 function_call: type . '(' argument_list ')'
+
+    '('  shift, and go to state 57
+
+
+state 35
+
+   65 primary_expression: variable .
+
+    $default  reduce using rule 65 (primary_expression)
+
+
+state 36
+
+    9 lower_id_optional_type_expression: TK_LOWER_ID '=' expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 9 (lower_id_optional_type_expression)
+
+
+state 37
+
+   48 variable: primary_expression . '[' expression ']'
+   63 expression: primary_expression .
+   74 function_call: primary_expression . '.' TK_LOWER_ID '(' argument_list ')'
+
+    '['  shift, and go to state 70
+    '.'  shift, and go to state 71
+
+    $default  reduce using rule 63 (expression)
+
+
+state 38
+
+   64 primary_expression: literal .
+
+    $default  reduce using rule 64 (primary_expression)
+
+
+state 39
+
+   66 primary_expression: function_call .
+
+    $default  reduce using rule 66 (primary_expression)
+
+
+state 40
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' type . '=' expression
+
+    '='  shift, and go to state 72
+
+
+state 41
+
+   90 lower_id_type: TK_LOWER_ID . ':' type
+   91 lower_ids: TK_LOWER_ID .
+
+    ':'  shift, and go to state 73
+
+    $default  reduce using rule 91 (lower_ids)
+
+
+state 42
+
+   93 lower_ids_type: lower_id_type .
+
+    $default  reduce using rule 93 (lower_ids_type)
+
+
+state 43
+
+   92 lower_ids: lower_ids . ',' TK_LOWER_ID
+   94 lower_ids_type: lower_ids . ',' lower_id_type
+
+    ','  shift, and go to state 74
+
+
+state 44
+
+   99 parameter: lower_ids_type .
+
+    $default  reduce using rule 99 (parameter)
+
+
+state 45
+
+   96 parameter_list: '(' parameters . ')'
+   98 parameters: parameters . ',' parameter
+
+    ')'  shift, and go to state 75
+    ','  shift, and go to state 76
+
+
+state 46
+
+   97 parameters: parameter .
+
+    $default  reduce using rule 97 (parameters)
+
+
+state 47
+
+   20 block: '{' . block_content_list '}'
+
+    $default  reduce using rule 21 (block_content_list)
+
+    block_content_list  go to state 77
+
+
+state 48
+
+   14 function_definition: TK_FUNCTION TK_LOWER_ID parameter_list ':' . type block
+
+    '['           shift, and go to state 22
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_UPPER_ID   shift, and go to state 31
+
+    type  go to state 78
+
+
+state 49
+
+   15 function_definition: TK_FUNCTION TK_LOWER_ID parameter_list block .
+
+    $default  reduce using rule 15 (function_definition)
+
+
+state 50
+
+   80 monitor_body: '{' monitor_body_definition_list . '}'
+   82 monitor_body_definition_list: monitor_body_definition_list . monitor_body_definition
+
+    '}'             shift, and go to state 79
+    TK_VALUE        shift, and go to state 4
+    TK_VARIABLE     shift, and go to state 80
+    TK_FUNCTION     shift, and go to state 5
+    TK_PRIVATE      shift, and go to state 81
+    TK_INITIALIZER  shift, and go to state 82
+
+    variable_declaration          go to state 83
+    variable_definition_value     go to state 84
+    variable_definition_variable  go to state 85
+    variable_definition           go to state 86
+    function_definition           go to state 87
+    monitor_body_definition       go to state 88
+    method_definition             go to state 89
+    constructor_definition        go to state 90
+
+
+state 51
+
+   18 type: '[' type . ']'
+
+    ']'  shift, and go to state 91
+
+
+state 52
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+   67 primary_expression: '(' expression . ')'
+
+    ')'        shift, and go to state 92
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+
+state 53
+
+   19 type: TK_IMMUTABLE '[' . type ']'
+
+    '['           shift, and go to state 22
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_UPPER_ID   shift, and go to state 31
+
+    type  go to state 93
+
+
+state 54
+
+   73 function_call: TK_LOWER_ID '(' . argument_list ')'
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    $default  reduce using rule 76 (argument_list)
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 94
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+    argument_list       go to state 95
+    arguments           go to state 96
+
+
+state 55
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+   61           | '-' expression .
+
+    $default  reduce using rule 61 (expression)
+
+
+state 56
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+   62           | TK_NOT expression .
+
+    $default  reduce using rule 62 (expression)
+
+
+state 57
+
+   75 function_call: type '(' . argument_list ')'
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    $default  reduce using rule 76 (argument_list)
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 94
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+    argument_list       go to state 97
+    arguments           go to state 96
+
+
+state 58
+
+   49 expression: expression TK_OR . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 98
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 59
+
+   50 expression: expression TK_AND . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 99
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 60
+
+   52 expression: expression TK_NEQUAL . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 100
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 61
+
+   51 expression: expression TK_EQUAL . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 101
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 62
+
+   55 expression: expression '<' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 102
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 63
+
+   56 expression: expression '>' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 103
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 64
+
+   54 expression: expression TK_GEQUAL . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 104
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 65
+
+   53 expression: expression TK_LEQUAL . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 105
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 66
+
+   57 expression: expression '+' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 106
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 67
+
+   58 expression: expression '-' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 107
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 68
+
+   59 expression: expression '*' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 108
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 69
+
+   60 expression: expression '/' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 109
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 70
+
+   48 variable: primary_expression '[' . expression ']'
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 110
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 71
+
+   74 function_call: primary_expression '.' . TK_LOWER_ID '(' argument_list ')'
+
+    TK_LOWER_ID  shift, and go to state 111
+
+
+state 72
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' type '=' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 112
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 73
+
+   90 lower_id_type: TK_LOWER_ID ':' . type
+
+    '['           shift, and go to state 22
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_UPPER_ID   shift, and go to state 31
+
+    type  go to state 113
+
+
+state 74
+
+   92 lower_ids: lower_ids ',' . TK_LOWER_ID
+   94 lower_ids_type: lower_ids ',' . lower_id_type
+
+    TK_LOWER_ID  shift, and go to state 114
+
+    lower_id_type  go to state 115
+
+
+state 75
+
+   96 parameter_list: '(' parameters ')' .
+
+    $default  reduce using rule 96 (parameter_list)
+
+
+state 76
+
+   98 parameters: parameters ',' . parameter
+
+    TK_LOWER_ID  shift, and go to state 41
+
+    lower_id_type   go to state 42
+    lower_ids       go to state 43
+    lower_ids_type  go to state 44
+    parameter       go to state 116
+
+
+state 77
+
+   20 block: '{' block_content_list . '}'
+   22 block_content_list: block_content_list . block_content
+
+    '{'           shift, and go to state 47
+    '}'           shift, and go to state 117
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_VALUE      shift, and go to state 4
+    TK_VARIABLE   shift, and go to state 80
+    TK_WHILE      shift, and go to state 118
+    TK_WAIT       shift, and go to state 119
+    TK_SIGNAL     shift, and go to state 120
+    TK_BROADCAST  shift, and go to state 121
+    TK_RETURN     shift, and go to state 122
+    TK_IF         shift, and go to state 123
+    TK_SPAWN      shift, and go to state 124
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 125
+    TK_UPPER_ID   shift, and go to state 31
+
+    variable_declaration          go to state 126
+    variable_definition_value     go to state 84
+    variable_definition_variable  go to state 85
+    variable_definition           go to state 127
+    type                          go to state 34
+    block                         go to state 128
+    block_content                 go to state 129
+    statement                     go to state 130
+    simple_statement              go to state 131
+    compound_statement            go to state 132
+    statement_assignment          go to state 133
+    variable                      go to state 134
+    primary_expression            go to state 135
+    literal                       go to state 38
+    function_call                 go to state 136
+    block_variable_definition     go to state 137
+
+
+state 78
+
+   14 function_definition: TK_FUNCTION TK_LOWER_ID parameter_list ':' type . block
+
+    '{'  shift, and go to state 47
+
+    block  go to state 138
+
+
+state 79
+
+   80 monitor_body: '{' monitor_body_definition_list '}' .
+
+    $default  reduce using rule 80 (monitor_body)
+
+
+state 80
+
+    7 variable_declaration: TK_VARIABLE . lower_ids_type
+   11 variable_definition_variable: TK_VARIABLE . lower_id_optional_type_expression
+
+    TK_LOWER_ID  shift, and go to state 139
+
+    lower_id_optional_type_expression  go to state 140
+    lower_id_type                      go to state 42
+    lower_ids                          go to state 43
+    lower_ids_type                     go to state 141
+
+
+state 81
+
+   87 method_definition: TK_PRIVATE . function_definition
+
+    TK_FUNCTION  shift, and go to state 5
+
+    function_definition  go to state 142
+
+
+state 82
+
+   89 constructor_definition: TK_INITIALIZER . parameter_list block
+
+    '('  shift, and go to state 18
+
+    $default  reduce using rule 95 (parameter_list)
+
+    parameter_list  go to state 143
+
+
+state 83
+
+   83 monitor_body_definition: variable_declaration . ';'
+
+    ';'  shift, and go to state 144
+
+
+state 84
+
+   12 variable_definition: variable_definition_value .
+
+    $default  reduce using rule 12 (variable_definition)
+
+
+state 85
+
+   13 variable_definition: variable_definition_variable .
+
+    $default  reduce using rule 13 (variable_definition)
+
+
+state 86
+
+   84 monitor_body_definition: variable_definition . ';'
+
+    ';'  shift, and go to state 145
+
+
+state 87
+
+   88 method_definition: function_definition .
+
+    $default  reduce using rule 88 (method_definition)
+
+
+state 88
+
+   82 monitor_body_definition_list: monitor_body_definition_list monitor_body_definition .
+
+    $default  reduce using rule 82 (monitor_body_definition_list)
+
+
+state 89
+
+   85 monitor_body_definition: method_definition .
+
+    $default  reduce using rule 85 (monitor_body_definition)
+
+
+state 90
+
+   86 monitor_body_definition: constructor_definition .
+
+    $default  reduce using rule 86 (monitor_body_definition)
+
+
+state 91
+
+   18 type: '[' type ']' .
+
+    $default  reduce using rule 18 (type)
+
+
+state 92
+
+   67 primary_expression: '(' expression ')' .
+
+    $default  reduce using rule 67 (primary_expression)
+
+
+state 93
+
+   19 type: TK_IMMUTABLE '[' type . ']'
+
+    ']'  shift, and go to state 146
+
+
+state 94
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+   78 arguments: expression .
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 78 (arguments)
+
+
+state 95
+
+   73 function_call: TK_LOWER_ID '(' argument_list . ')'
+
+    ')'  shift, and go to state 147
+
+
+state 96
+
+   77 argument_list: arguments .
+   79 arguments: arguments . ',' expression
+
+    ','  shift, and go to state 148
+
+    $default  reduce using rule 77 (argument_list)
+
+
+state 97
+
+   75 function_call: type '(' argument_list . ')'
+
+    ')'  shift, and go to state 149
+
+
+state 98
+
+   49 expression: expression . TK_OR expression
+   49           | expression TK_OR expression .
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 49 (expression)
+
+
+state 99
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   50           | expression TK_AND expression .
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 50 (expression)
+
+
+state 100
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   52           | expression TK_NEQUAL expression .
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    TK_NEQUAL  error (nonassociative)
+    TK_EQUAL   error (nonassociative)
+
+    $default  reduce using rule 52 (expression)
+
+
+state 101
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   51           | expression TK_EQUAL expression .
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    TK_NEQUAL  error (nonassociative)
+    TK_EQUAL   error (nonassociative)
+
+    $default  reduce using rule 51 (expression)
+
+
+state 102
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   55           | expression '<' expression .
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '+'  shift, and go to state 66
+    '-'  shift, and go to state 67
+    '*'  shift, and go to state 68
+    '/'  shift, and go to state 69
+
+    '<'        error (nonassociative)
+    '>'        error (nonassociative)
+    TK_GEQUAL  error (nonassociative)
+    TK_LEQUAL  error (nonassociative)
+
+    $default  reduce using rule 55 (expression)
+
+
+state 103
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   56           | expression '>' expression .
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '+'  shift, and go to state 66
+    '-'  shift, and go to state 67
+    '*'  shift, and go to state 68
+    '/'  shift, and go to state 69
+
+    '<'        error (nonassociative)
+    '>'        error (nonassociative)
+    TK_GEQUAL  error (nonassociative)
+    TK_LEQUAL  error (nonassociative)
+
+    $default  reduce using rule 56 (expression)
+
+
+state 104
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   54           | expression TK_GEQUAL expression .
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '+'  shift, and go to state 66
+    '-'  shift, and go to state 67
+    '*'  shift, and go to state 68
+    '/'  shift, and go to state 69
+
+    '<'        error (nonassociative)
+    '>'        error (nonassociative)
+    TK_GEQUAL  error (nonassociative)
+    TK_LEQUAL  error (nonassociative)
+
+    $default  reduce using rule 54 (expression)
+
+
+state 105
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   53           | expression TK_LEQUAL expression .
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '+'  shift, and go to state 66
+    '-'  shift, and go to state 67
+    '*'  shift, and go to state 68
+    '/'  shift, and go to state 69
+
+    '<'        error (nonassociative)
+    '>'        error (nonassociative)
+    TK_GEQUAL  error (nonassociative)
+    TK_LEQUAL  error (nonassociative)
+
+    $default  reduce using rule 53 (expression)
+
+
+state 106
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   57           | expression '+' expression .
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '*'  shift, and go to state 68
+    '/'  shift, and go to state 69
+
+    $default  reduce using rule 57 (expression)
+
+
+state 107
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   58           | expression '-' expression .
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '*'  shift, and go to state 68
+    '/'  shift, and go to state 69
+
+    $default  reduce using rule 58 (expression)
+
+
+state 108
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   59           | expression '*' expression .
+   60           | expression . '/' expression
+
+    $default  reduce using rule 59 (expression)
+
+
+state 109
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+   60           | expression '/' expression .
+
+    $default  reduce using rule 60 (expression)
+
+
+state 110
+
+   48 variable: primary_expression '[' expression . ']'
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    ']'        shift, and go to state 150
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+
+state 111
+
+   74 function_call: primary_expression '.' TK_LOWER_ID . '(' argument_list ')'
+
+    '('  shift, and go to state 151
+
+
+state 112
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' type '=' expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 8 (lower_id_optional_type_expression)
+
+
+state 113
+
+   90 lower_id_type: TK_LOWER_ID ':' type .
+
+    $default  reduce using rule 90 (lower_id_type)
+
+
+state 114
+
+   90 lower_id_type: TK_LOWER_ID . ':' type
+   92 lower_ids: lower_ids ',' TK_LOWER_ID .
+
+    ':'  shift, and go to state 73
+
+    $default  reduce using rule 92 (lower_ids)
+
+
+state 115
+
+   94 lower_ids_type: lower_ids ',' lower_id_type .
+
+    $default  reduce using rule 94 (lower_ids_type)
+
+
+state 116
+
+   98 parameters: parameters ',' parameter .
+
+    $default  reduce using rule 98 (parameters)
+
+
+state 117
+
+   20 block: '{' block_content_list '}' .
+
+    $default  reduce using rule 20 (block)
+
+
+state 118
+
+   36 compound_statement: TK_WHILE . expression block
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 152
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 119
+
+   30 simple_statement: TK_WAIT . TK_FOR expression TK_IN expression
+
+    TK_FOR  shift, and go to state 153
+
+
+state 120
+
+   31 simple_statement: TK_SIGNAL . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 154
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 121
+
+   32 simple_statement: TK_BROADCAST . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 155
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 122
+
+   33 simple_statement: TK_RETURN .
+   34                 | TK_RETURN . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    $default  reduce using rule 33 (simple_statement)
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 156
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 123
+
+   35 compound_statement: TK_IF . expression block else
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 157
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 124
+
+   37 compound_statement: TK_SPAWN . block
+
+    '{'  shift, and go to state 47
+
+    block  go to state 158
+
+
+state 125
+
+   47 variable: TK_LOWER_ID .
+   73 function_call: TK_LOWER_ID . '(' argument_list ')'
+  101 block_variable_definition: TK_LOWER_ID . TK_DEF_ASG expression
+
+    '('         shift, and go to state 54
+    TK_DEF_ASG  shift, and go to state 159
+
+    $default  reduce using rule 47 (variable)
+
+
+state 126
+
+   23 block_content: variable_declaration . ';'
+
+    ';'  shift, and go to state 160
+
+
+state 127
+
+  100 block_variable_definition: variable_definition .
+
+    $default  reduce using rule 100 (block_variable_definition)
+
+
+state 128
+
+   38 compound_statement: block .
+
+    $default  reduce using rule 38 (compound_statement)
+
+
+state 129
+
+   22 block_content_list: block_content_list block_content .
+
+    $default  reduce using rule 22 (block_content_list)
+
+
+state 130
+
+   25 block_content: statement .
+
+    $default  reduce using rule 25 (block_content)
+
+
+state 131
+
+   26 statement: simple_statement . ';'
+
+    ';'  shift, and go to state 161
+
+
+state 132
+
+   27 statement: compound_statement .
+
+    $default  reduce using rule 27 (statement)
+
+
+state 133
+
+   28 simple_statement: statement_assignment .
+
+    $default  reduce using rule 28 (simple_statement)
+
+
+state 134
+
+   42 statement_assignment: variable . '=' expression
+   43                     | variable . TK_ADD_ASG expression
+   44                     | variable . TK_SUB_ASG expression
+   45                     | variable . TK_MUL_ASG expression
+   46                     | variable . TK_DIV_ASG expression
+   65 primary_expression: variable .
+
+    '='         shift, and go to state 162
+    TK_ADD_ASG  shift, and go to state 163
+    TK_SUB_ASG  shift, and go to state 164
+    TK_MUL_ASG  shift, and go to state 165
+    TK_DIV_ASG  shift, and go to state 166
+
+    $default  reduce using rule 65 (primary_expression)
+
+
+state 135
+
+   48 variable: primary_expression . '[' expression ']'
+   74 function_call: primary_expression . '.' TK_LOWER_ID '(' argument_list ')'
+
+    '['  shift, and go to state 70
+    '.'  shift, and go to state 71
+
+
+state 136
+
+   29 simple_statement: function_call .
+   66 primary_expression: function_call .
+
+    ';'       reduce using rule 29 (simple_statement)
+    $default  reduce using rule 66 (primary_expression)
+
+
+state 137
+
+   24 block_content: block_variable_definition . ';'
+
+    ';'  shift, and go to state 167
+
+
+state 138
+
+   14 function_definition: TK_FUNCTION TK_LOWER_ID parameter_list ':' type block .
+
+    $default  reduce using rule 14 (function_definition)
+
+
+state 139
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID . ':' type '=' expression
+    9                                  | TK_LOWER_ID . '=' expression
+   90 lower_id_type: TK_LOWER_ID . ':' type
+   91 lower_ids: TK_LOWER_ID .
+
+    '='  shift, and go to state 16
+    ':'  shift, and go to state 168
+
+    $default  reduce using rule 91 (lower_ids)
+
+
+state 140
+
+   11 variable_definition_variable: TK_VARIABLE lower_id_optional_type_expression .
+
+    $default  reduce using rule 11 (variable_definition_variable)
+
+
+state 141
+
+    7 variable_declaration: TK_VARIABLE lower_ids_type .
+
+    $default  reduce using rule 7 (variable_declaration)
+
+
+state 142
+
+   87 method_definition: TK_PRIVATE function_definition .
+
+    $default  reduce using rule 87 (method_definition)
+
+
+state 143
+
+   89 constructor_definition: TK_INITIALIZER parameter_list . block
+
+    '{'  shift, and go to state 47
+
+    block  go to state 169
+
+
+state 144
+
+   83 monitor_body_definition: variable_declaration ';' .
+
+    $default  reduce using rule 83 (monitor_body_definition)
+
+
+state 145
+
+   84 monitor_body_definition: variable_definition ';' .
+
+    $default  reduce using rule 84 (monitor_body_definition)
+
+
+state 146
+
+   19 type: TK_IMMUTABLE '[' type ']' .
+
+    $default  reduce using rule 19 (type)
+
+
+state 147
+
+   73 function_call: TK_LOWER_ID '(' argument_list ')' .
+
+    $default  reduce using rule 73 (function_call)
+
+
+state 148
+
+   79 arguments: arguments ',' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 170
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 149
+
+   75 function_call: type '(' argument_list ')' .
+
+    $default  reduce using rule 75 (function_call)
+
+
+state 150
+
+   48 variable: primary_expression '[' expression ']' .
+
+    $default  reduce using rule 48 (variable)
+
+
+state 151
+
+   74 function_call: primary_expression '.' TK_LOWER_ID '(' . argument_list ')'
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    $default  reduce using rule 76 (argument_list)
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 94
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+    argument_list       go to state 171
+    arguments           go to state 96
+
+
+state 152
+
+   36 compound_statement: TK_WHILE expression . block
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '{'        shift, and go to state 47
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    block  go to state 172
+
+
+state 153
+
+   30 simple_statement: TK_WAIT TK_FOR . expression TK_IN expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 173
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 154
+
+   31 simple_statement: TK_SIGNAL expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 31 (simple_statement)
+
+
+state 155
+
+   32 simple_statement: TK_BROADCAST expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 32 (simple_statement)
+
+
+state 156
+
+   34 simple_statement: TK_RETURN expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 34 (simple_statement)
+
+
+state 157
+
+   35 compound_statement: TK_IF expression . block else
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '{'        shift, and go to state 47
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    block  go to state 174
+
+
+state 158
+
+   37 compound_statement: TK_SPAWN block .
+
+    $default  reduce using rule 37 (compound_statement)
+
+
+state 159
+
+  101 block_variable_definition: TK_LOWER_ID TK_DEF_ASG . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 175
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 160
+
+   23 block_content: variable_declaration ';' .
+
+    $default  reduce using rule 23 (block_content)
+
+
+state 161
+
+   26 statement: simple_statement ';' .
+
+    $default  reduce using rule 26 (statement)
+
+
+state 162
+
+   42 statement_assignment: variable '=' . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 176
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 163
+
+   43 statement_assignment: variable TK_ADD_ASG . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 177
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 164
+
+   44 statement_assignment: variable TK_SUB_ASG . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 178
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 165
+
+   45 statement_assignment: variable TK_MUL_ASG . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 179
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 166
+
+   46 statement_assignment: variable TK_DIV_ASG . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 180
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 167
+
+   24 block_content: block_variable_definition ';' .
+
+    $default  reduce using rule 24 (block_content)
+
+
+state 168
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' . type '=' expression
+   90 lower_id_type: TK_LOWER_ID ':' . type
+
+    '['           shift, and go to state 22
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_UPPER_ID   shift, and go to state 31
+
+    type  go to state 181
+
+
+state 169
+
+   89 constructor_definition: TK_INITIALIZER parameter_list block .
+
+    $default  reduce using rule 89 (constructor_definition)
+
+
+state 170
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+   79 arguments: arguments ',' expression .
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 79 (arguments)
+
+
+state 171
+
+   74 function_call: primary_expression '.' TK_LOWER_ID '(' argument_list . ')'
+
+    ')'  shift, and go to state 182
+
+
+state 172
+
+   36 compound_statement: TK_WHILE expression block .
+
+    $default  reduce using rule 36 (compound_statement)
+
+
+state 173
+
+   30 simple_statement: TK_WAIT TK_FOR expression . TK_IN expression
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_IN      shift, and go to state 183
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+
+state 174
+
+   35 compound_statement: TK_IF expression block . else
+
+    TK_ELSE  shift, and go to state 184
+
+    $default  reduce using rule 39 (else)
+
+    else  go to state 185
+
+
+state 175
+
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+  101 block_variable_definition: TK_LOWER_ID TK_DEF_ASG expression .
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 101 (block_variable_definition)
+
+
+state 176
+
+   42 statement_assignment: variable '=' expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 42 (statement_assignment)
+
+
+state 177
+
+   43 statement_assignment: variable TK_ADD_ASG expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 43 (statement_assignment)
+
+
+state 178
+
+   44 statement_assignment: variable TK_SUB_ASG expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 44 (statement_assignment)
+
+
+state 179
+
+   45 statement_assignment: variable TK_MUL_ASG expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 45 (statement_assignment)
+
+
+state 180
+
+   46 statement_assignment: variable TK_DIV_ASG expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 46 (statement_assignment)
+
+
+state 181
+
+    8 lower_id_optional_type_expression: TK_LOWER_ID ':' type . '=' expression
+   90 lower_id_type: TK_LOWER_ID ':' type .
+
+    '='  shift, and go to state 72
+
+    $default  reduce using rule 90 (lower_id_type)
+
+
+state 182
+
+   74 function_call: primary_expression '.' TK_LOWER_ID '(' argument_list ')' .
+
+    $default  reduce using rule 74 (function_call)
+
+
+state 183
+
+   30 simple_statement: TK_WAIT TK_FOR expression TK_IN . expression
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 186
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 184
+
+   40 else: TK_ELSE . TK_IF expression block else
+   41     | TK_ELSE . block
+
+    '{'    shift, and go to state 47
+    TK_IF  shift, and go to state 187
+
+    block  go to state 188
+
+
+state 185
+
+   35 compound_statement: TK_IF expression block else .
+
+    $default  reduce using rule 35 (compound_statement)
+
+
+state 186
+
+   30 simple_statement: TK_WAIT TK_FOR expression TK_IN expression .
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    $default  reduce using rule 30 (simple_statement)
+
+
+state 187
+
+   40 else: TK_ELSE TK_IF . expression block else
+
+    '['           shift, and go to state 22
+    '('           shift, and go to state 23
+    TK_IMMUTABLE  shift, and go to state 24
+    TK_TRUE       shift, and go to state 25
+    TK_FALSE      shift, and go to state 26
+    TK_INTEGER    shift, and go to state 27
+    TK_FLOAT      shift, and go to state 28
+    TK_STRING     shift, and go to state 29
+    TK_LOWER_ID   shift, and go to state 30
+    TK_UPPER_ID   shift, and go to state 31
+    '-'           shift, and go to state 32
+    TK_NOT        shift, and go to state 33
+
+    type                go to state 34
+    variable            go to state 35
+    expression          go to state 189
+    primary_expression  go to state 37
+    literal             go to state 38
+    function_call       go to state 39
+
+
+state 188
+
+   41 else: TK_ELSE block .
+
+    $default  reduce using rule 41 (else)
+
+
+state 189
+
+   40 else: TK_ELSE TK_IF expression . block else
+   49 expression: expression . TK_OR expression
+   50           | expression . TK_AND expression
+   51           | expression . TK_EQUAL expression
+   52           | expression . TK_NEQUAL expression
+   53           | expression . TK_LEQUAL expression
+   54           | expression . TK_GEQUAL expression
+   55           | expression . '<' expression
+   56           | expression . '>' expression
+   57           | expression . '+' expression
+   58           | expression . '-' expression
+   59           | expression . '*' expression
+   60           | expression . '/' expression
+
+    '{'        shift, and go to state 47
+    TK_OR      shift, and go to state 58
+    TK_AND     shift, and go to state 59
+    TK_NEQUAL  shift, and go to state 60
+    TK_EQUAL   shift, and go to state 61
+    '<'        shift, and go to state 62
+    '>'        shift, and go to state 63
+    TK_GEQUAL  shift, and go to state 64
+    TK_LEQUAL  shift, and go to state 65
+    '+'        shift, and go to state 66
+    '-'        shift, and go to state 67
+    '*'        shift, and go to state 68
+    '/'        shift, and go to state 69
+
+    block  go to state 190
+
+
+state 190
+
+   40 else: TK_ELSE TK_IF expression block . else
+
+    TK_ELSE  shift, and go to state 184
+
+    $default  reduce using rule 39 (else)
+
+    else  go to state 191
+
+
+state 191
+
+   40 else: TK_ELSE TK_IF expression block else .
+
+    $default  reduce using rule 40 (else)

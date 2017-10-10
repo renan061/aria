@@ -85,7 +85,7 @@
 %type <block>
 	block block_content_list block_content else
 %type <statement>
-	statement simple_statement compound_statement
+	statement simple_statement compound_statement statement_assignment
 %type <variable>
 	variable
 %type <expression>
@@ -326,9 +326,9 @@ statement
 	;
 
 simple_statement
-	: variable '=' expression
+	: statement_assignment
 		{
-			$$ = ast_statement_assignment($2, $1, $3);
+			$$ = $1;
 		}
 	| function_call
 		{
@@ -414,6 +414,29 @@ else
 		}
 	;
 
+statement_assignment
+	: variable '=' expression
+		{
+			$$ = ast_statement_assignment($2, '=', $1, $3);
+		}
+	| variable TK_ADD_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_ADD_ASG, $1, $3);
+		}
+	| variable TK_SUB_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_SUB_ASG, $1, $3);
+		}
+	| variable TK_MUL_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_MUL_ASG, $1, $3);
+		}
+	| variable TK_DIV_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_DIV_ASG, $1, $3);
+		}
+	;
+
 // ==================================================
 //
 //	Variable
@@ -449,6 +472,10 @@ expression
 	| expression TK_EQUAL expression
 		{
 			$$ = ast_expression_binary($2, TK_EQUAL, $1, $3);
+		}
+	| expression TK_NEQUAL expression
+		{
+			$$ = ast_expression_binary($2, TK_NEQUAL, $1, $3);
 		}
 	| expression TK_LEQUAL expression
 		{

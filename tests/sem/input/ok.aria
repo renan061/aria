@@ -38,7 +38,9 @@ function foo {
 
 	// Definition of variables and values (specific to blocks)
 	syntacticSugarDefinition1 := false;
-	syntacticSugarDefinition2 := foo(); // FIXME: Should this be possible?
+	// FIXME: Should this be possible?
+	// foo is type Void
+	syntacticSugarDefinition2 := foo();
 	value value1: Integer = 1;
 	value value2 = 1;
 	value value3: Float = 1;
@@ -54,7 +56,11 @@ function foo {
 
 	// Assignment
 	variable1 = value3 > 2;
-	variable11 = foo(); // FIXME: Should this be possible?
+	variable11 = foo(); // FIXME: Should this be possible? (foo is type Void)
+	variable9 += 1;
+	variable9 -= 1;
+	variable9 *= 1;
+	variable9 /= 1;
 
 	// Basic function call
 	foo();
@@ -190,6 +196,7 @@ function expressions {
 	a = true or false;
 	a = true and false;
 	a = 1 == 1;
+	a = 1 != 1;
 	a = 1 <= 1;
 	a = 1 >= 1;
 	a = 1 < 1;
