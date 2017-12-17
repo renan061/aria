@@ -69,6 +69,7 @@ typedef enum ExpressionTag {
 	EXPRESSION_LITERAL_INTEGER,
 	EXPRESSION_LITERAL_FLOAT,
 	EXPRESSION_LITERAL_STRING,
+	EXPRESSION_LITERAL_ARRAY,
 	EXPRESSION_VARIABLE,
 	EXPRESSION_FUNCTION_CALL,
 	EXPRESSION_UNARY,
@@ -247,6 +248,8 @@ struct Expression {
 		double literal_float;
 		// ExpressionLiteralString
 		const char* literal_string;
+		// ExpressionLiteralArray
+		Expression* literal_array;
 		// ExpressionVariable
 		Variable* variable;
 		// ExpressionFunctionCall
@@ -335,6 +338,7 @@ extern Expression* ast_expression_literal_boolean(Line, bool);
 extern Expression* ast_expression_literal_integer(Line, int);
 extern Expression* ast_expression_literal_float(Line, double);
 extern Expression* ast_expression_literal_string(Line, const char*);
+extern Expression* ast_expression_literal_array(Line, Expression*);
 extern Expression* ast_expression_variable(Variable*);
 extern Expression* ast_expression_function_call(FunctionCall*);
 extern Expression* ast_expression_unary(Line, Token, Expression*);

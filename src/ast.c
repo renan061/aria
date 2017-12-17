@@ -497,6 +497,18 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	return expression;
 }
 
+Expression* ast_expression_literal_array(Line ln, Expression* elements) {
+	Expression* expression;
+	MALLOC(expression, Expression);
+	expression->tag = EXPRESSION_LITERAL_ARRAY;
+	expression->line = ln;
+	expression->previous = expression->next = NULL;
+	expression->type = NULL;
+	expression->llvm_value = NULL;
+	expression->literal_array = elements;
+	return expression;
+}
+
 Expression* ast_expression_variable(Variable* variable) {
 	Expression* expression;
 	MALLOC(expression, Expression);

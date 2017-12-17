@@ -175,6 +175,11 @@ function foo {
 	a = "string";
 	a = "s p a c e d s t r i n g";
 
+	// ExpressionLiteralArray
+	a = [1];
+	a = [true, false];
+	a = [foo(), bar(), baz()];
+
 	// ExpressionVariable
 	a = a;
 

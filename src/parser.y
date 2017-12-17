@@ -566,8 +566,7 @@ literal
 		}
 	| '[' expression_list1 ']'
 		{
-			// $$ = ast_expression_literal_array($1, $2);
-			$$ = NULL; // TODO
+			$$ = ast_expression_literal_array($1, $2);
 		}
 	;
 

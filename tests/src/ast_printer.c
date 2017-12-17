@@ -299,6 +299,17 @@ static void print_ast_expression(Expression* expression) {
 		printf("\"%s\"", expression->literal_string);
 		printtype(expression->type);
 		break;
+	case EXPRESSION_LITERAL_ARRAY:
+		printf("[");
+		for (Expression* e = expression->literal_array; e;) {
+			print_ast_expression(e);
+			if ((e = e->next)) {
+				printf(", ");
+			}
+		}
+		printf("]");
+		printtype(expression->type);
+		break;
 	case EXPRESSION_VARIABLE:
 		print_ast_variable(expression->variable);
 		break;
