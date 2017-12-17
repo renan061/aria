@@ -613,7 +613,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			}
 			expression->type = __boolean;
 			break;
-		case TK_EQUAL:
+		case TK_EQUAL: case TK_NEQUAL:
 			if (!equatabletype((*lp)->type)) {
 				err_expression(ERR_EXPRESSION_LEFT_EQUAL, expression);
 			}

@@ -376,6 +376,32 @@ function testBooleans {
 		print("== boolean: 1 == 0.9999999999 (%d)\n", 1 == 0.9999999999);
 	}
 
+	{ // not equal
+		printTestCaseDivider();
+		print("!= boolean: true != true (%d)\n", true != true);
+		print("!= boolean: true != false (%d)\n", true != false);
+		print("!= boolean: false != true (%d)\n", false != true);
+		print("!= boolean: false != false (%d)\n", false != false);
+
+		printTestCaseDivider();
+		print("!= boolean: 10 != 10 (%d)\n", 10 != 10);
+		print("!= boolean: 10 != 20 (%d)\n", 10 != 20);
+		print("!= boolean: 20 != 10 (%d)\n", 20 != 10);
+		print("!= boolean: 20 != 20 (%d)\n", 20 != 20);
+
+		printTestCaseDivider();
+		print("!= boolean: 5.5 != 5.5 (%d)\n", 5.5 != 5.5);
+		print("!= boolean: 5.5 != 3.7 (%d)\n", 5.5 != 3.7);
+		print("!= boolean: 3.7 != 5.5 (%d)\n", 3.7 != 5.5);
+		print("!= boolean: 3.7 != 3.7 (%d)\n", 3.7 != 3.7);
+
+		printTestCaseDivider();
+		print("!= boolean: 15.0 != 15 (%d)\n", 15.0 != 15);
+		print("!= boolean: 6 != 6.0 (%d)\n", 6 != 6.0);
+		print("!= boolean: 2.0000000001 != 2 (%d)\n", 2.0000000001 != 2);
+		print("!= boolean: 1 != 0.9999999999 (%d)\n", 1 != 0.9999999999);
+	}
+
 	{ // less equal
 		printTestCaseDivider();
 		print("<= boolean: 10 <= 11 (%d)\n", 10 <= 11);

@@ -134,6 +134,26 @@ and boolean: false-false (0)
 == boolean: 2.0000000001 == 2 (0)
 == boolean: 1 == 0.9999999999 (0)
 -----
+!= boolean: true != true (0)
+!= boolean: true != false (1)
+!= boolean: false != true (1)
+!= boolean: false != false (0)
+-----
+!= boolean: 10 != 10 (0)
+!= boolean: 10 != 20 (1)
+!= boolean: 20 != 10 (1)
+!= boolean: 20 != 20 (0)
+-----
+!= boolean: 5.5 != 5.5 (0)
+!= boolean: 5.5 != 3.7 (1)
+!= boolean: 3.7 != 5.5 (1)
+!= boolean: 3.7 != 3.7 (0)
+-----
+!= boolean: 15.0 != 15 (0)
+!= boolean: 6 != 6.0 (0)
+!= boolean: 2.0000000001 != 2 (1)
+!= boolean: 1 != 0.9999999999 (1)
+-----
 <= boolean: 10 <= 11 (1)
 <= boolean: 18 <= 19.0 (1)
 <= boolean: 109.9999999999 <= 110 (1)

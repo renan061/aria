@@ -5,6 +5,7 @@
 
 #include <llvm-c/Core.h>
 
+#include "ast.h"
 #include "athreads.h"
 
 #define LLVM_DEFAULT_ADDRESS_SPACE 0
@@ -82,6 +83,7 @@ extern void ir_setup(LLVMModuleRef);
 extern LLVMValueRef ir_printf(LLVMBuilderRef, LLVMValueRef*, int);
 extern LLVMValueRef ir_malloc(LLVMBuilderRef, size_t);
 
-
+extern LLVMValueRef ir_cmp(LLVMBuilderRef, LLVMIntPredicate, LLVMRealPredicate,
+    Expression*, Expression*);
 
 #endif

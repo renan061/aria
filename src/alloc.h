@@ -6,6 +6,7 @@
 
 #define ERROR_MEMORY "not enough memory"
 
+// TODO: What?
 #define ERROR memory_error(ERROR_MEMORY)
 
 #define MALLOC(x, t)				\

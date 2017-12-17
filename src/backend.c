@@ -704,6 +704,7 @@ static void backend_expression(IRState* state, Expression* expression) {
 		case TK_OR:
 		case TK_AND:
 		case TK_EQUAL:
+		case TK_NEQUAL:
 		case TK_LEQUAL:
 		case TK_GEQUAL:
 		case '<':
@@ -851,53 +852,56 @@ static void backend_condition(IRState* state, Expression* expression,
 		case TK_EQUAL:
 			backend_expression(state, l);
 			backend_expression(state, r);
-
-			// TODO: More readable
-			if (l->type == __boolean && r->type == __boolean) {
-				expression->llvm_value = LLVMBuildICmp(state->builder,
-					LLVMIntEQ, l->llvm_value, r->llvm_value, LLVM_TEMPORARY);
-			} else if (l->type == __integer && r->type == __integer) {
-				expression->llvm_value = LLVMBuildICmp(state->builder,
-					LLVMIntEQ, l->llvm_value, r->llvm_value, LLVM_TEMPORARY);
-			} else if (l->type == __float && r->type == __float) {
-				expression->llvm_value = LLVMBuildFCmp(state->builder,
-					LLVMRealOEQ, l->llvm_value, r->llvm_value, LLVM_TEMPORARY);
-			} else {
-				UNREACHABLE;
-			}
+			expression->llvm_value = ir_cmp(
+				state->builder, LLVMIntEQ, LLVMRealOEQ, l, r
+			);
 			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
 			state_close_block(state);
 			break;
-
-		// TODO: Rename into/floato based on LLVM parameter names for the types
-		// Macro to be used by the [<=, >=, <, >] operations
-		#define BINARY_COMPARISSON(into, floato) { \
-			backend_expression(state, l); \
-			backend_expression(state, r); \
-			expression->llvm_value = \
-				(l->type == __integer && r->type == __integer) ? \
-					LLVMBuildICmp(state->builder, into, l->llvm_value, \
-						r->llvm_value, LLVM_TEMPORARY) \
-				: (l->type == __float && r->type == __float) ? \
-					LLVMBuildFCmp(state->builder, floato, l->llvm_value, \
-						r->llvm_value, LLVM_TEMPORARY) \
-				: (UNREACHABLE, NULL); \
-			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf); \
-			state_close_block(state); \
-		} \
-		// End macro
-
+		case TK_NEQUAL:
+			backend_expression(state, l);
+			backend_expression(state, r);
+			expression->llvm_value = ir_cmp(
+				state->builder, LLVMIntNE, LLVMRealONE, l, r
+			);
+			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+			state_close_block(state);
+			break;
 		case TK_LEQUAL:
-			BINARY_COMPARISSON(LLVMIntSLE, LLVMRealOLE);
+			backend_expression(state, l);
+			backend_expression(state, r);
+			expression->llvm_value = ir_cmp(
+				state->builder, LLVMIntSLE, LLVMRealOLE, l, r
+			);
+			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+			state_close_block(state);
 			break;
 		case TK_GEQUAL:
-			BINARY_COMPARISSON(LLVMIntSGE, LLVMRealOGE);
+			backend_expression(state, l);
+			backend_expression(state, r);
+			expression->llvm_value = ir_cmp(
+				state->builder, LLVMIntSGE, LLVMRealOGE, l, r
+			);
+			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+			state_close_block(state);
 			break;
 		case '<':
-			BINARY_COMPARISSON(LLVMIntSLT, LLVMRealOLT);
+			backend_expression(state, l);
+			backend_expression(state, r);
+			expression->llvm_value = ir_cmp(
+				state->builder, LLVMIntSLT, LLVMRealOLT, l, r
+			);
+			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+			state_close_block(state);
 			break;
 		case '>':
-			BINARY_COMPARISSON(LLVMIntSGT, LLVMRealOGT);
+			backend_expression(state, l);
+			backend_expression(state, r);
+			expression->llvm_value = ir_cmp(
+				state->builder, LLVMIntSGT, LLVMRealOGT, l, r
+			);
+			LLVMBuildCondBr(state->builder, expression->llvm_value, lt, lf);
+			state_close_block(state);
 			break;
 		case '+':
 		case '-':
