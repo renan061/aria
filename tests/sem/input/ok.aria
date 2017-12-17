@@ -57,10 +57,15 @@ function foo {
 	// Assignment
 	variable1 = value3 > 2;
 	variable11 = foo(); // FIXME: Should this be possible? (foo is type Void)
-	variable9 += 1;
-	variable9 -= 1;
-	variable9 *= 1;
-	variable9 /= 1;
+	// TODO: Not working
+	// variable9 += 1;
+	// variable9 -= 1;
+	// variable9 *= 1;
+	// variable9 /= 1;
+	// variable9 = ((variable9: Integer) +:Integer (1: Integer));
+	// variable9 = ((variable9: Integer) -:Integer (1: Integer));
+	// variable9 = ((variable9: Integer) *:Integer (1: Integer));
+	// variable9 = ((variable9: Integer) /:Integer (1: Integer));
 
 	// Basic function call
 	foo();

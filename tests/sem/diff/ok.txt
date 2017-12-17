@@ -1,4 +1,4 @@
-1,179d0
+1,175c1,2
 < value topValue1: Boolean = (true: Boolean)
 < value topValue2: String = ("string": String)
 < value topValue3: Integer = ((3.000000: Float) as: Integer)
@@ -54,10 +54,6 @@
 < 	variable variable12: String = (topValue2: String)
 < 	variable1: Boolean = ((value3: Float) >: Boolean ((2: Integer) as: Float))
 < 	variable11: Void = (foo(): Void)
-< 	variable9 = ((variable9: Integer) +:Integer (1: Integer));
-< 	variable9 = ((variable9: Integer) -:Integer (1: Integer));
-< 	variable9 = ((variable9: Integer) *:Integer (1: Integer));
-< 	variable9 = ((variable9: Integer) /:Integer (1: Integer));
 < 	foo(): Void
 < 	topFunction3((((42: Integer) as: Float) ==: Boolean (1.000000: Float))): Void
 < 	topFunction6(((1: Integer) as: Float), (variable12: String), ((syntacticSugarDefinition1: Boolean) or: Boolean (topFunction2(): Boolean))): Integer
@@ -178,3 +174,6 @@
 < 		value a: Void = (scoping(): Void)
 < 	}
 < }
+---
+> Assertion failed: (NULL), function sem_expression, file src/sem.c, line 650.
+> line: 204

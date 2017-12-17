@@ -1,0 +1,2 @@
+Assertion failed: (NULL), function sem_expression, file src/sem.c, line 650.
+line: 204

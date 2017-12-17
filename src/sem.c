@@ -646,6 +646,7 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 			assert(expression->type);
 			break;
 		default:
+			printf("line: %d\n", expression->line);
 			UNREACHABLE;
 		}
 		break;
