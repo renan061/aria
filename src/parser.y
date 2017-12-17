@@ -89,7 +89,8 @@
 %type <variable>
 	variable
 %type <expression>
-	expression primary_expression literal argument_list arguments
+	expression_list0 expression_list1
+	expression primary_expression literal
 %type <function_call>
 	function_call
 
@@ -563,6 +564,11 @@ literal
 		{
 			$$ = ast_expression_literal_string($1.line, $1.strval);
 		}
+	| '[' expression_list1 ']'
+		{
+			// $$ = ast_expression_literal_array($1, $2);
+			$$ = NULL; // TODO
+		}
 	;
 
 // ==================================================
@@ -572,42 +578,17 @@ literal
 // ==================================================
 
 function_call
-	: TK_LOWER_ID '(' argument_list ')'
+	: TK_LOWER_ID '(' expression_list0 ')'
 		{
 			$$ = ast_call($2, $1, $3);
 		}
-	| primary_expression '.' TK_LOWER_ID '(' argument_list ')'
+	| primary_expression '.' TK_LOWER_ID '(' expression_list0 ')'
 		{
 			$$ = ast_call_method($4, $1, $3, $5);
 		}
-	| type '(' argument_list ')'
+	| type '(' expression_list0 ')'
 		{
 			$$ = ast_call_constructor($2, $1, $3);
-		}
-	;
-
-// '(' and ')' are in function_call because of line numbers
-argument_list
-	: /* empty */
-		{
-			$$ = NULL;
-		}
-	| arguments
-		{
-			$$ = $1;
-		}
-	;
-
-arguments
-	: expression
-		{
-			$$ = $1;
-		}
-	| arguments ',' expression
-		{
-			Expression* e;
-			for (e = $$ = $1; e->next; e = e->next);
-			($3->previous = e)->next = $3; // linking
 		}
 	;
 
@@ -677,6 +658,32 @@ constructor_definition
 //	Auxiliary
 //
 // ==================================================
+
+// A comma separated list of zero or more expressions
+expression_list0
+	: /* empty */
+		{
+			$$ = NULL;
+		}
+	| expression_list1
+		{
+			$$ = $1;
+		}
+	;
+
+// A comma separated list of one or more expressions
+expression_list1
+	: expression
+		{
+			$$ = $1;
+		}
+	| expression_list1 ',' expression
+		{
+			Expression* e; // OBS: Can't use APPEND because it's a linked list
+			for (e = $$ = $1; e->next; e = e->next);
+			($3->previous = e)->next = $3; // linking
+		}
+	;
 
 // Used by variable declarations and parameters
 lower_id_type

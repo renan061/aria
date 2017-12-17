@@ -13,7 +13,7 @@
 #define NAME_MALLOC "malloc"
 
 // Internal
-LLVMValueRef
+static LLVMValueRef
     ir_malloc_t = NULL,
     ir_printf_t = NULL
 ;
