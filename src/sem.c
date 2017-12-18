@@ -571,6 +571,21 @@ static void sem_expression(SemanticState* state, Expression* expression) {
 	case EXPRESSION_LITERAL_STRING:
 		expression->type = __string;
 		break;
+	case EXPRESSION_LITERAL_ARRAY:
+		for (Expression* e = expression->literal_array; e; e = e->next) {
+			sem_expression(state, e);
+			typecheck2(&expression->literal_array, &e);
+		}
+		for (Expression* e = expression->literal_array->next; e; e = e->next) {
+			if (!typecheck2(&expression->literal_array, &e)) {
+				TODOERR(
+					expression->line,
+					"elements of an array literal must have equivalent types"
+				);
+			}
+		}
+		expression->type = ast_type_array(expression->literal_array->type);
+		break;
 	case EXPRESSION_VARIABLE:
 		sem_variable(state, &expression->variable);
 		expression->type = expression->variable->type;

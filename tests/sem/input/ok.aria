@@ -187,6 +187,13 @@ function expressions {
 	string2 := "string";
 	string3 := "s p a c e d s t r i n g";
 
+	// Literal Array
+	array1 := [1];
+	array2 := [true, false];
+	array3 := [1, 2.0, 3];
+	array4 := [1.0, 2, 3];
+	array5 := [1, 2, 3.0];
+
 	// Variable
 	var := string1;
 
