@@ -566,7 +566,11 @@ literal
 		}
 	| '[' expression_list1 ']'
 		{
-			$$ = ast_expression_literal_array($1, $2);
+			$$ = ast_expression_literal_array($1, $2, false);
+		}
+	| TK_IMMUTABLE '[' expression_list1 ']'
+		{
+			$$ = ast_expression_literal_array($2, $3, true);
 		}
 	;
 

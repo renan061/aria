@@ -267,6 +267,7 @@ static void backend_definition(IRState* state, Definition* definition) {
             );
             backend_expression(state, expression);
             LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
+            // TODO TODO
         } else if (!(variable->llvm_structure_index > -1)) {
             // Common scoped variables
             if (variable->value) { // values
@@ -608,8 +609,8 @@ static void backend_statement(IRState* state, Statement* statement) {
 static void backend_variable(IRState* state, Variable* variable) {
     switch (variable->tag) {
     case VARIABLE_ID:
-        // llvm_value dealt with already, unless if attribute
-        if (variable->llvm_structure_index > -1) { // for attributes
+        // llvm_value dealt with already, unless...
+        if (variable->llvm_structure_index > -1) { // attributes
             assert(state->self);
             variable->llvm_value = LLVMBuildStructGEP(
                 state->builder,
@@ -641,24 +642,24 @@ static void backend_expression(IRState* state, Expression* expression) {
     switch (expression->tag) {
     case EXPRESSION_LITERAL_BOOLEAN:
         expression->llvm_value =
-            LLVM_CONSTANT_BOOLEAN(expression->literal_boolean);
+            LLVM_CONSTANT_BOOLEAN(expression->literal.boolean);
         break;
     case EXPRESSION_LITERAL_INTEGER:
         expression->llvm_value =
-            LLVM_CONSTANT_INTEGER(expression->literal_integer);
+            LLVM_CONSTANT_INTEGER(expression->literal.integer);
         break;
     case EXPRESSION_LITERAL_FLOAT:
-        expression->llvm_value = LLVM_CONSTANT_FLOAT(expression->literal_float);
+        expression->llvm_value = LLVM_CONSTANT_FLOAT(expression->literal.float_);
         break;
     case EXPRESSION_LITERAL_STRING:
         expression->llvm_value = stringliteral(
-            state, expression->literal_string
+            state, expression->literal.string
         );
         break;
     case EXPRESSION_LITERAL_ARRAY: {
         // evaluating the expressions inside the array
         int n = 0;
-        for (Expression* e = expression->literal_array; e; e = e->next, n++) {
+        for (Expression* e = expression->literal.array; e; e = e->next, n++) {
             backend_expression(state, e);
         }
         // allocating memory for the array
@@ -668,7 +669,7 @@ static void backend_expression(IRState* state, Expression* expression) {
         );
         // setting the values inside the array
         n = 0;
-        for (Expression* e = expression->literal_array; e; e = e->next) {
+        for (Expression* e = expression->literal.array; e; e = e->next) {
             LLVMValueRef
                 indices[1] = {LLVM_CONSTANT_INTEGER(n++)},
                 pointer = LLVMBuildGEP(
@@ -692,7 +693,10 @@ static void backend_expression(IRState* state, Expression* expression) {
                 expression->variable->llvm_value,
                 LLVM_TEMPORARY
             );
-        } else if (expression->variable->value) { // values
+        } else if (
+            expression->variable->value &&
+            !expression->variable->global) {  // local values
+
             expression->llvm_value = expression->variable->llvm_value;
         } else { // variables
             expression->llvm_value = LLVMBuildLoad(

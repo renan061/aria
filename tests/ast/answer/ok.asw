@@ -107,6 +107,7 @@ function foo: Void {
 	a = ([(1)])
 	a = ([(true), (false)])
 	a = ([(foo()), (bar()), (baz())])
+	a = (Immutable [(-(1.000000)), (-(2.000000)), (-(3.000000)), (-(4.000000))])
 	a = (a)
 	a = (foo())
 	a = (not(true))

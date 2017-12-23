@@ -1,0 +1,5 @@
+1,4d0
+< global boolean: true -> 1
+< global integer: 1 -> 1
+< global float: 2.5 -> 2.5
+< global string: aria -> aria

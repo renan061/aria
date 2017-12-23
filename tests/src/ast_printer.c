@@ -284,24 +284,24 @@ static void print_ast_expression(Expression* expression) {
 
 	switch (expression->tag) {
 	case EXPRESSION_LITERAL_BOOLEAN:
-		printf("%s", (expression->literal_boolean) ? "true" : "false");
+		printf("%s", (expression->literal.boolean) ? "true" : "false");
 		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_INTEGER:
-		printf("%d", expression->literal_integer);
+		printf("%d", expression->literal.integer);
 		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_FLOAT:
-		printf("%f", expression->literal_float);
+		printf("%f", expression->literal.float_);
 		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_STRING:
-		printf("\"%s\"", expression->literal_string);
+		printf("\"%s\"", expression->literal.string);
 		printtype(expression->type);
 		break;
 	case EXPRESSION_LITERAL_ARRAY:
-		printf("[");
-		for (Expression* e = expression->literal_array; e;) {
+		printf("%s[", expression->literal.immutable ? "Immutable " : "");
+		for (Expression* e = expression->literal.array; e;) {
 			print_ast_expression(e);
 			if ((e = e->next)) {
 				printf(", ");

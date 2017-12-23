@@ -179,6 +179,7 @@ function foo {
 	a = [1];
 	a = [true, false];
 	a = [foo(), bar(), baz()];
+	a = Immutable [-1.0, -2.0, -3.0, -4.0];
 
 	// ExpressionVariable
 	a = a;

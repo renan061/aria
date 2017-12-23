@@ -1,0 +1,27 @@
+value boolean = true;
+value integer = 1;
+value float = 2.5;
+value string = "aria";
+value array = Immutable [1, 2, 3];
+
+function main {
+    print("global boolean: true -> %d\n", boolean);
+    print("global integer: 1 -> %d\n", integer);
+    print("global float: 2.5 -> %.1f\n", float);
+    print("global string: aria -> %s\n", string);
+
+    {
+        print("global array: [");
+        n := 3;
+        variable i = 0;
+        while i < n {
+            print("%d", array[i]);
+            i = i + 1;
+            if i < n {
+                print(", ");
+            } else {
+                print("]\n");
+            }
+        }
+    }
+}

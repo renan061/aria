@@ -193,6 +193,9 @@ function expressions {
 	array3 := [1, 2.0, 3];
 	array4 := [1.0, 2, 3];
 	array5 := [1, 2, 3.0];
+	array6 := Immutable [1, 2, 3, 4];
+	array7 := Immutable [[1], [2], [3]];
+	array8 := Immutable [[[1]], [[2]]];
 
 	// Variable
 	var := string1;
