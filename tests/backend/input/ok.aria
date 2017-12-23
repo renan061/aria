@@ -601,11 +601,41 @@ function callInteger(n: Integer): Integer {
 	return n;
 }
 
+// Auxiliary
+function printLiteralIntegerArray(array: [Integer], n: Integer) {
+	print("[");
+	variable i = 0;
+	while i < n {
+		print("%d", array[i]);
+		i = i + 1;
+		if i < n {
+			print(", ");
+		} else {
+			print("]");
+		}
+	}
+}
+
+// Auxiliary
+function printLiteralFloatArray(array: [Float], n: Integer) {
+	print("[");
+	variable i = 0;
+	while i < n {
+		print("%.1f", array[i]);
+		i = i + 1;
+		if i < n {
+			print(", ");
+		} else {
+			print("]");
+		}
+	}
+}
+
 function testExpressions {
 	testBooleans();
 
 	{ // literal integer
-		print("testIntegers\n");
+		print("testLiteralIntegers\n");
 		printTestCaseDivider();
 		print("literal integer: (%d)\n", -1);
 		print("literal integer: (%d)\n", 0);
@@ -618,7 +648,7 @@ function testExpressions {
 	}
 
 	{ // literal float
-		print("testFloats\n");
+		print("testLiteralFloats\n");
 		printTestCaseDivider();
 		print("literal float: (%f)\n", -0.583747);
 		print("literal float: (%f)\n", 00.0000);
@@ -628,11 +658,54 @@ function testExpressions {
 	}
 
 	{ // literal string
-		print("testStrings\n");
+		print("testLiteralStrings\n");
 		printTestCaseDivider();
 		print("literal string: (%s)\n", "");
 		print("literal string: (%s)\n", "string");
 		print("literal string: (%s)\n", "new\nline");
+		printTestDivider();
+	}
+
+	{ // literal array
+		print("testLiteralArrays\n");
+		printTestCaseDivider();
+		{
+			a := [1];
+			print("literal integer array: ");
+			printLiteralIntegerArray(a, 1);
+			print("\n");
+		}
+		{
+			b := [10, 20];
+			print("literal integer array: ");
+			printLiteralIntegerArray(b, 2);
+			print("\n");
+		}
+		{	c := [100, 200, 300];
+			print("literal integer array: ");
+			printLiteralIntegerArray(c, 3);
+			print("\n");
+		}
+		{
+			d := [1000, 2000.0, 3000, 4000];
+			print("literal float array: ");
+			printLiteralFloatArray(d, 4);		
+			print("\n");
+		}
+		{
+			e := [[0], [1, 2], [3, 4, 5], [6, 7, 8, 9]];
+			n := 4;
+			variable i = 0;
+			print("literal array of arrays: [");
+			printLiteralIntegerArray(e[0], 1);
+			print(", ");
+			printLiteralIntegerArray(e[1], 2);
+			print(", ");
+			printLiteralIntegerArray(e[2], 3);
+			print(", ");
+			printLiteralIntegerArray(e[3], 4);
+			print("]\n");
+		}
 		printTestDivider();
 	}
 
