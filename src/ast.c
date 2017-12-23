@@ -457,7 +457,8 @@ Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_boolean = literal_boolean;
+	expression->literal.immutable = true;
+	expression->literal.boolean = literal_boolean;
 	return expression;
 }
 
@@ -469,7 +470,8 @@ Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_integer = literal_integer;
+	expression->literal.immutable = true;
+	expression->literal.integer = literal_integer;
 	return expression;
 }
 
@@ -481,7 +483,8 @@ Expression* ast_expression_literal_float(Line ln, double literal_float) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_float = literal_float;
+	expression->literal.immutable = true;
+	expression->literal.float_ = literal_float;
 	return expression;
 }
 
@@ -493,7 +496,23 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_string = literal_string;
+	expression->literal.immutable = true;
+	expression->literal.string = literal_string;
+	return expression;
+}
+
+Expression* ast_expression_literal_array(Line ln, Expression* elements,
+	bool immutable) {
+
+	Expression* expression;
+	MALLOC(expression, Expression);
+	expression->tag = EXPRESSION_LITERAL_ARRAY;
+	expression->line = ln;
+	expression->previous = expression->next = NULL;
+	expression->type = NULL;
+	expression->llvm_value = NULL;
+	expression->literal.immutable = immutable;
+	expression->literal.array = elements;
 	return expression;
 }
 

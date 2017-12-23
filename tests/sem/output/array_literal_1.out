@@ -1,0 +1,2 @@
+line 2:
+	semantic error: elements of an array literal must have equivalent types
