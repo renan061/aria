@@ -78,6 +78,60 @@ static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // ==================================================
 //
+//  Globals
+//
+// ==================================================
+
+typedef struct Global Global;
+struct Global {
+    Global *previous, *next;
+    Definition* value;
+};
+
+static Global* globals = NULL;
+
+// adds global value to the globals linked list
+static void addgval(Definition* value) {
+    Global* global;
+    MALLOC(global, Global);
+    global->next = NULL;
+    global->value = value;
+
+    if (!globals) {
+        globals = global;
+        globals->previous = NULL;
+    } else {
+        Global* g = globals;
+        for (; g->next; g = g->next);
+        g->next = global;
+        global->previous = g;
+    }
+}
+
+// initializes all global values (should be called in the module's initializer)
+static void initgvals(IRState* state) {
+    for (Global* g = globals; g; g = g->next) {
+        Variable* variable = g->value->variable.variable;
+        Expression* expression = g->value->variable.expression;
+        // declare
+        variable->llvm_value = LLVMAddGlobal(
+            state->module, llvm_type(variable->type), variable->id->name
+        );
+        // initialize with zero value
+        LLVMSetInitializer( // FIXME: Why can't I just declare?
+            variable->llvm_value, zerovalue(state, variable->type)
+        );
+        // evaluate
+        backend_expression(state, expression);
+        // store
+        LLVMBuildStore(
+            state->builder, expression->llvm_value, variable->llvm_value
+        );
+    }
+}
+
+// ==================================================
+//
 //  TODO: Misc
 //
 // ==================================================
@@ -259,16 +313,11 @@ static void backend_definition(IRState* state, Definition* definition) {
         Expression* expression = definition->variable.expression;
 
         if (variable->global) {
-            // Globals
-            variable->llvm_value = LLVMAddGlobal(
-                state->module,
-                llvm_type(variable->type),
-                variable->id->name
-            );
-            backend_expression(state, expression);
-            LLVMSetInitializer(variable->llvm_value, expression->llvm_value);
-            // TODO TODO
-        } else if (!(variable->llvm_structure_index > -1)) {
+            addgval(definition);
+            break;    
+        }
+
+        if (!(variable->llvm_structure_index > -1)) { // TODO: Refactor
             // Common scoped variables
             if (variable->value) { // values
                 backend_expression(state, expression);
@@ -302,6 +351,7 @@ static void backend_definition(IRState* state, Definition* definition) {
         // TODO: Remove gambiarra
         if (!strcmp(definition->function.id->name, "main")) {
             state->main = true;
+            initgvals(state);
         }
 
         backend_block(state, definition->function.block);
@@ -1140,7 +1190,7 @@ static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], unsigned int length,
 // ==================================================
 
 // TODO: Find a better way to write this...
-// TODO: Read about llvm zeroinitalizer
+// TODO: Read about llvm zeroinitalizer (ConstantAggregateZero ?)
 static LLVMValueRef zerovalue(IRState* state, Type* type) {
     switch (type->tag) {
     case TYPE_VOID:
