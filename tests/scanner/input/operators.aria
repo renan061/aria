@@ -1,0 +1,29 @@
+// Arithmetic operators
+=
++
+-
+*
+/
+
+// Comparison operators
+==
+!=
+<
+>
+<=
+>=
+
+// Logical operators
+not
+and
+or
+
+// Compound assignment operators
+:=
++=
+-=
+*=
+/=
+
+// Member operators
+.

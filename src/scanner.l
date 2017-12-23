@@ -54,9 +54,9 @@ static unsigned int line = 1; // current line number
 
 // auxiliary functions
 static void idaction();
-static const char* checkunique(const char* str);
-static const char* copystr(const char* str, size_t len);
-static const char* convertescapes(const char* str, size_t len);
+static const char* checkunique(const char*);
+static const char* copystr(const char*, size_t);
+static const char* convertescapes(const char*, size_t);
 
 %}
 
@@ -91,32 +91,38 @@ string 		"\""(\\.|[^\\"])*"\""
 {space} 		; /* empty */
 {newline}		line++;
 
-"Immutable"		return yylval.ival = line, TK_IMMUTABLE;
-"value"			return yylval.ival = line, TK_VALUE;
-"variable"		return yylval.ival = line, TK_VARIABLE;
-"function"		return yylval.ival = line, TK_FUNCTION;
-":="			return yylval.ival = line, TK_DEFINE; // TODO: change semantic name
-"while"			return yylval.ival = line, TK_WHILE;
-"wait"			return yylval.ival = line, TK_WAIT;
-"in"			return yylval.ival = line, TK_IN;
-"signal"		return yylval.ival = line, TK_SIGNAL;
-"broadcast"		return yylval.ival = line, TK_BROADCAST;
-"return"		return yylval.ival = line, TK_RETURN;
-"if"			return yylval.ival = line, TK_IF;
-"else"			return yylval.ival = line, TK_ELSE;
-"for"			return yylval.ival = line, TK_FOR;
-"spawn"			return yylval.ival = line, TK_SPAWN;
-"or"			return yylval.ival = line, TK_OR;
-"and"			return yylval.ival = line, TK_AND;
-"=="			return yylval.ival = line, TK_EQUAL;
+"=="			return yylval.ival = line, TK_EQUAL; // operators
+"!="			return yylval.ival = line, TK_NEQUAL;
 "<="			return yylval.ival = line, TK_LEQUAL;
 ">="			return yylval.ival = line, TK_GEQUAL;
 "not"			return yylval.ival = line, TK_NOT;
-"true"			return yylval.ival = line, TK_TRUE;
+"and"			return yylval.ival = line, TK_AND;
+"or"			return yylval.ival = line, TK_OR;
+":="			return yylval.ival = line, TK_DEF_ASG;
+"+="			return yylval.ival = line, TK_ADD_ASG;
+"-="			return yylval.ival = line, TK_SUB_ASG;
+"*="			return yylval.ival = line, TK_MUL_ASG;
+"/="			return yylval.ival = line, TK_DIV_ASG;
+
+"broadcast"		return yylval.ival = line, TK_BROADCAST; // keywords
+"else"			return yylval.ival = line, TK_ELSE;
 "false"			return yylval.ival = line, TK_FALSE;
+"for"			return yylval.ival = line, TK_FOR;
+"function"		return yylval.ival = line, TK_FUNCTION;
+"if"			return yylval.ival = line, TK_IF;
+"Immutable"		return yylval.ival = line, TK_IMMUTABLE;
+"in"			return yylval.ival = line, TK_IN;
+"initializer"	return yylval.ival = line, TK_INITIALIZER;
 "monitor"		return yylval.ival = line, TK_MONITOR;
 "private"		return yylval.ival = line, TK_PRIVATE;
-"initializer"	return yylval.ival = line, TK_INITIALIZER;
+"return"		return yylval.ival = line, TK_RETURN;
+"signal"		return yylval.ival = line, TK_SIGNAL;
+"spawn"			return yylval.ival = line, TK_SPAWN;
+"true"			return yylval.ival = line, TK_TRUE;
+"value"			return yylval.ival = line, TK_VALUE;
+"variable"		return yylval.ival = line, TK_VARIABLE;
+"wait"			return yylval.ival = line, TK_WAIT;
+"while"			return yylval.ival = line, TK_WHILE;
 
 {lower-id}		return idaction(), TK_LOWER_ID;
 {upper-id}		return idaction(), TK_UPPER_ID;

@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 		char* flag = argv[i + 2];
 
 		if (flag[0] != '-') {
-			printf("error: invalid flag\n");
+			printf("error: invalid flag (see 'aria -h')\n");
 			return 1;
 		}
 
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
 			run = build = true;
 			break;
 		default:
-			printf("error: invalid flag\n");
+			printf("error: invalid flag (see 'aria -h')\n");
 			return 1;	
 		}
 	}
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 
 	if (build) {
 		if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {
-			printf("Error writing bitcode to file\n");
+			printf("error: couldn't write bitcode to file\n");
 			exit(1);
 		}
 	}
@@ -95,7 +95,7 @@ static void checkhelp(int argc, char* argv[]) {
 
 static void checkargs(int argc, char* argv[]) {
 	if (argc < 2) {
-		printf("error: missing arguments to main\n");
+		printf("error: missing arguments to main (see 'aria -h')\n");
 		exit(1);
 	}
 }

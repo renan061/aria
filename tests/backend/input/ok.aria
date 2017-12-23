@@ -376,6 +376,32 @@ function testBooleans {
 		print("== boolean: 1 == 0.9999999999 (%d)\n", 1 == 0.9999999999);
 	}
 
+	{ // not equal
+		printTestCaseDivider();
+		print("!= boolean: true != true (%d)\n", true != true);
+		print("!= boolean: true != false (%d)\n", true != false);
+		print("!= boolean: false != true (%d)\n", false != true);
+		print("!= boolean: false != false (%d)\n", false != false);
+
+		printTestCaseDivider();
+		print("!= boolean: 10 != 10 (%d)\n", 10 != 10);
+		print("!= boolean: 10 != 20 (%d)\n", 10 != 20);
+		print("!= boolean: 20 != 10 (%d)\n", 20 != 10);
+		print("!= boolean: 20 != 20 (%d)\n", 20 != 20);
+
+		printTestCaseDivider();
+		print("!= boolean: 5.5 != 5.5 (%d)\n", 5.5 != 5.5);
+		print("!= boolean: 5.5 != 3.7 (%d)\n", 5.5 != 3.7);
+		print("!= boolean: 3.7 != 5.5 (%d)\n", 3.7 != 5.5);
+		print("!= boolean: 3.7 != 3.7 (%d)\n", 3.7 != 3.7);
+
+		printTestCaseDivider();
+		print("!= boolean: 15.0 != 15 (%d)\n", 15.0 != 15);
+		print("!= boolean: 6 != 6.0 (%d)\n", 6 != 6.0);
+		print("!= boolean: 2.0000000001 != 2 (%d)\n", 2.0000000001 != 2);
+		print("!= boolean: 1 != 0.9999999999 (%d)\n", 1 != 0.9999999999);
+	}
+
 	{ // less equal
 		printTestCaseDivider();
 		print("<= boolean: 10 <= 11 (%d)\n", 10 <= 11);
@@ -575,11 +601,41 @@ function callInteger(n: Integer): Integer {
 	return n;
 }
 
+// Auxiliary
+function printLiteralIntegerArray(array: [Integer], n: Integer) {
+	print("[");
+	variable i = 0;
+	while i < n {
+		print("%d", array[i]);
+		i = i + 1;
+		if i < n {
+			print(", ");
+		} else {
+			print("]");
+		}
+	}
+}
+
+// Auxiliary
+function printLiteralFloatArray(array: [Float], n: Integer) {
+	print("[");
+	variable i = 0;
+	while i < n {
+		print("%.1f", array[i]);
+		i = i + 1;
+		if i < n {
+			print(", ");
+		} else {
+			print("]");
+		}
+	}
+}
+
 function testExpressions {
 	testBooleans();
 
 	{ // literal integer
-		print("testIntegers\n");
+		print("testLiteralIntegers\n");
 		printTestCaseDivider();
 		print("literal integer: (%d)\n", -1);
 		print("literal integer: (%d)\n", 0);
@@ -592,7 +648,7 @@ function testExpressions {
 	}
 
 	{ // literal float
-		print("testFloats\n");
+		print("testLiteralFloats\n");
 		printTestCaseDivider();
 		print("literal float: (%f)\n", -0.583747);
 		print("literal float: (%f)\n", 00.0000);
@@ -602,11 +658,54 @@ function testExpressions {
 	}
 
 	{ // literal string
-		print("testStrings\n");
+		print("testLiteralStrings\n");
 		printTestCaseDivider();
 		print("literal string: (%s)\n", "");
 		print("literal string: (%s)\n", "string");
 		print("literal string: (%s)\n", "new\nline");
+		printTestDivider();
+	}
+
+	{ // literal array
+		print("testLiteralArrays\n");
+		printTestCaseDivider();
+		{
+			a := [1];
+			print("literal integer array: ");
+			printLiteralIntegerArray(a, 1);
+			print("\n");
+		}
+		{
+			b := [10, 20];
+			print("literal integer array: ");
+			printLiteralIntegerArray(b, 2);
+			print("\n");
+		}
+		{	c := [100, 200, 300];
+			print("literal integer array: ");
+			printLiteralIntegerArray(c, 3);
+			print("\n");
+		}
+		{
+			d := [1000, 2000.0, 3000, 4000];
+			print("literal float array: ");
+			printLiteralFloatArray(d, 4);		
+			print("\n");
+		}
+		{
+			e := [[0], [1, 2], [3, 4, 5], [6, 7, 8, 9]];
+			n := 4;
+			variable i = 0;
+			print("literal array of arrays: [");
+			printLiteralIntegerArray(e[0], 1);
+			print(", ");
+			printLiteralIntegerArray(e[1], 2);
+			print(", ");
+			printLiteralIntegerArray(e[2], 3);
+			print(", ");
+			printLiteralIntegerArray(e[3], 4);
+			print("]\n");
+		}
 		printTestDivider();
 	}
 

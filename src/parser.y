@@ -54,9 +54,10 @@
 // Tokens
 %token <ival>
 	'{' '}' '[' ']' '(' ')' '=' ';'
-	TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_DEFINE TK_WHILE TK_WAIT
+	TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_WHILE TK_WAIT
 	TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
 	TK_FALSE TK_MONITOR TK_PRIVATE TK_INITIALIZER
+	TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -84,11 +85,12 @@
 %type <block>
 	block block_content_list block_content else
 %type <statement>
-	statement simple_statement compound_statement
+	statement simple_statement compound_statement statement_assignment
 %type <variable>
 	variable
 %type <expression>
-	expression primary_expression literal argument_list arguments
+	expression_list0 expression_list1
+	expression primary_expression literal
 %type <function_call>
 	function_call
 
@@ -325,9 +327,9 @@ statement
 	;
 
 simple_statement
-	: variable '=' expression
+	: statement_assignment
 		{
-			$$ = ast_statement_assignment($2, $1, $3);
+			$$ = $1;
 		}
 	| function_call
 		{
@@ -413,6 +415,29 @@ else
 		}
 	;
 
+statement_assignment
+	: variable '=' expression
+		{
+			$$ = ast_statement_assignment($2, '=', $1, $3);
+		}
+	| variable TK_ADD_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_ADD_ASG, $1, $3);
+		}
+	| variable TK_SUB_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_SUB_ASG, $1, $3);
+		}
+	| variable TK_MUL_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_MUL_ASG, $1, $3);
+		}
+	| variable TK_DIV_ASG expression
+		{
+			$$ = ast_statement_assignment($2, TK_DIV_ASG, $1, $3);
+		}
+	;
+
 // ==================================================
 //
 //	Variable
@@ -448,6 +473,10 @@ expression
 	| expression TK_EQUAL expression
 		{
 			$$ = ast_expression_binary($2, TK_EQUAL, $1, $3);
+		}
+	| expression TK_NEQUAL expression
+		{
+			$$ = ast_expression_binary($2, TK_NEQUAL, $1, $3);
 		}
 	| expression TK_LEQUAL expression
 		{
@@ -535,6 +564,14 @@ literal
 		{
 			$$ = ast_expression_literal_string($1.line, $1.strval);
 		}
+	| '[' expression_list1 ']'
+		{
+			$$ = ast_expression_literal_array($1, $2, false);
+		}
+	| TK_IMMUTABLE '[' expression_list1 ']'
+		{
+			$$ = ast_expression_literal_array($2, $3, true);
+		}
 	;
 
 // ==================================================
@@ -544,42 +581,17 @@ literal
 // ==================================================
 
 function_call
-	: TK_LOWER_ID '(' argument_list ')'
+	: TK_LOWER_ID '(' expression_list0 ')'
 		{
 			$$ = ast_call($2, $1, $3);
 		}
-	| primary_expression '.' TK_LOWER_ID '(' argument_list ')'
+	| primary_expression '.' TK_LOWER_ID '(' expression_list0 ')'
 		{
 			$$ = ast_call_method($4, $1, $3, $5);
 		}
-	| type '(' argument_list ')'
+	| type '(' expression_list0 ')'
 		{
 			$$ = ast_call_constructor($2, $1, $3);
-		}
-	;
-
-// '(' and ')' are in function_call because of line numbers
-argument_list
-	: /* empty */
-		{
-			$$ = NULL;
-		}
-	| arguments
-		{
-			$$ = $1;
-		}
-	;
-
-arguments
-	: expression
-		{
-			$$ = $1;
-		}
-	| arguments ',' expression
-		{
-			Expression* e;
-			for (e = $$ = $1; e->next; e = e->next);
-			($3->previous = e)->next = $3; // linking
 		}
 	;
 
@@ -649,6 +661,32 @@ constructor_definition
 //	Auxiliary
 //
 // ==================================================
+
+// A comma separated list of zero or more expressions
+expression_list0
+	: /* empty */
+		{
+			$$ = NULL;
+		}
+	| expression_list1
+		{
+			$$ = $1;
+		}
+	;
+
+// A comma separated list of one or more expressions
+expression_list1
+	: expression
+		{
+			$$ = $1;
+		}
+	| expression_list1 ',' expression
+		{
+			Expression* e; // OBS: Can't use APPEND because it's a linked list
+			for (e = $$ = $1; e->next; e = e->next);
+			($3->previous = e)->next = $3; // linking
+		}
+	;
 
 // Used by variable declarations and parameters
 lower_id_type
@@ -738,7 +776,7 @@ block_variable_definition
 
 		a := 1		->		value a: ? = 1
 	*/
-	| TK_LOWER_ID TK_DEFINE expression
+	| TK_LOWER_ID TK_DEF_ASG expression
 		{
 			Variable* variable = ast_variable_id($1);
 			variable->value = true;

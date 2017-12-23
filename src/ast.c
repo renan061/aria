@@ -1,9 +1,11 @@
 #include <assert.h>
-#include <string.h>
 #include <stdio.h> // TODO: Remove
+#include <string.h>
 
-#include "ast.h"
 #include "alloc.h"
+#include "ast.h"
+#include "errs.h"
+#include "parser.h" // for the tokens
 #include "scanner.h" // for native_types
 
 // ==================================================
@@ -263,13 +265,42 @@ Block* ast_block_statement(Statement* statement) {
 //
 // ==================================================
 
-Statement* ast_statement_assignment(Line ln, Variable* var, Expression* exp) {
+Statement* ast_statement_assignment(Line ln, Token t, Variable* v, Expression* e) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_ASSIGNMENT;
 	statement->line = ln;
-	statement->assignment.variable = var;
-	statement->assignment.expression = exp;
+
+	switch (t) {
+	case '=':
+		break;
+	case TK_ADD_ASG:
+		/* fallthrough */
+	case TK_SUB_ASG:
+		/* fallthrough */
+	case TK_MUL_ASG:
+		/* fallthrough */
+	case TK_DIV_ASG: {
+		Token op;
+		switch (t) {
+		case TK_ADD_ASG: op = '+'; break;
+		case TK_SUB_ASG: op = '-'; break;
+		case TK_MUL_ASG: op = '*'; break;
+		case TK_DIV_ASG: op = '/'; break;
+		default: UNREACHABLE;
+		}
+
+		Variable* copy = v;  // TODO: copy function for Variable
+		Expression* expvar = ast_expression_variable(copy);
+		e = ast_expression_binary(ln, op, expvar, e);
+		break;
+	}
+	default:
+		UNREACHABLE;
+	}
+
+	statement->assignment.variable = v;
+	statement->assignment.expression = e;
 	return statement;
 }
 
@@ -426,7 +457,8 @@ Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_boolean = literal_boolean;
+	expression->literal.immutable = true;
+	expression->literal.boolean = literal_boolean;
 	return expression;
 }
 
@@ -438,7 +470,8 @@ Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_integer = literal_integer;
+	expression->literal.immutable = true;
+	expression->literal.integer = literal_integer;
 	return expression;
 }
 
@@ -450,7 +483,8 @@ Expression* ast_expression_literal_float(Line ln, double literal_float) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_float = literal_float;
+	expression->literal.immutable = true;
+	expression->literal.float_ = literal_float;
 	return expression;
 }
 
@@ -462,7 +496,23 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->literal_string = literal_string;
+	expression->literal.immutable = true;
+	expression->literal.string = literal_string;
+	return expression;
+}
+
+Expression* ast_expression_literal_array(Line ln, Expression* elements,
+	bool immutable) {
+
+	Expression* expression;
+	MALLOC(expression, Expression);
+	expression->tag = EXPRESSION_LITERAL_ARRAY;
+	expression->line = ln;
+	expression->previous = expression->next = NULL;
+	expression->type = NULL;
+	expression->llvm_value = NULL;
+	expression->literal.immutable = immutable;
+	expression->literal.array = elements;
 	return expression;
 }
 

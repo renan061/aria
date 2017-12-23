@@ -131,11 +131,17 @@ function foo {
 // ==================================================
 
 function foo {
+	// Define variable statement
+	b := 2;
+
 	// Declared variable assignment
 	a = 1;
 
-	// Define variable statement
-	b := 2;
+	// Compound assignment operators
+	a += 1;
+	a -= 1;
+	a *= 1;
+	a /= 1;
 
 	foo();
 
@@ -210,6 +216,12 @@ function foo {
 
 	// And
 	a := true and false;
+
+	// ==
+	a := true == false;
+
+	// !=
+	a := true != false;
 	
 	// <=
 	a := 1 <= 2;
@@ -286,6 +298,12 @@ function foo {
 
 	// String
 	a := "string";
+
+	// Array
+	a := [1];
+	a := [1, 2];
+	a := [1, 2, 3];
+	a := Immutable [-1, -2, -3, -4];
 }
 
 // ==================================================

@@ -22,22 +22,6 @@ monitor variables: float value 2.5
 monitor variables: change (15 and 15.5)
 monitor variables: integer value 15
 monitor variables: float value 15.5
------
-mutex: entering
-mutex: step 1
-mutex: leaving
-mutex: entering
-mutex: step 2
-mutex: leaving
-mutex: entering
-mutex: step 3
-mutex: leaving
-mutex: entering
-mutex: step 4
-mutex: leaving
-mutex: entering
-mutex: step 5
-mutex: leaving
 
 ----------------------------------------
 
