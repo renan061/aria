@@ -7,7 +7,6 @@ broadcast
 else
 false
 for
-for
 function
 if
 Immutable
@@ -30,7 +29,6 @@ TK_AND
 TK_BROADCAST
 TK_ELSE
 TK_FALSE
-TK_FOR
 TK_FOR
 TK_FUNCTION
 TK_IF

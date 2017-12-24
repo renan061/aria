@@ -83,10 +83,11 @@ scanner_test: errs vector parser scanner ast
 	@- lua tests/tester.lua tests/scanner bin/scannertest
 
 parser_test: errs vector parser scanner ast
-	@- $(CC) $(CFLAGS) -o bin/parsertest							\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
+	@- $(CC) $(CFLAGS) -o bin/parsertest \
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o \
 	tests/src/parser_test.c -Isrc/
 
+	@- lua tests/tester.lua tests/parser bin/parsertest
 	@- sh tests/test.sh parser
 
 ast_test: errs vector parser scanner ast

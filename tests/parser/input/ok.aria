@@ -133,61 +133,6 @@ function foo {
 function foo {
 	// Define variable statement
 	b := 2;
-
-	// Declared variable assignment
-	a = 1;
-
-	// Compound assignment operators
-	a += 1;
-	a -= 1;
-	a *= 1;
-	a /= 1;
-
-	foo();
-
-	// Wait-for-in
-	wait for true in queue;
-
-	// Signal
-	signal queue;
-
-	// Broadcast
-	broadcast queue;
-
-	// Return without an expression
-	return;
-
-	// Return with an expression
-	return true;
-
-	// If
-	if true {}
-
-	// If-ElseIf
-	if true {} else if false {}
-
-	// If-Else
-	if true {} else {}
-
-	// If-ElseIf-Else
-	if true {} else if false {} else {}
-
-	// While 
-	while true {}
-
-	// For
-	// TODO
-
-	// Spawn
-	spawn {
-		print("spawn");
-	}
-
-	// Block
-	{
-		block := "block";
-		print(block);
-	}
 }
 
 // ==================================================
