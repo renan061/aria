@@ -1,0 +1,50 @@
+--------------------------------------------------------------------------------
+-- Title
+Arithmetic operators
+-- Input
+= + - * /
+-- Output
+=
++
+-
+*
+/
+--------------------------------------------------------------------------------
+-- Title
+Comparison operators
+-- Input
+== != < > <= >=
+-- Output
+TK_EQUAL
+TK_NEQUAL
+<
+>
+TK_LEQUAL
+TK_GEQUAL
+--------------------------------------------------------------------------------
+-- Title
+Logical operators
+-- Input
+not and or
+-- Output
+TK_NOT
+TK_AND
+TK_OR
+--------------------------------------------------------------------------------
+-- Title
+Compound assignment operators
+-- Input
+:= += -= *= /=
+-- Output
+TK_DEF_ASG
+TK_ADD_ASG
+TK_SUB_ASG
+TK_MUL_ASG
+TK_DIV_ASG
+--------------------------------------------------------------------------------
+-- Title
+Member operators
+-- Input
+.
+-- Output
+.

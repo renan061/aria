@@ -1,0 +1,68 @@
+--------------------------------------------------------------------------------
+-- Title
+Uppercase IDs
+-- Input
+Id AnotherId Underscore_id IdWithNum3er5 WithNums19_AndUndersc0r3
+-- Output
+TK_UPPER_ID - Id
+TK_UPPER_ID - AnotherId
+TK_UPPER_ID - Underscore_id
+TK_UPPER_ID - IdWithNum3er5
+TK_UPPER_ID - WithNums19_AndUndersc0r3
+--------------------------------------------------------------------------------
+-- Title
+Lowercase IDs
+-- Input
+id anotherId underscore_id idWithNum3er5 withNums19_AndUndersc0r3
+-- Output
+TK_LOWER_ID - id
+TK_LOWER_ID - anotherId
+TK_LOWER_ID - underscore_id
+TK_LOWER_ID - idWithNum3er5
+TK_LOWER_ID - withNums19_AndUndersc0r3
+--------------------------------------------------------------------------------
+-- Title
+Mixed valid and invalid ids
+-- Input
+A98hwedsfs
+Nasdk123
+Zs9d801
+a_12397asda__
+n123has_Sx
+z123_sada_asD_
+as______
+___
+_
+AzN18_
+nA0_z
+_a_Z09
+Az123_as!asd12_@3fl
+7_aojh
+#sodf
+-- Output
+TK_UPPER_ID - A98hwedsfs
+TK_UPPER_ID - Nasdk123
+TK_UPPER_ID - Zs9d801
+TK_LOWER_ID - a_12397asda__
+TK_LOWER_ID - n123has_Sx
+TK_LOWER_ID - z123_sada_asD_
+TK_LOWER_ID - as______
+_
+_
+_
+_
+TK_UPPER_ID - AzN18_
+TK_LOWER_ID - nA0_z
+_
+TK_LOWER_ID - a_Z09
+TK_UPPER_ID - Az123_as
+!
+TK_LOWER_ID - asd12_
+@
+TK_INTEGER - 3
+TK_LOWER_ID - fl
+TK_INTEGER - 7
+_
+TK_LOWER_ID - aojh
+#
+TK_LOWER_ID - sodf

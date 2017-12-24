@@ -61,17 +61,17 @@ function runTest(cmd, test)
     file:close()
 
     -- executes the test command and saves the output
-    local stdout = assert(io.popen(cmd .. " " .. inputFile))
+    local stdout = assert(io.popen(cmd .. " " .. inputFile .. " 2>&1"))
     local output = stdout:read("*all"):gsub("\t", "    ") -- TODO: remove \t sub
     stdout:close()
 
     -- compares the expected output with the actual output
     local ok = output == test["output"]
     if not ok then
-        print("// expected")
-        print(test["output"])
-        print("// got")
-        print(output)
+        io.write("// expected\n")
+        io.write(test["output"])
+        io.write("// got\n")
+        io.write(output)
     end
 
     os.execute("rm -f " .. inputFile)
@@ -86,8 +86,7 @@ for _, test in ipairs(listTests(directory)) do
     local testCases = readTestCases(test)
     for title, case in pairs(testCases) do
         if not runTest(binary, case) then
-            print("*\n")
-            print("In \"" .. test .. "\" failed \"" .. title .. "\"\n")
+            io.write("\nIn \"" .. test .. "\" failed \"" .. title .. "\"\n")
             return false
         end
     end

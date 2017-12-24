@@ -69,18 +69,18 @@ backend:
 # ==================================================
 
 vector_test: errs vector
-	@- $(CC) $(CFLAGS) -o bin/vectortest	\
-	obj/errs.o obj/vector.o					\
+	@- $(CC) $(CFLAGS) -o bin/vectortest \
+	obj/errs.o obj/vector.o \
 	tests/src/vector_test.c -Isrc/
 	
 	@- ./bin/vectortest
 
 scanner_test: errs vector parser scanner ast
-	@- $(CC) $(CFLAGS) -o bin/scannertest							\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
+	@- $(CC) $(CFLAGS) -o bin/scannertest \
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o \
 	tests/src/scanner_test.c -Isrc/
 
-	@- sh tests/test.sh scanner
+	@- lua tests/tester.lua tests/scanner bin/scannertest
 
 parser_test: errs vector parser scanner ast
 	@- $(CC) $(CFLAGS) -o bin/parsertest							\
