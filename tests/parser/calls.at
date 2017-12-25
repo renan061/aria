@@ -1,0 +1,23 @@
+--------------------------------------------------------------------------------
+-- Title
+Function calls
+-- Input
+function main {
+    // simple function call
+    foo();
+    foo(1);
+    foo(1, 2);
+    foo(1, 2, 3);
+    // constructor call
+    Type();
+    Type(1);
+    Type(1, 2);
+    Type(1, 2, 3);
+    // method call
+    a.foo();
+    a.foo(1);
+    a.foo(1, 2);
+    a.foo(1, 2, 3);
+}
+-- Output
+OK

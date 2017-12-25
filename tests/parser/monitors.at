@@ -1,0 +1,68 @@
+--------------------------------------------------------------------------------
+-- Title
+Empty monitor
+-- Input
+monitor Monitor {}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single property monitor
+-- Input
+monitor Monitor {
+    variable a: Integer;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Mixed monitor (properties, methods and constructor)
+-- Input
+monitor Monitor {
+    value x = 1;
+    value y: Integer = 1;
+
+    variable b: Integer;
+
+    function foo {}
+
+    initializer {}
+
+    variable c: Integer;
+
+    function bar {}
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Private method definition
+-- Input
+monitor Monitor {
+    function foo {}
+    
+    private function bar {}
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Constructor definition
+-- Input
+monitor Monitor {
+    initializer(a: Int) {
+        print(a);
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Invalid immutable qualifier with monitors
+-- Input
+function foo {
+    m := Immutable M();
+}
+-- Output
+line 0:
+    parser error: syntax error

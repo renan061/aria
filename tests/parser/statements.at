@@ -84,8 +84,23 @@ line 0:
 Invalid "for" ;
 -- Input
 function main {
-    for value i = 0; i < n; i = i + 1; {}
+    for value i = 0; i < n; i = i + 1 /* Here */; {}
 }
 -- Output
 line 0:
     parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Variable assignment
+-- Input
+function main {
+    // lower ID Variable
+    a = 1;
+    // indexed variable
+    a[0] = 1;
+    a[0][1] = 1;
+    a[0][1] = 1;
+    a[0][1][2] = 1;
+}
+-- Output
+OK

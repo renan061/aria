@@ -88,7 +88,6 @@ parser_test: errs vector parser scanner ast
 	tests/src/parser_test.c -Isrc/
 
 	@- lua tests/tester.lua tests/parser bin/parsertest
-	@- sh tests/test.sh parser
 
 ast_test: errs vector parser scanner ast
 	@- $(CC) $(CFLAGS) -o bin/asttest								\

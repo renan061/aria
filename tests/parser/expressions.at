@@ -1,0 +1,90 @@
+--------------------------------------------------------------------------------
+-- Title
+Expressions
+-- Input
+function main {
+    // or
+    a := true or false;
+    // and
+    a := true and false;
+    // ==
+    a := true == false;
+    // !=
+    a := true != false;
+    // <=
+    a := 1 <= 2;
+    // >=
+    a := 1 >= 2;
+    // <
+    a := 1 < 2;
+    // >
+    a := 1 > 2;
+    // +
+    a := 1 + 2;
+    // -
+    a := 1 - 2;
+    // *
+    a := 1 * 2;
+    // /
+    a := 1 / 2;
+    // - (unary)
+    a := -1;
+    // not
+    a := not true;
+    // literal boolean
+    a := true;
+    // literal false
+    a := false;
+    // literal integer
+    a := 1;
+    // literal float
+    a := 1.5;
+    // literal string
+    a := "string";
+    // literal array
+    a := [1];
+    a := [1, 2];
+    a := [1, 2, 3];
+    a := Immutable [-1, -2, -3, -4];
+    // variable
+    a := b;
+    // function call
+    a := foo();
+    // parenthesized
+    a := (1 - 1);
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Miscellaneous
+-- Input
+function main {
+    a := true or false or 1 > 2;
+    a := not 1 <= 3 and false and 1 < 2 or 1 >= 2;
+    a := (1 + 3) - 2 / -5;
+    a := --5;
+    a := not not false;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Invalid comparison
+-- Input
+function main {
+    a := true == false == false;
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Invalid empty array literal
+-- Input
+function main {
+    a := [];
+}
+-- Output
+line 0:
+    parser error: syntax error
