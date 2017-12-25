@@ -95,6 +95,7 @@ ast_test: errs vector parser scanner ast
 	tests/src/ast_test.c -Isrc/
 
 	@- sh tests/test.sh ast
+	@- lua tests/tester.lua tests/ast bin/asttest
 
 sem_test: errs vector parser scanner ast sem
 	@- $(CC) $(CFLAGS) -o bin/semtest								\

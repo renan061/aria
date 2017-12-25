@@ -80,64 +80,6 @@ function foo {
 
 	// ==================================================
 	//
-	//	Statements
-	//
-	// ==================================================
-
-	// StatementAssignment
-	a = 1;
-	a += 1;
-	a -= 1;
-	a *= 1;
-	a /= 1;
-
-	// StatementDefinition
-	a := 1;
-
-	// StatementFunctionCall
-	// Function
-	foo();
-	foo(a);
-	foo(a, b, c);
-	// Method
-	m.foo();
-	m.foo(a);
-	m.foo(a, b, c);
-	// Constructor
-	Monitor();
-	Monitor(a);
-	Monitor(a, b, c);
-
-	// StatementWaitForIn
-	wait for true in a;
-
-	// StatementSignal
-	signal a;
-
-	// StatementBroadcast
-	broadcast a;
-
-	// StatementReturn
-	return true;	// + expression
-	return;			// - expression
-
-	// StatementIf
-	if true {}
-
-	// StatementIfElse
-	if true {} else {}
-
-	// StatementWhile
-	while true {}
-
-	// StatementSpawn
-	spawn {}
-
-	// StatementBlock
-	{}
-
-	// ==================================================
-	//
 	//	Variables
 	//
 	// ==================================================

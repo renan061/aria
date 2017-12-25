@@ -58,37 +58,6 @@ function foo: Void {
 	variable a: ? = (1)
 	value a: Integer = (1)
 	value a: ? = (1)
-	a = (1)
-	a = ((a) + (1))
-	a = ((a) - (1))
-	a = ((a) * (1))
-	a = ((a) / (1))
-	value a: ? = (1)
-	foo()
-	foo((a))
-	foo((a), (b), (c))
-	(m).foo()
-	(m).foo((a))
-	(m).foo((a), (b), (c))
-	Monitor()
-	Monitor((a))
-	Monitor((a), (b), (c))
-	wait for (true) in (a)
-	signal (a)
-	broadcast (a)
-	return (true)
-	return
-	if (true) {
-	}
-	if (true) {
-	} else {
-	}
-	while (true) {
-	}
-	spawn function {
-	}()
-	{
-	}
 	var = (a)
 	var = (((a)[(1)]))
 	var = (((((((a)[(1)]))[(1)]))[(1)]))
