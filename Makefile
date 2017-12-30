@@ -14,10 +14,10 @@ CPPFLAGS += `llvm-config --libs target mcjit native`
 main: objs
 	@- $(CC) $(CFLAGS) -c src/aria.c -o obj/aria.o
 
-	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o	\
-	obj/scanner.o obj/parser.o obj/ast.o			\
-	obj/symtable.o obj/sem.o obj/ir.o				\
-	obj/athreads.o obj/backend.o					\
+	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o \
+	obj/scanner.o obj/parser.o obj/ast.o \
+	obj/symtable.o obj/sem.o obj/ir.o \
+	obj/athreads.o obj/backend.o \
 	obj/aria.o -o bin/aria
 
 objs: errs vector parser scanner ast sem ir athreads backend
@@ -90,11 +90,10 @@ parser_test: errs vector parser scanner ast
 	@- lua tests/tester.lua tests/parser bin/parsertest
 
 ast_test: errs vector parser scanner ast
-	@- $(CC) $(CFLAGS) -o bin/asttest								\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
+	@- $(CC) $(CFLAGS) -o bin/asttest \
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o \
 	tests/src/ast_test.c -Isrc/
 
-	@- sh tests/test.sh ast
 	@- lua tests/tester.lua tests/ast bin/asttest
 
 sem_test: errs vector parser scanner ast sem

@@ -19,7 +19,7 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
-Function call
+Function Call
 -- Input
 function main: Void {
     // function
@@ -49,7 +49,7 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
-Monitor statements (wait-for-in, signal, broadcast)
+Monitor Statements (wait-for-in, signal, broadcast)
 -- Input
 function main {
     // wait-for-in
