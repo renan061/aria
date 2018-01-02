@@ -34,6 +34,7 @@ function foo() {}
 -- Output
 line 0:
     parser error: syntax error
+
 --------------------------------------------------------------------------------
 -- Title
 Nested parameters
@@ -93,6 +94,7 @@ Invalid top level block
 -- Output
 line 0:
     parser error: syntax error
+
 --------------------------------------------------------------------------------
 -- Title
 Empty program

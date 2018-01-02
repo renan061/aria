@@ -65,13 +65,19 @@ function runTest(cmd, test)
     local output = stdout:read("*all"):gsub("\t", "    ") -- TODO: remove \t sub
     stdout:close()
 
+    test["output"] = test["output"]:sub(1, -2) -- avoids the last \n issue
+
     -- compares the expected output with the actual output
     local ok = output == test["output"]
     if not ok then
         io.write("// expected\n")
+        io.write("[")
         io.write(test["output"])
-        io.write("// got\n")
+        io.write("]")
+        io.write("\n// got\n")
+        io.write("[")
         io.write(output)
+        io.write("]")
     end
 
     os.execute("rm -f " .. inputFile)

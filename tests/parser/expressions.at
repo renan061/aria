@@ -78,6 +78,7 @@ function main {
 -- Output
 line 0:
     parser error: syntax error
+
 --------------------------------------------------------------------------------
 -- Title
 Invalid empty array literal
@@ -88,3 +89,4 @@ function main {
 -- Output
 line 0:
     parser error: syntax error
+

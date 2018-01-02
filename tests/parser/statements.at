@@ -69,6 +69,7 @@ function main {
 -- Output
 line 0:
     parser error: syntax error
+
 --------------------------------------------------------------------------------
 -- Title
 Invalid "for" increment
@@ -79,6 +80,7 @@ function main {
 -- Output
 line 0:
     parser error: syntax error
+
 --------------------------------------------------------------------------------
 -- Title
 Invalid "for" ;
@@ -89,6 +91,7 @@ function main {
 -- Output
 line 0:
     parser error: syntax error
+
 --------------------------------------------------------------------------------
 -- Title
 Variable assignment
