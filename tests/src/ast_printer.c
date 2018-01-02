@@ -224,13 +224,17 @@ static void print_ast_statement(Statement* statement) {
 		print_ast_block(statement->while_.block);
 		break;
 	case STATEMENT_FOR:
-		printf("for ");
+		printf("for\n");
+		identation();
 		print_ast_definition(statement->for_.initialization);
-		printf("; ");
+		printf("\n");
+		identation();
 		print_ast_expression(statement->for_.condition);
-		printf("; ");
+		printf("\n");
+		identation();
 		print_ast_statement(statement->for_.increment);
-		printf(" ");
+		printf("\n");
+		identation();
 		print_ast_block(statement->for_.block);
 		break;
 	case STATEMENT_SPAWN: {

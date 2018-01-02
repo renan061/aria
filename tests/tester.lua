@@ -1,7 +1,7 @@
 -- lists all files named *.at within the given directory
 function listTests(directory)
     local tests = {}
-    local pipe = io.popen("ls " .. directory .. "/*.at")
+    local pipe = assert(io.popen("ls " .. directory .. "/*.at"))
     for filename in pipe:lines() do
         table.insert(tests, filename)
     end
@@ -86,9 +86,11 @@ for _, test in ipairs(listTests(directory)) do
     local testCases = readTestCases(test)
     for title, case in pairs(testCases) do
         if not runTest(binary, case) then
-            io.write("\nIn \"" .. test .. "\" failed \"" .. title .. "\"\n")
+            io.write("\nIn \"" .. test .. "\" failed [" .. title .. "]\n")
             return false
         end
     end
 end
+
+io.write("Ok " .. directory .. "\n")
 return true

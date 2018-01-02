@@ -97,11 +97,12 @@ ast_test: errs vector parser scanner ast
 	@- lua tests/tester.lua tests/ast bin/asttest
 
 sem_test: errs vector parser scanner ast sem
-	@- $(CC) $(CFLAGS) -o bin/semtest								\
-	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o	\
-	obj/symtable.o obj/sem.o										\
+	@- $(CC) $(CFLAGS) -o bin/semtest \
+	obj/errs.o obj/vector.o obj/scanner.o obj/parser.o obj/ast.o \
+	obj/symtable.o obj/sem.o \
 	tests/src/sem_test.c -Isrc/
 
+	@- lua tests/tester.lua tests/sem bin/semtest
 	@- sh tests/test.sh sem
 
 backend_test: main

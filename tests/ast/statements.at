@@ -122,7 +122,11 @@ function main {
 }
 -- Output
 function main: Void {
-    for variable i: ? = (0); ((i) < (n)); i = ((i) + (1)) {
+    for
+    variable i: ? = (0)
+    ((i) < (n))
+    i = ((i) + (1))
+    {
         print(("%d"), (i))
     }
 }

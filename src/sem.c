@@ -438,6 +438,17 @@ static void sem_statement(SemanticState* state, Statement* statement) {
 		sem_block(state, statement->while_.block);
 		symtable_leave_scope(state->table);
 		break;
+	case STATEMENT_FOR:
+		symtable_enter_scope(state->table);
+		sem_definition(state, statement->for_.initialization);
+		sem_expression(state, statement->for_.condition);
+		if (!conditiontype(statement->for_.condition->type)) {
+			err_invalid_condition_type(statement->for_.condition);
+		}
+		sem_statement(state, statement->for_.increment);
+		sem_block(state, statement->for_.block);
+		symtable_leave_scope(state->table);
+		break;
 	case STATEMENT_SPAWN: {
 		if (state->monitor) {
 			TODOERR(statement->line, "can't spawn inside monitors");
