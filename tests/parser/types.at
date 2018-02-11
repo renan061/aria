@@ -26,4 +26,3 @@ function main {
 -- Output
 line 0:
     parser error: syntax error
-

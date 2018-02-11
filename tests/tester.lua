@@ -65,7 +65,9 @@ function runTest(cmd, test)
     local output = stdout:read("*all"):gsub("\t", "    ") -- TODO: remove \t sub
     stdout:close()
 
-    test["output"] = test["output"]:sub(1, -2) -- avoids the last \n issue
+    -- avoids the last \n issue
+    output = output:sub(1, -2)
+    test["output"] = test["output"]:sub(1, -2)
 
     -- compares the expected output with the actual output
     local ok = output == test["output"]

@@ -66,4 +66,3 @@ function foo {
 -- Output
 line 0:
     parser error: syntax error
-

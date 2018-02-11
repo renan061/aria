@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
 	scanner_setup(argv[1]);
 
 	if (!yyparse()) {
-		printf("OK");
+		printf("OK\n");
 	}
 	
 	scanner_clean();
