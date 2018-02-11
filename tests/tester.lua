@@ -73,13 +73,9 @@ function runTest(cmd, test)
     local ok = output == test["output"]
     if not ok then
         io.write("// expected\n")
-        io.write("[")
         io.write(test["output"])
-        io.write("]")
         io.write("\n// got\n")
-        io.write("[")
         io.write(output)
-        io.write("]")
     end
 
     os.execute("rm -f " .. inputFile)

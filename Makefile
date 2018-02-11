@@ -108,7 +108,7 @@ sem_test: errs vector parser scanner ast sem
 backend_test: main
 	@- mv bin/aria bin/backendtest
 	@- lua tests/tester.lua tests/backend "bin/backendtest -r"
-	# @- sh tests/test.sh backend -r
+	@- sh tests/test.sh backend -r
 
 test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
 
