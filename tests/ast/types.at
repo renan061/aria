@@ -1,0 +1,49 @@
+--------------------------------------------------------------------------------
+-- Title
+Type ID
+-- Input
+function main {
+    variable type: Type1;
+    variable type: Boolean;
+    variable type: Integer;
+    variable type: Float;
+    variable type: String;
+    variable type: Type2;
+}
+-- Output
+function main: Void {
+    variable type: Type1
+    variable type: Boolean
+    variable type: Integer
+    variable type: Float
+    variable type: String
+    variable type: Type2
+}
+--------------------------------------------------------------------------------
+-- Title
+Type Array
+-- Input
+function main {
+    variable type: [Integer];
+    variable type: [[[Integer]]];
+}
+-- Output
+function main: Void {
+    variable type: [Integer]
+    variable type: [[[Integer]]]
+}
+--------------------------------------------------------------------------------
+-- Title
+Immutable Types
+-- Input
+function main {
+    variable type: Immutable [Integer];
+    variable type: Immutable [Immutable [Integer]];
+    variable type: [Immutable [Integer]];
+}
+-- Output
+function main: Void {
+    variable type: Immutable [Integer]
+    variable type: Immutable [Immutable [Integer]]
+    variable type: [Immutable [Integer]]
+}

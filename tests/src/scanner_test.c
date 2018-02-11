@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <strings.h>
 
 #include "parser.h"
 #include "scanner.h"
@@ -61,7 +62,19 @@ int main(int argc, char* argv[]) {
 			printf("TK_FLOAT - %f", yylval.literal.fval);
 			break;
 		case TK_STRING:
-			printf("TK_STRING - %s", yylval.literal.strval);
+			printf("TK_STRING - ");
+			for (int i = 0; i < strlen(yylval.literal.strval); i++) {
+				switch (yylval.literal.strval[i]) {
+				case '\n':
+					printf("\\n");
+					break;
+				case '\t':
+					printf("\\t");
+					break;
+				default:
+					printf("%c", yylval.literal.strval[i]);
+				}
+			}
 			break;
 		case 0:
 			goto WHILE_END;

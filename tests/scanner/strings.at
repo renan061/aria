@@ -1,0 +1,50 @@
+--------------------------------------------------------------------------------
+-- Title
+Strings
+-- Input
+"a string" "another string"
+"a string with \t two \t tabs"
+"a string with \n newline"
+-- Output
+TK_STRING - a string
+TK_STRING - another string
+TK_STRING - a string with \t two \t tabs
+TK_STRING - a string with \n newline
+--------------------------------------------------------------------------------
+-- Title
+Miscellaneous strings
+-- Input
+"ácëntôs âñà"
+"astring with\tweird\nthings and another""string\"besides it"
+-- Output
+TK_STRING - ácëntôs âñà
+TK_STRING - astring with\tweird\nthings and another
+TK_STRING - string"besides it
+--------------------------------------------------------------------------------
+-- Title
+Invalid escaped string (\x is not a valid string escape)
+-- Input
+"a string with \x is invalid"
+-- Output
+line 1:
+    scanner error: invalid escape
+--------------------------------------------------------------------------------
+-- Title
+Multiline string
+-- Input
+// Strings can't have non-escaped newline characters
+"a string
+with a newline"
+-- Output
+line 2:
+    scanner error: multiline string
+--------------------------------------------------------------------------------
+-- Title
+Open string
+-- Input
+"opened the string and did not close it...
+Integer more = 1
+Integer code = 1
+-- Output
+line 1:
+    scanner error: open string

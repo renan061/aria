@@ -1,0 +1,27 @@
+--------------------------------------------------------------------------------
+-- Title
+Variable declarations
+-- Input
+function main {
+    // single variable
+    variable a: Integer;
+    // two variables
+    variable x, y: Integer;
+    // many variables
+    variable i, j, k, l, m, n, o: Integer;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Variable and value definitions
+-- Input
+function foo {
+    variable a: Integer = 1;
+    variable a = 1;
+    value a: Integer = 1;
+    value a = 1;
+    a := 1;
+}
+-- Output
+OK

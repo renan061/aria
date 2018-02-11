@@ -385,6 +385,24 @@ Statement* ast_statement_while(Line ln, Expression* expression, Block* block) {
 	return statement;
 }
 
+Statement* ast_statement_for(Line ln,
+	Definition* initialization,
+	Expression* condition,
+	Statement* increment,
+	Block* block) {
+
+	assert(block->tag == BLOCK);
+	Statement* statement;
+	MALLOC(statement, Statement);
+	statement->tag = STATEMENT_FOR;
+	statement->line = ln;
+	statement->for_.initialization = initialization;
+	statement->for_.condition = condition;
+	statement->for_.increment = increment;
+	statement->for_.block = block;
+	return statement;
+}
+
 Statement* ast_statement_spawn(Line ln, Block* block) {
 	assert(block->tag == BLOCK);
 	Statement* statement;

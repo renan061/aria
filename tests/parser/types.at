@@ -1,0 +1,28 @@
+--------------------------------------------------------------------------------
+-- Title
+Types
+-- Input
+function main(a, b: [Array]) {
+    // upper ID type
+    variable a: Type;
+    // arrays
+    variable a: [Integer];
+    variable a: [[Integer]];
+    variable a: [[[Integer]]];
+    // immutable arrays
+    variable a: Immutable [Integer];
+    variable a: Immutable [[[Integer]]];
+    variable a: [Immutable [[Integer]]];
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Immutable primitive declarations are redundant
+-- Input
+function main {
+    value i: Immutable Integer = 1;
+}
+-- Output
+line 0:
+    parser error: syntax error

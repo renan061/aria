@@ -1,0 +1,150 @@
+--------------------------------------------------------------------------------
+-- Title
+Literal Boolean
+-- Input
+function main {
+    a = true;
+    a = false;
+}
+-- Output
+function main: Void {
+    a = (true)
+    a = (false)
+}
+--------------------------------------------------------------------------------
+-- Title
+Literal Integer
+-- Input
+function main {
+    a = 0;
+    a = 1;
+    a = 1000;
+}
+-- Output
+function main: Void {
+    a = (0)
+    a = (1)
+    a = (1000)
+}
+--------------------------------------------------------------------------------
+-- Title
+Literal Float
+-- Input
+function main {
+    a = 0.0;
+    a = 1.123;
+    a = 1000.123;
+}
+-- Output
+function main: Void {
+    a = (0.000000)
+    a = (1.123000)
+    a = (1000.123000)
+}
+--------------------------------------------------------------------------------
+-- Title
+Literal String
+-- Input
+function main {
+    // string
+    a = "c";
+    a = "string";
+    a = "s p a c e d s t r i n g";
+}
+-- Output
+function main: Void {
+    a = ("c")
+    a = ("string")
+    a = ("s p a c e d s t r i n g")
+}
+--------------------------------------------------------------------------------
+-- Title
+Literal Array
+-- Input
+function main {
+    a = [1];
+    a = [true, false];
+    a = [foo(), bar(), baz()];
+    a = Immutable [-1.0, -2.0, -3.0, -4.0];
+}
+-- Output
+function main: Void {
+    a = ([(1)])
+    a = ([(true), (false)])
+    a = ([(foo()), (bar()), (baz())])
+    a = (Immutable [(-(1.000000)), (-(2.000000)), (-(3.000000)), (-(4.000000))])
+}
+--------------------------------------------------------------------------------
+-- Title
+Variable
+-- Input
+function main {
+    a = a;
+}
+-- Output
+function main: Void {
+    a = (a)
+}
+--------------------------------------------------------------------------------
+-- Title
+Function Call
+-- Input
+function main {
+    a = foo();
+    a = foo(1);
+    a = foo(1, 2);
+    a = foo(1, 2, 3);
+}
+-- Output
+function main: Void {
+    a = (foo())
+    a = (foo((1)))
+    a = (foo((1), (2)))
+    a = (foo((1), (2), (3)))
+}
+--------------------------------------------------------------------------------
+-- Title
+Unary Expression
+-- Input
+function main {
+    a = not true;
+    a = -1;
+}
+-- Output
+function main: Void {
+    a = (not(true))
+    a = (-(1))
+}
+--------------------------------------------------------------------------------
+-- Title
+Binary Expression
+-- Input
+function main {
+    a = true or false;
+    a = true and false;
+    a = 1 == 1;
+    a = 1 != 1;
+    a = 1 <= 1;
+    a = 1 >= 1;
+    a = 1 < 1;
+    a = 1 > 1;
+    a = 1 + 1;
+    a = 1 - 1;
+    a = 1 * 1;
+    a = 1 / 1;
+}
+-- Output
+function main: Void {
+    a = ((true) or (false))
+    a = ((true) and (false))
+    a = ((1) == (1))
+    a = ((1) != (1))
+    a = ((1) <= (1))
+    a = ((1) >= (1))
+    a = ((1) < (1))
+    a = ((1) > (1))
+    a = ((1) + (1))
+    a = ((1) - (1))
+    a = ((1) * (1))
+    a = ((1) / (1))
+}

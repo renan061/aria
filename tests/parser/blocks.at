@@ -1,0 +1,63 @@
+--------------------------------------------------------------------------------
+-- Title
+Empty block
+-- Input
+function main {}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single variable declaration
+-- Input
+function main {
+    variable a: Integer;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single statement declaration
+-- Input
+function main {
+    if true {
+        print("ok");
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Mixed between variable declarations and statements
+-- Input
+function main {
+    variable a: Integer;
+    a = 1;
+    variable b: Integer;
+    b = a;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Variable declarations first and statements second
+-- Input
+function main {
+    variable a: Integer;
+    variable b: Integer;
+    a = 1;
+    b = a;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Variable declarations second and statements first
+-- Input
+function foo {
+    if not true {
+        return;
+    }
+    variable a: Integer;
+}
+-- Output
+OK

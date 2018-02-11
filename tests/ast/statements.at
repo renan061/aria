@@ -1,0 +1,158 @@
+--------------------------------------------------------------------------------
+-- Title
+Assignment
+-- Input
+function main {
+    a = 1;
+    a += 1;
+    a -= 1;
+    a *= 1;
+    a /= 1;
+}
+-- Output
+function main: Void {
+    a = (1)
+    a = ((a) + (1))
+    a = ((a) - (1))
+    a = ((a) * (1))
+    a = ((a) / (1))
+}
+--------------------------------------------------------------------------------
+-- Title
+Function Call
+-- Input
+function main: Void {
+    // function
+    foo();
+    foo(a);
+    foo(a, b, c);
+    // method
+    m.foo();
+    m.foo(a);
+    m.foo(a, b, c);
+    // constructor
+    Monitor();
+    Monitor(a);
+    Monitor(a, b, c);
+}
+-- Output
+function main: Void {
+    foo()
+    foo((a))
+    foo((a), (b), (c))
+    (m).foo()
+    (m).foo((a))
+    (m).foo((a), (b), (c))
+    Monitor()
+    Monitor((a))
+    Monitor((a), (b), (c))
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor Statements (wait-for-in, signal, broadcast)
+-- Input
+function main {
+    // wait-for-in
+    wait for true in a;
+    // signal
+    signal a;
+    // broadcast
+    broadcast a;
+}
+-- Output
+function main: Void {
+    wait for (true) in (a)
+    signal (a)
+    broadcast (a)
+}
+--------------------------------------------------------------------------------
+-- Title
+Return
+-- Input
+function main {
+    // with an expression
+    return true;
+    // without an expression
+    return;
+}
+-- Output
+function main: Void {
+    return (true)
+    return
+}
+--------------------------------------------------------------------------------
+-- Title
+If and If-Else
+-- Input
+function main {
+    // if
+    if true {}
+    // if-else
+    if true {} else {}
+}
+-- Output
+function main: Void {
+    if (true) {
+    }
+    if (true) {
+    } else {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+While
+-- Input
+function main {
+    // while
+    while true {}
+}
+-- Output
+function main: Void {
+    while (true) {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+For
+-- Input
+function main {
+    for variable i = 0; i < n; i += 1 {
+        print("%d", i);
+    }
+}
+-- Output
+function main: Void {
+    for
+    variable i: ? = (0)
+    ((i) < (n))
+    i = ((i) + (1))
+    {
+        print(("%d"), (i))
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Spawn
+-- Input
+function main {
+    spawn {
+    }
+}
+-- Output
+function main: Void {
+    spawn function {
+    }()
+}
+--------------------------------------------------------------------------------
+-- Title
+Block
+-- Input
+function main {
+    {
+    }
+}
+-- Output
+function main: Void {
+    {
+    }
+}

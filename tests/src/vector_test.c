@@ -28,6 +28,5 @@ int main(void) {
 	// vector_destroy
 	vector_destroy(vector);
 
-	printf("OK vector test\n");
 	return 0;
 }

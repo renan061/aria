@@ -39,6 +39,11 @@
 #define LABEL_WHILE             LABEL "while"
 #define LABEL_WHILE_LOOP        LABEL "while_loop"
 #define LABEL_WHILE_END         LABEL "while_end"
+#define LABEL_FOR_INIT          LABEL "for_init"
+#define LABEL_FOR_COND          LABEL "for_cond"
+#define LABEL_FOR_LOOP          LABEL "for_loop"
+#define LABEL_FOR_INC           LABEL "for_inc"
+#define LABEL_FOR_END           LABEL "for_end"
 
 // Native types
 static Type* __boolean;
@@ -642,6 +647,40 @@ static void backend_statement(IRState* state, Statement* statement) {
         }
         // End
         position_builder(state, be);
+        break;
+    }
+    case STATEMENT_FOR: {
+        // TODO: Check this later, better way to do this?
+        LLVMBasicBlockRef
+            binit = LLVMAppendBasicBlock(state->function, LABEL_FOR_INIT),
+            bcond = LLVMAppendBasicBlock(state->function, LABEL_FOR_COND),
+            bloop = LLVMAppendBasicBlock(state->function, LABEL_FOR_LOOP),
+            binc  = LLVMAppendBasicBlock(state->function, LABEL_FOR_INC),
+            bend  = LLVMAppendBasicBlock(state->function, LABEL_FOR_END);
+        LLVMBuildBr(state->builder, binit);
+        state_close_block(state);
+        // init
+        position_builder(state, binit);
+        backend_definition(state, statement->for_.initialization);
+        LLVMBuildBr(state->builder, bcond);
+        state_close_block(state);
+        // cond
+        position_builder(state, bcond);
+        backend_condition(state, statement->for_.condition, bloop, bend);
+        // loop
+        position_builder(state, bloop);
+        backend_block(state, statement->for_.block);
+        if (state->block) {
+            LLVMBuildBr(state->builder, binc);
+            state_close_block(state);
+        }
+        // inc
+        position_builder(state, binc);
+        backend_statement(state, statement->for_.increment);
+        LLVMBuildBr(state->builder, bcond);
+        state_close_block(state);
+        // end
+        position_builder(state, bend);
         break;
     }
     case STATEMENT_SPAWN: {

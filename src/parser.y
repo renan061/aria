@@ -369,7 +369,10 @@ compound_statement
 		{
 			$$ = ast_statement_while($1, $2, $3);
 		}
-	/* | TK_FOR [?] ';' expression ';' [?] block */
+	| TK_FOR variable_definition_variable ';' expression ';' statement_assignment block
+		{
+			$$ = ast_statement_for($1, $2, $4, $6, $7);
+		}
 	| TK_SPAWN block
 		{
 			$$ = ast_statement_spawn($1, $2);

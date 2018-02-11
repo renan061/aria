@@ -1,0 +1,101 @@
+--------------------------------------------------------------------------------
+-- Title
+Global variables
+-- Input
+value a: Integer = 2;
+value a = 2;
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Global functions (and parameters)
+-- Input
+// without parameters - without return value
+function foo {}
+// with parameter - without return value
+function foo(a: Boolean) {}
+// with parameters - without return value
+function foo(a: Boolean, b: Integer) {}
+function foo(a: Boolean, b: Integer, c: Float) {}
+// without parameters - with return value
+function foo: Boolean {}
+// with parameter - with return value
+function foo(a: Boolean): Float {}
+// with parameters - with return value
+function foo(a: Boolean, b: Integer): Float {}
+function foo(a: Boolean, b: Integer, c: Float): String {}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Function definition with no parameters needs no parathensis
+-- Input
+function foo() {}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Nested parameters
+-- Input
+function foo(a, b: Boolean) {}
+function foo(a, b: Boolean, c: Integer) {}
+function foo(a: Boolean, b, c: Integer) {}
+function foo(a: Boolean, b, c: Integer, d: Float) {}
+function foo(a, b, c: Boolean) {}
+function foo(a, b, c, d, e, f: Boolean) {}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single global function
+-- Input
+function main {
+    print("Hello world!\n");
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single global value definition
+-- Input
+value a: Integer = 1;
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single monitor
+-- Input
+monitor Monitor {
+    variable counter: Integer;
+    
+    initializer(number: Integer) {
+        counter = number;
+    }
+
+    function foo {
+        counter = bar();
+    }
+    
+    private function bar: Integer {
+        return 10;
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Invalid top level block
+-- Input
+{
+
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Empty program
+-- Input
+-- Output
+OK

@@ -1,0 +1,273 @@
+--------------------------------------------------------------------------------
+-- Title
+Nested If's and If-Else's
+-- Input
+function main {
+    // ==================================================
+    //
+    //  Empty blocks
+    //
+    // ==================================================
+
+    // if-else
+    if true {} else {}
+
+    // if-elseif
+    if true {} else if true {}
+
+    // if-elseif-else
+    if true {} else if true {} else {}
+
+    // if-elseif-elseif-elseif
+    if true {} else if true {} else if true {} else if true {}
+
+    // if-elseif-elseif-elseif-else
+    if true {} else if true {} else if true {} else if true {} else {}
+
+    // ==================================================
+    //
+    //  Blocks with content
+    //
+    // ==================================================
+
+    // if-else
+    if true {
+        a := 1; b := 2; c := 3;
+    } else {
+        a := 1; b := 2; c := 3;
+    }
+
+    // if-elseif
+    if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    }
+
+    // if-elseif-else
+    if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    } else {
+        a := 1; b := 2; c := 3;
+    }
+
+    // if-elseif-elseif-elseif-else
+    if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    }
+
+    // if-elseif-elseif-elseif-else
+    if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    } else if true {
+        a := 1; b := 2; c := 3;
+    } else {
+        a := 1; b := 2; c := 3;
+    }
+
+    // ==================================================
+    //
+    //  Blocks with if/elseif/else
+    //
+    // ==================================================
+
+    if true {
+        if true {}
+    }
+
+    if true {
+        if true {} else {}
+    }
+
+    if true {} else if true {
+        if true {} else {}
+    } else {
+        if true {} else if true {}
+    }
+
+    // if-elseif-elseif-elseif-else
+    if true {
+    } else {
+        if true {
+        } else {
+            if true {
+            } else {
+                if true {
+                } else {
+                }
+            }
+        }
+    }
+}
+-- Output
+function main: Void {
+    if (true) {
+    } else {
+    }
+    if (true) {
+    } else {
+        if (true) {
+        }
+    }
+    if (true) {
+    } else {
+        if (true) {
+        } else {
+        }
+    }
+    if (true) {
+    } else {
+        if (true) {
+        } else {
+            if (true) {
+            } else {
+                if (true) {
+                }
+            }
+        }
+    }
+    if (true) {
+    } else {
+        if (true) {
+        } else {
+            if (true) {
+            } else {
+                if (true) {
+                } else {
+                }
+            }
+        }
+    }
+    if (true) {
+        value a: ? = (1)
+        value b: ? = (2)
+        value c: ? = (3)
+    } else {
+        value a: ? = (1)
+        value b: ? = (2)
+        value c: ? = (3)
+    }
+    if (true) {
+        value a: ? = (1)
+        value b: ? = (2)
+        value c: ? = (3)
+    } else {
+        if (true) {
+            value a: ? = (1)
+            value b: ? = (2)
+            value c: ? = (3)
+        }
+    }
+    if (true) {
+        value a: ? = (1)
+        value b: ? = (2)
+        value c: ? = (3)
+    } else {
+        if (true) {
+            value a: ? = (1)
+            value b: ? = (2)
+            value c: ? = (3)
+        } else {
+            value a: ? = (1)
+            value b: ? = (2)
+            value c: ? = (3)
+        }
+    }
+    if (true) {
+        value a: ? = (1)
+        value b: ? = (2)
+        value c: ? = (3)
+    } else {
+        if (true) {
+            value a: ? = (1)
+            value b: ? = (2)
+            value c: ? = (3)
+        } else {
+            if (true) {
+                value a: ? = (1)
+                value b: ? = (2)
+                value c: ? = (3)
+            } else {
+                if (true) {
+                    value a: ? = (1)
+                    value b: ? = (2)
+                    value c: ? = (3)
+                }
+            }
+        }
+    }
+    if (true) {
+        value a: ? = (1)
+        value b: ? = (2)
+        value c: ? = (3)
+    } else {
+        if (true) {
+            value a: ? = (1)
+            value b: ? = (2)
+            value c: ? = (3)
+        } else {
+            if (true) {
+                value a: ? = (1)
+                value b: ? = (2)
+                value c: ? = (3)
+            } else {
+                if (true) {
+                    value a: ? = (1)
+                    value b: ? = (2)
+                    value c: ? = (3)
+                } else {
+                    value a: ? = (1)
+                    value b: ? = (2)
+                    value c: ? = (3)
+                }
+            }
+        }
+    }
+    if (true) {
+        if (true) {
+        }
+    }
+    if (true) {
+        if (true) {
+        } else {
+        }
+    }
+    if (true) {
+    } else {
+        if (true) {
+            if (true) {
+            } else {
+            }
+        } else {
+            if (true) {
+            } else {
+                if (true) {
+                }
+            }
+        }
+    }
+    if (true) {
+    } else {
+        if (true) {
+        } else {
+            if (true) {
+            } else {
+                if (true) {
+                } else {
+                }
+            }
+        }
+    }
+}

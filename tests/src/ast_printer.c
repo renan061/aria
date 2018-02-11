@@ -161,7 +161,9 @@ static void print_ast_block(Block* block) {
 			}
 			break;
 		case BLOCK_STATEMENT:
+			identation();
 			print_ast_statement(b->statement);
+			printf("\n");
 			break;
 		default:
 			assert(b->tag != BLOCK);
@@ -170,8 +172,6 @@ static void print_ast_block(Block* block) {
 }
 
 static void print_ast_statement(Statement* statement) {
-	identation();
-
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
 		print_ast_variable(statement->assignment.variable);
@@ -223,6 +223,20 @@ static void print_ast_statement(Statement* statement) {
 		printf(" ");
 		print_ast_block(statement->while_.block);
 		break;
+	case STATEMENT_FOR:
+		printf("for\n");
+		identation();
+		print_ast_definition(statement->for_.initialization);
+		printf("\n");
+		identation();
+		print_ast_expression(statement->for_.condition);
+		printf("\n");
+		identation();
+		print_ast_statement(statement->for_.increment);
+		printf("\n");
+		identation();
+		print_ast_block(statement->for_.block);
+		break;
 	case STATEMENT_SPAWN: {
 		Definition* function = statement->spawn->function_definition;
 		
@@ -255,8 +269,6 @@ static void print_ast_statement(Statement* statement) {
 		print_ast_block(statement->block);
 		break;
 	}
-
-	printf("\n");
 }
 
 static void print_ast_variable(Variable* variable) {

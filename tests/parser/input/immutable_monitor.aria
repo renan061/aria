@@ -1,5 +1,0 @@
-monitor M {}
-
-function foo {
-	m := Immutable M();
-}
