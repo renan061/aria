@@ -93,7 +93,7 @@ struct Global {
     Definition* value;
 };
 
-static Global* globals = NULL;
+static Global* globals = NULL; // TODO: free this list
 
 // adds global value to the globals linked list
 static void addgval(Definition* value) {

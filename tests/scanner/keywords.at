@@ -19,6 +19,7 @@ private
 return
 signal
 spawn
+structure
 true
 value
 variable
@@ -42,6 +43,7 @@ TK_PRIVATE
 TK_RETURN
 TK_SIGNAL
 TK_SPAWN
+TK_STRUCTURE
 TK_TRUE
 TK_VALUE
 TK_VARIABLE

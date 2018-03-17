@@ -1,10 +1,4 @@
 /*
- * TODO:
- *	- Using a vector to deal with ids and strings is very inefficient.
- *		Therefore, another data structure should be used instead.
- */
-
-/*
  * Since the scanner does not utilize the 'yyunput'
  * and 'input' functions, it's necessary to provide
  * these options so no "defined but not used" warnings
@@ -47,6 +41,9 @@
 #define ERR_STRING_ESCAPE	"invalid escape"
 #define ERR_STRING_OPEN		"open string"
 #define ERR_STRING_LINE		"multiline string"
+
+// auxiliary macro
+#define TOKEN(t) yylval.ival = line, t
 
 // auxiliary variables
 static Vector* strs;
@@ -91,38 +88,39 @@ string 		"\""(\\.|[^\\"])*"\""
 {space} 		; /* empty */
 {newline}		line++;
 
-"=="			return yylval.ival = line, TK_EQUAL; // operators
-"!="			return yylval.ival = line, TK_NEQUAL;
-"<="			return yylval.ival = line, TK_LEQUAL;
-">="			return yylval.ival = line, TK_GEQUAL;
-"not"			return yylval.ival = line, TK_NOT;
-"and"			return yylval.ival = line, TK_AND;
-"or"			return yylval.ival = line, TK_OR;
-":="			return yylval.ival = line, TK_DEF_ASG;
-"+="			return yylval.ival = line, TK_ADD_ASG;
-"-="			return yylval.ival = line, TK_SUB_ASG;
-"*="			return yylval.ival = line, TK_MUL_ASG;
-"/="			return yylval.ival = line, TK_DIV_ASG;
+"=="			return TOKEN(TK_EQUAL); // operators
+"!="			return TOKEN(TK_NEQUAL);
+"<="			return TOKEN(TK_LEQUAL);
+">="			return TOKEN(TK_GEQUAL);
+"not"			return TOKEN(TK_NOT);
+"and"			return TOKEN(TK_AND);
+"or"			return TOKEN(TK_OR);
+":="			return TOKEN(TK_DEF_ASG);
+"+="			return TOKEN(TK_ADD_ASG);
+"-="			return TOKEN(TK_SUB_ASG);
+"*="			return TOKEN(TK_MUL_ASG);
+"/="			return TOKEN(TK_DIV_ASG);
 
-"broadcast"		return yylval.ival = line, TK_BROADCAST; // keywords
-"else"			return yylval.ival = line, TK_ELSE;
-"false"			return yylval.ival = line, TK_FALSE;
-"for"			return yylval.ival = line, TK_FOR;
-"function"		return yylval.ival = line, TK_FUNCTION;
-"if"			return yylval.ival = line, TK_IF;
-"Immutable"		return yylval.ival = line, TK_IMMUTABLE;
-"in"			return yylval.ival = line, TK_IN;
-"initializer"	return yylval.ival = line, TK_INITIALIZER;
-"monitor"		return yylval.ival = line, TK_MONITOR;
-"private"		return yylval.ival = line, TK_PRIVATE;
-"return"		return yylval.ival = line, TK_RETURN;
-"signal"		return yylval.ival = line, TK_SIGNAL;
-"spawn"			return yylval.ival = line, TK_SPAWN;
-"true"			return yylval.ival = line, TK_TRUE;
-"value"			return yylval.ival = line, TK_VALUE;
-"variable"		return yylval.ival = line, TK_VARIABLE;
-"wait"			return yylval.ival = line, TK_WAIT;
-"while"			return yylval.ival = line, TK_WHILE;
+"broadcast"		return TOKEN(TK_BROADCAST); // keywords
+"else"			return TOKEN(TK_ELSE);
+"false"			return TOKEN(TK_FALSE);
+"for"			return TOKEN(TK_FOR);
+"function"		return TOKEN(TK_FUNCTION);
+"if"			return TOKEN(TK_IF);
+"Immutable"		return TOKEN(TK_IMMUTABLE);
+"in"			return TOKEN(TK_IN);
+"initializer"	return TOKEN(TK_INITIALIZER);
+"monitor"		return TOKEN(TK_MONITOR);
+"private"		return TOKEN(TK_PRIVATE);
+"return"		return TOKEN(TK_RETURN);
+"signal"		return TOKEN(TK_SIGNAL);
+"spawn"			return TOKEN(TK_SPAWN);
+"structure"		return TOKEN(TK_STRUCTURE);
+"true"			return TOKEN(TK_TRUE);
+"value"			return TOKEN(TK_VALUE);
+"variable"		return TOKEN(TK_VARIABLE);
+"wait"			return TOKEN(TK_WAIT);
+"while"			return TOKEN(TK_WHILE);
 
 {lower-id}		return idaction(), TK_LOWER_ID;
 {upper-id}		return idaction(), TK_UPPER_ID;
@@ -151,7 +149,7 @@ string 		"\""(\\.|[^\\"])*"\""
 
 "\""			scanner_error(line, ERR_STRING_OPEN);
 
-. 				return yylval.ival = line, yytext[0];
+. 				return TOKEN(yytext[0]);
 
 %%
 
@@ -188,6 +186,12 @@ void scanner_clean(void) {
 //	Auxiliary
 //
 // ==================================================
+
+/*
+ * TODO:
+ *	- Using a vector to deal with ids and strings is very inefficient.
+ *		Therefore, another data structure should be used instead.
+ */
 
 // used by lower-id and upper-id
 static void idaction() {
