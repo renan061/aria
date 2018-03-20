@@ -27,14 +27,14 @@ void ast_set(Definition* definitions) {
 //
 // ==================================================
 
-Definition* ast_definition_variable(Variable* var, Expression* exp) {
+Definition* ast_definition_capsa(Capsa* capsa, Expression* exp) {
 	Definition* definition;
 	MALLOC(definition, Definition);
-	definition->tag = DEFINITION_VARIABLE;
+	definition->tag = DEFINITION_CAPSA;
 	definition->next = NULL;
 	definition->llvm_value = NULL;
-	definition->variable.variable = var;
-	definition->variable.expression = exp;
+	definition->capsa.capsa = capsa;
+	definition->capsa.expression = exp;
 	return definition;
 }
 
@@ -265,7 +265,7 @@ Block* ast_block_statement(Statement* statement) {
 //
 // ==================================================
 
-Statement* ast_statement_assignment(Line ln, Token t, Variable* v, Expression* e) {
+Statement* ast_statement_assignment(Line ln, Token t, Capsa* v, Expression* e) {
 	Statement* statement;
 	MALLOC(statement, Statement);
 	statement->tag = STATEMENT_ASSIGNMENT;
@@ -290,16 +290,16 @@ Statement* ast_statement_assignment(Line ln, Token t, Variable* v, Expression* e
 		default: UNREACHABLE;
 		}
 
-		Variable* copy = v;  // TODO: copy function for Variable
-		Expression* expvar = ast_expression_variable(copy);
-		e = ast_expression_binary(ln, op, expvar, e);
+		Capsa* copy = v;  // TODO: copy function for Capsa
+		Expression* expression_capsa = ast_expression_capsa(copy);
+		e = ast_expression_binary(ln, op, expression_capsa, e);
 		break;
 	}
 	default:
 		UNREACHABLE;
 	}
 
-	statement->assignment.variable = v;
+	statement->assignment.capsa = v;
 	statement->assignment.expression = e;
 	return statement;
 }
@@ -428,37 +428,37 @@ Statement* ast_statement_block(Block* block) {
 
 // ==================================================
 //
-//	Variable
+//	Capsa
 //
 // ==================================================
 
-Variable* ast_variable_id(Id* id) {
-	Variable* variable;
-	MALLOC(variable, Variable);
-	variable->tag = VARIABLE_ID;
-	variable->line = id->line;
-	variable->type = NULL;
-	variable->global = false;
-	variable->value = false;
-	variable->llvm_value = NULL;
-	variable->llvm_structure_index = -1;
-	variable->id = id;
-	return variable;
+Capsa* ast_capsa_id(Id* id) {
+	Capsa* capsa;
+	MALLOC(capsa, Capsa);
+	capsa->tag = CAPSA_ID;
+	capsa->line = id->line;
+	capsa->type = NULL;
+	capsa->global = false;
+	capsa->value = false;
+	capsa->llvm_value = NULL;
+	capsa->llvm_structure_index = -1;
+	capsa->id = id;
+	return capsa;
 }
 
-Variable* ast_variable_indexed(Line ln, Expression* array, Expression* index) {
-	Variable* variable;
-	MALLOC(variable, Variable);
-	variable->tag = VARIABLE_INDEXED;
-	variable->line = ln;
-	variable->type = NULL;
-	variable->global = false;
-	variable->value = false;
-	variable->llvm_value = NULL;
-	variable->llvm_structure_index = -1;
-	variable->indexed.array = array;
-	variable->indexed.index = index;
-	return variable;
+Capsa* ast_capsa_indexed(Line ln, Expression* array, Expression* index) {
+	Capsa* capsa;
+	MALLOC(capsa, Capsa);
+	capsa->tag = CAPSA_INDEXED;
+	capsa->line = ln;
+	capsa->type = NULL;
+	capsa->global = false;
+	capsa->value = false;
+	capsa->llvm_value = NULL;
+	capsa->llvm_structure_index = -1;
+	capsa->indexed.array = array;
+	capsa->indexed.index = index;
+	return capsa;
 }
 
 // ==================================================
@@ -534,15 +534,15 @@ Expression* ast_expression_literal_array(Line ln, Expression* elements,
 	return expression;
 }
 
-Expression* ast_expression_variable(Variable* variable) {
+Expression* ast_expression_capsa(Capsa* capsa) {
 	Expression* expression;
 	MALLOC(expression, Expression);
-	expression->tag = EXPRESSION_VARIABLE;
-	expression->line = variable->line;
+	expression->tag = EXPRESSION_CAPSA;
+	expression->line = capsa->line;
 	expression->previous = expression->next = NULL;
 	expression->type = NULL;
 	expression->llvm_value = NULL;
-	expression->variable = variable;
+	expression->capsa = capsa;
 	return expression;
 }
 

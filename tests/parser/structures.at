@@ -1,0 +1,59 @@
+--------------------------------------------------------------------------------
+-- Title
+Empty structure
+-- Input
+structure Structure {
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single value structure
+-- Input
+structure Structure {
+    value a: Integer;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single variable structure
+-- Input
+structure Structure {
+    variable a: Integer;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Mixed structure (variables and values)
+-- Input
+structure Person {
+    value species = "homo sapiens";
+    value name: String;
+    variable age: Integer;
+    variable planet = "earth";
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Mixed structure (variables, values and constructors)
+-- Input
+structure Person {
+    initializer {
+    }
+
+    value species = "homo sapiens";
+    value name: String;
+    variable age: Integer;
+    variable planet = "earth";
+
+    initializer(x: Boolean, y: Integer) {
+    }
+
+    initializer(z: Float) {
+    }
+}
+-- Output
+OK
