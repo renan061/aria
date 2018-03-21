@@ -41,9 +41,9 @@ struct Symbol {
 
 static const char* definitionstring(Definition* definition) {
 	switch (definition->tag) {
-	case DEFINITION_VARIABLE:
-		assert(definition->variable.variable->tag == VARIABLE_ID);
-		return definition->variable.variable->id->name;
+	case DEFINITION_CAPSA:
+		assert(definition->capsa.capsa->tag == CAPSA_ID);
+		return definition->capsa.capsa->id->name;
 	case DEFINITION_FUNCTION:
 		/* fallthrough */
 	case DEFINITION_METHOD:
@@ -59,8 +59,10 @@ static const char* definitionstring(Definition* definition) {
 			return definition->type->id->name;
 		case TYPE_ARRAY:
 			UNREACHABLE;
+		case TYPE_STRUCTURE:
+			// fallthrough
 		case TYPE_MONITOR:
-			return definition->type->monitor.id->name;
+			return definition->type->structure.id->name;
 		default:
 			UNREACHABLE;
 		}
@@ -85,7 +87,7 @@ static Definition* finddefinition(Scope* scope, const char* idstring) {
 //
 // ==================================================
 
-SymbolTable* symtable_new() {
+SymbolTable* symtable_new(void) {
 	SymbolTable* table;
 	MALLOC(table, SymbolTable);
 	table->top_scope = NULL;

@@ -7,8 +7,7 @@
 
 #include "scanner.h"
 
-// TODO
-typedef unsigned int Line;
+typedef unsigned int Line; // TODO
 
 // ==================================================
 //
