@@ -1,0 +1,58 @@
+--------------------------------------------------------------------------------
+-- Title
+Structure
+-- Input
+structure Person {
+    value species = "homo sapiens";
+    value name: String;
+    variable age: Integer;
+    variable planet = "earth";
+}
+-- Output
+structure Person {
+    value species: ? = ("homo sapiens")
+    value name: String
+    variable age: Integer
+    variable planet: ? = ("earth")
+}
+--------------------------------------------------------------------------------
+-- Title
+Empty
+-- Input
+structure Empty {
+}
+-- Output
+structure Empty {
+}
+--------------------------------------------------------------------------------
+-- Title
+Structure (with initializers)
+-- Input
+structure Person {
+    initializer {
+    }
+
+    value species = "homo sapiens";
+    value name: String;
+    variable age: Integer;
+    variable planet = "earth";
+
+    initializer(x: Boolean, y: Integer) {
+    }
+
+    initializer(z: Float) {
+    }
+}
+-- Output
+structure Person {
+    initializer {
+    }
+    value species: ? = ("homo sapiens")
+    value name: String
+    variable age: Integer
+    variable planet: ? = ("earth")
+    initializer(value x: Boolean, value y: Integer) {
+    }
+    initializer(value z: Float) {
+    }
+}

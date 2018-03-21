@@ -28,6 +28,7 @@ typedef enum TypeTag {
     TYPE_VOID,
     TYPE_ID,
     TYPE_ARRAY,
+    TYPE_STRUCTURE,
     TYPE_MONITOR
 } TypeTag;
 
@@ -133,18 +134,19 @@ struct Type {
     bool primitive;
     bool immutable; // default false
 
-    LLVMTypeRef llvm_type; // TODO: Always set
+    LLVMTypeRef llvm_type; // TODO: always set
 
     union {
         // TypeID
         Id* id;
         // TypeArray
         Type* array;
+        // TypeStructure
         // TypeMonitor
         struct {
             Id* id;
             Definition* definitions;
-        } monitor;
+        } structure;
     };
 };
 
@@ -317,7 +319,7 @@ extern Type* ast_type_string(void);
 extern Type* ast_type_condition_queue(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
-extern Type* ast_type_monitor(Id*, Definition*);
+extern Type* ast_type_structure(Id*, TypeTag, Definition*);
 
 extern Block* ast_block(Line, Block*);
 extern Block* ast_block_definition(Definition*);

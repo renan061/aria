@@ -670,7 +670,8 @@ function_call
 structure_definition
     : TK_STRUCTURE TK_UPPER_ID '{' structure_element_list '}'
         {
-            $$ = NULL; // TODO
+            Type* type = ast_type_structure($2, TYPE_STRUCTURE, $4);
+            $$ = ast_definition_type(type);
         }
     ;
 
@@ -709,7 +710,8 @@ structure_element
 monitor_definition
     : TK_MONITOR TK_UPPER_ID '{' monitor_element_list '}'
         {
-            $$ = ast_definition_type(ast_type_monitor($2, $4));
+            Type* type = ast_type_structure($2, TYPE_MONITOR, $4);
+            $$ = ast_definition_type(type);
         }
     ;
 

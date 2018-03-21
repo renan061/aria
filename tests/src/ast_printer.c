@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "ast.h"
+#include "errs.h"
 #include "parser.h"
 #include "scanner.h"
 
@@ -24,7 +25,7 @@ static void print_ast_id(Id*);
 static void print_ast_type(Type*);
 static void print_ast_block(Block*);
 static void print_ast_statement(Statement*);
-static void print_ast_variable(Variable*);
+static void print_ast_capsa(Capsa*);
 static void print_ast_expression(Expression*);
 static void print_ast_function_call(FunctionCall*);
 
@@ -32,7 +33,7 @@ void print_ast(AST* ast, bool print_types) {
 	should_print_types = print_types;
 	for (Definition* d = ast->definitions; d; d = d->next) {
 		print_ast_definition(d);
-		if (d->tag == DEFINITION_VARIABLE) {
+		if (d->tag == DEFINITION_CAPSA) {
 			printf("\n");
 		}
 	}
@@ -40,19 +41,19 @@ void print_ast(AST* ast, bool print_types) {
 
 static void print_ast_definition(Definition* definition) {
 	switch (definition->tag) {
-	case DEFINITION_VARIABLE: {
-		Variable* variable = definition->variable.variable;
-		printf("%s ", (variable->value) ? "value" : "variable");
-		print_ast_id(variable->id);
+	case DEFINITION_CAPSA: {
+		Capsa* capsa = definition->capsa.capsa;
+		printf("%s ", (capsa->value) ? "value" : "variable");
+		print_ast_id(capsa->id);
 		printf(": ");
-		if (variable->type) {
-			print_ast_type(variable->type);
+		if (capsa->type) {
+			print_ast_type(capsa->type);
 		} else {
 			printf("?");
 		}
-		if (definition->variable.expression) {
+		if (definition->capsa.expression) {
 			printf(" = ");
-			print_ast_expression(definition->variable.expression);
+			print_ast_expression(definition->capsa.expression);
 		}
 		break;
 	}
@@ -90,21 +91,30 @@ static void print_ast_definition(Definition* definition) {
 		printf("\n");
 		break;
 	case DEFINITION_TYPE:
-		printf("monitor ");
-		print_ast_id(definition->type->monitor.id);
+		switch (definition->type->tag) {
+		case TYPE_STRUCTURE:
+			printf("structure ");
+			break;
+		case TYPE_MONITOR:
+			printf("monitor ");
+			break;
+		default:
+			UNREACHABLE;
+		}
+
+		print_ast_id(definition->type->structure.id);
 		printf(" {\n");
 		tabs++;
-		for (Definition* d = definition->type->monitor.definitions; d;) {
+		for (Definition* d = definition->type->structure.definitions; d;) {
 			identation();
 			print_ast_definition(d);
-			if (d->tag == DEFINITION_VARIABLE) {
+			if (d->tag == DEFINITION_CAPSA) {
 				printf("\n");
 			}
 			d = d->next;
 		}
 		tabs--;
 		printf("}\n");
-		break;
 	}
 }
 
@@ -128,8 +138,10 @@ static void print_ast_type(Type* type) {
 		print_ast_type(type->array);
 		printf("]");
 		break;
+	case TYPE_STRUCTURE:
+		// fallthrough	
 	case TYPE_MONITOR:
-		print_ast_id(type->monitor.id);
+		print_ast_id(type->structure.id);
 		break;
 	}
 }
@@ -154,7 +166,7 @@ static void print_ast_block(Block* block) {
 			print_ast_definition(b->definition);
 			printf("\n");
 			for (Definition* d = b->definition->next; d; d = d->next) {
-				assert(d->tag == DEFINITION_VARIABLE);
+				assert(d->tag == DEFINITION_CAPSA);
 				identation();
 				print_ast_definition(d);
 				printf("\n");
@@ -174,7 +186,7 @@ static void print_ast_block(Block* block) {
 static void print_ast_statement(Statement* statement) {
 	switch (statement->tag) {
 	case STATEMENT_ASSIGNMENT:
-		print_ast_variable(statement->assignment.variable);
+		print_ast_capsa(statement->assignment.capsa);
 		printf(" = ");
 		print_ast_expression(statement->assignment.expression);
 		break;
@@ -271,20 +283,20 @@ static void print_ast_statement(Statement* statement) {
 	}
 }
 
-static void print_ast_variable(Variable* variable) {
-	switch (variable->tag) {
-	case VARIABLE_ID:
-		print_ast_id(variable->id);
-		printtype(variable->type);
+static void print_ast_capsa(Capsa* capsa) {
+	switch (capsa->tag) {
+	case CAPSA_ID:
+		print_ast_id(capsa->id);
+		printtype(capsa->type);
 		break;
-	case VARIABLE_INDEXED:
+	case CAPSA_INDEXED:
 		printf("(");
-		print_ast_expression(variable->indexed.array);
+		print_ast_expression(capsa->indexed.array);
 		printf("[");
-		print_ast_expression(variable->indexed.index);
+		print_ast_expression(capsa->indexed.index);
 		printf("]");
-		if (variable->indexed.array->type) {
-			printtype(variable->indexed.array->type->array);
+		if (capsa->indexed.array->type) {
+			printtype(capsa->indexed.array->type->array);
 		}
 		printf(")");
 		break;
@@ -322,8 +334,8 @@ static void print_ast_expression(Expression* expression) {
 		printf("]");
 		printtype(expression->type);
 		break;
-	case EXPRESSION_VARIABLE:
-		print_ast_variable(expression->variable);
+	case EXPRESSION_CAPSA:
+		print_ast_capsa(expression->capsa);
 		break;
 	case EXPRESSION_FUNCTION_CALL:
 		print_ast_function_call(expression->function_call);
