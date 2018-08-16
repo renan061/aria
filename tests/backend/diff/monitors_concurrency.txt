@@ -1,0 +1,41 @@
+1,38c1
+< testBarrier
+< -----
+< barrier: thread hit the barrier...
+< barrier: thread hit the barrier...
+< barrier: thread hit the barrier...
+< barrier: past the barrier...
+< 
+< ----------------------------------------
+< 
+< testMonitor
+< -----
+< monitor initializer: defined variable (2.5)
+< monitor initializer: value (aria)
+< monitor initializer: declared variable after initializer (10)
+< -----
+< monitor method: public
+< monitor method: public method that calls a private method
+< monitor method: private
+< -----
+< monitor variables: integer value 10
+< monitor variables: float value 2.5
+< monitor variables: change (15 and 15.5)
+< monitor variables: integer value 15
+< monitor variables: float value 15.5
+< 
+< ----------------------------------------
+< 
+< testStack
+< -----
+< test push 1
+< test pop 1
+< stack wait for not empty: push
+< test push 2
+< test pop 2
+< stack wait for not empty: pop (2)
+< 
+< ----------------------------------------
+< 
+---
+> tests/test.sh: line 26: ../../bin/backendtest: No such file or directory

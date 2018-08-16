@@ -47,3 +47,20 @@ structure Person {
     function Person(value z: Float): Person {
     }
 }
+--------------------------------------------------------------------------------
+-- Title
+Structure constructor
+-- Input
+structure Person {
+    variable age: Integer;
+    initializer(number: Integer) {
+        self.age = number;
+    }
+}
+-- Output
+structure Person {
+    variable age: Integer
+    function Person(value number: Integer): Person {
+        (self: Person).age: Integer = (number: Integer)
+    }
+}

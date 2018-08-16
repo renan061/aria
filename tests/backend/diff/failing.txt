@@ -1,4 +1,6 @@
-2c2
+1,3c1
+< -----
 < Division not working: 155 / 12 = 12
+< Works with floats: (155.0 / 12 = 12.91667) (155 / 12.0 = 12.91667)
 ---
-> Division not working: 155 / 12 = 0.00000
+> tests/test.sh: line 26: ../../bin/backendtest: No such file or directory

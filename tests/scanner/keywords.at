@@ -17,6 +17,7 @@ not
 or
 private
 return
+self
 signal
 spawn
 structure
@@ -41,6 +42,7 @@ TK_NOT
 TK_OR
 TK_PRIVATE
 TK_RETURN
+TK_SELF
 TK_SIGNAL
 TK_SPAWN
 TK_STRUCTURE

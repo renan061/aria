@@ -56,3 +56,20 @@ structure Person {
     initializer(value z: Float) {
     }
 }
+--------------------------------------------------------------------------------
+-- Title
+Structure initializer with "self"
+-- Input
+structure Person {
+    variable age: Integer;
+    initializer(number: Integer) {
+        self.age = number;
+    }
+}
+-- Output
+structure Person {
+    variable age: Integer
+    initializer(value number: Integer) {
+        (self).age = (number)
+    }
+}

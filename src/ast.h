@@ -55,6 +55,7 @@ typedef enum StatementTag {
 
 typedef enum CapsaTag {
     CAPSA_ID,
+    CAPSA_ATTRIBUTE,
     CAPSA_INDEXED
 } CapsaTag;
 
@@ -338,6 +339,7 @@ extern Statement* ast_statement_spawn(Line, Block*);
 extern Statement* ast_statement_block(Block*);
 
 extern Capsa* ast_capsa_id(Id*);
+extern Capsa* ast_capsa_attribute(Id*);
 extern Capsa* ast_capsa_indexed(Line, Expression*, Expression*);
 
 extern Expression* ast_expression_literal_boolean(Line, bool);

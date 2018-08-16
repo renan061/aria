@@ -450,6 +450,12 @@ Capsa* ast_capsa_id(Id* id) {
     return capsa;
 }
 
+Capsa* ast_capsa_attribute(Id* id) {
+    Capsa* capsa = ast_capsa_id(id);
+    capsa->tag = CAPSA_ATTRIBUTE;
+    return capsa;
+}
+
 Capsa* ast_capsa_indexed(Line ln, Expression* array, Expression* index) {
     Capsa* capsa;
     MALLOC(capsa, Capsa);
