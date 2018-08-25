@@ -70,6 +70,6 @@ structure Person {
 structure Person {
     variable age: Integer
     initializer(value number: Integer) {
-        (self).age = (number)
+        ((self).age) = (number)
     }
 }

@@ -55,7 +55,7 @@
     '{' '}' '[' ']' '(' ')' '=' ';'
     TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_WHILE TK_WAIT
     TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
-    TK_FALSE TK_STRUCTURE TK_SELF TK_MONITOR TK_PRIVATE TK_INITIALIZER
+    TK_FALSE TK_STRUCTURE TK_MONITOR TK_PRIVATE TK_INITIALIZER
     TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG
 
 %token <literal> TK_INTEGER
@@ -515,9 +515,9 @@ capsa
         {
             $$ = ast_capsa_id($1);
         }
-    | TK_SELF '.' TK_LOWER_ID
+    | primary_expression '.' TK_LOWER_ID
         {
-            $$ = ast_capsa_attribute($3);
+            $$ = ast_capsa_attribute($1, $3);
         }
     | primary_expression '[' expression ']'
         {

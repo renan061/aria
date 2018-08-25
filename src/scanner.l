@@ -113,7 +113,6 @@ string      "\""(\\.|[^\\"])*"\""
 "monitor"       return TOKEN(TK_MONITOR);
 "private"       return TOKEN(TK_PRIVATE);
 "return"        return TOKEN(TK_RETURN);
-"self"          return TOKEN(TK_SELF);
 "signal"        return TOKEN(TK_SIGNAL);
 "spawn"         return TOKEN(TK_SPAWN);
 "structure"     return TOKEN(TK_STRUCTURE);
@@ -154,7 +153,7 @@ string      "\""(\\.|[^\\"])*"\""
 
 %%
 
-const char* native_types[5];
+const char* scanner_native[6];
 
 // initializes strs vector and sets yyin
 void scanner_setup(const char* file) {
@@ -163,17 +162,19 @@ void scanner_setup(const char* file) {
     }
     strs = vector_new();
 
-    native_types[SCANNER_NATIVE_BOOLEAN]            = "Boolean";
-    native_types[SCANNER_NATIVE_INTEGER]            = "Integer";
-    native_types[SCANNER_NATIVE_FLOAT]              = "Float";
-    native_types[SCANNER_NATIVE_STRING]             = "String";
-    native_types[SCANNER_NATIVE_CONDITION_QUEUE]    = "ConditionQueue";
+    scanner_native[SCANNER_NATIVE_BOOLEAN] = "Boolean";
+    scanner_native[SCANNER_NATIVE_INTEGER] = "Integer";
+    scanner_native[SCANNER_NATIVE_FLOAT] = "Float";
+    scanner_native[SCANNER_NATIVE_STRING] = "String";
+    scanner_native[SCANNER_NATIVE_CONDITION_QUEUE] = "ConditionQueue";
+    scanner_native[SCANNER_NATIVE_SELF] = "self";
 
-    vector_append(strs, (void*) native_types[SCANNER_NATIVE_BOOLEAN]);
-    vector_append(strs, (void*) native_types[SCANNER_NATIVE_INTEGER]);
-    vector_append(strs, (void*) native_types[SCANNER_NATIVE_FLOAT]);
-    vector_append(strs, (void*) native_types[SCANNER_NATIVE_STRING]);
-    vector_append(strs, (void*) native_types[SCANNER_NATIVE_CONDITION_QUEUE]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_BOOLEAN]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_INTEGER]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_FLOAT]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_STRING]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_CONDITION_QUEUE]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_SELF]);
 }
 
 // frees strs vector and closes yyin

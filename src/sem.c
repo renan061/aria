@@ -15,6 +15,7 @@
 #include "ast.h"
 #include "errs.h"
 #include "parser.h" // for the tokens
+#include "scanner.h" // because of scanner_native[self]
 #include "symtable.h"
 
 // TODO: move this somewhere else
@@ -199,6 +200,26 @@ static Capsa* astself(Line line) {
 
 // ==================================================
 //
+//  TODO
+//
+// ==================================================
+
+bool structurehasattribute(Type* t, Id* id) {
+    assert(t->tag == TYPE_STRUCTURE);
+    FOREACH(Definition, d, t->structure.definitions) {
+        if (d->tag != DEFINITION_CAPSA) {
+            continue;
+        }
+        assert(d->capsa.capsa->tag == CAPSA_ATTRIBUTE);
+        if (id == d->capsa.capsa->id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ==================================================
+//
 //  Definition
 //
 // ==================================================
@@ -268,7 +289,9 @@ static void sem_definition_function(SS* ss, Definition* def) {
         err_redeclaration(def->function.id);
     }
     linktype(ss->table, &def->function.type);
+    symtable_enter_scope(ss->table);
     semfunc(ss, def);
+    symtable_leave_scope(ss->table);
 }
 
 static void sem_definition_method(SS* ss, Definition* def) {
@@ -292,15 +315,23 @@ static void sem_definition_method(SS* ss, Definition* def) {
     }
     linktype(ss->table, &def->function.type);
 
+    symtable_enter_scope(ss->table);
     semfunc(ss, def);
+    symtable_leave_scope(ss->table);
 }
 
 static void sem_definition_constructor(SS* ss, Definition* def) {
     assert(insidestructure(ss));
     ss->initializer = true;
     def->function.id = ss->structure->structure.id;
-    def->function.type = ss->structure; 
+    def->function.type = ss->structure;
+    symtable_enter_scope(ss->table);
+    const char* self = scanner_native[SCANNER_NATIVE_SELF];
+    Capsa* self_capsa = ast_capsa_id(ast_id(def->function.id->line, self));
+    self_capsa->type = ss->structure;
+    symtable_insert(ss->table, ast_definition_capsa(self_capsa, NULL));
     semfunc(ss, def);
+    symtable_leave_scope(ss->table);
     ss->initializer = false;
 }
 
@@ -332,7 +363,6 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
 
 // auxiliary - parameters & block
 static void semfunc(SS* ss, Definition* def) {
-    symtable_enter_scope(ss->table);
     FOREACH(Definition, p, def->function.parameters) {
         sem_definition(ss, p);
         if (insidemonitor(ss) && !safetype(p->capsa.capsa->type)) {
@@ -345,7 +375,6 @@ static void semfunc(SS* ss, Definition* def) {
     ss->return_ = def->function.type;
     sem_block(ss, def->function.block);
     ss->return_ = NULL;
-    symtable_leave_scope(ss->table);
 }
 
 // ==================================================
@@ -447,12 +476,10 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
     }
 }
 
-static void sem_capsa_attribute(SS* state, Capsa** capsa_pointer) {
+static void sem_capsa_attribute(SS* ss, Capsa** capsa_pointer) {
     Capsa* capsa = *capsa_pointer;
-    assert(!capsa->type);
-
-    // TODO
-    // Resolve how to look in symtable inside a structure
+    sem_expression(ss, capsa->attribute.structure);
+    // assert(structurehasattribute(structure, structure->attribute.id)) // TODO
 }
 
 static void sem_capsa_indexed(SS* state, Capsa** capsa_pointer) {

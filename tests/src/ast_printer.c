@@ -290,8 +290,10 @@ static void print_ast_capsa(Capsa* capsa) {
         printtype(capsa->type);
         break;
     case CAPSA_ATTRIBUTE:
-        printf("(self.");
-        print_ast_id(capsa->id);
+        printf("(");
+        print_ast_expression(capsa->attribute.structure);
+        printf(".");
+        print_ast_id(capsa->attribute.field);
         printtype(capsa->type);
         printf(")");
         break;

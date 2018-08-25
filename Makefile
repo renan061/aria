@@ -110,7 +110,8 @@ backend_test: main
 	@- lua tests/tester.lua tests/backend "bin/backendtest -r"
 	@- sh tests/test.sh backend -r
 
-test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
+test: clean vector_test scanner_test parser_test ast_test sem_test
+# test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
 
 # ==================================================
 # 

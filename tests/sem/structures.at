@@ -61,6 +61,6 @@ structure Person {
 structure Person {
     variable age: Integer
     function Person(value number: Integer): Person {
-        (self: Person).age: Integer = (number: Integer)
+        ((self: Person).age: Integer) = (number: Integer)
     }
 }

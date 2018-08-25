@@ -217,16 +217,21 @@ struct Statement {
 struct Capsa {
     CapsaTag tag;
     Line line;
-    Type* type;
+
+    Type* type; // default NULL
     bool global; // default false
     bool value; // default false
-
-    LLVMValueRef llvm_value;
+    LLVMValueRef llvm_value; // default NULL
     int llvm_structure_index; // default -1
 
     union {
         // CapsaId
         Id* id;
+        // CapsaAttribute
+        struct {
+            Expression* structure;
+            Id* field;
+        } attribute;
         // CapsaIndexed
         struct {
             Expression* array;
@@ -339,7 +344,7 @@ extern Statement* ast_statement_spawn(Line, Block*);
 extern Statement* ast_statement_block(Block*);
 
 extern Capsa* ast_capsa_id(Id*);
-extern Capsa* ast_capsa_attribute(Id*);
+extern Capsa* ast_capsa_attribute(Expression*, Id*);
 extern Capsa* ast_capsa_indexed(Line, Expression*, Expression*);
 
 extern Expression* ast_expression_literal_boolean(Line, bool);

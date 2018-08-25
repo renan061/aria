@@ -14,12 +14,13 @@ extern int yylex(void);
 /*
  * TODO
  */
-#define SCANNER_NATIVE_BOOLEAN			0
-#define SCANNER_NATIVE_INTEGER			1
-#define SCANNER_NATIVE_FLOAT			2
-#define SCANNER_NATIVE_STRING			3
-#define SCANNER_NATIVE_CONDITION_QUEUE	4
-extern const char* native_types[5];
+#define SCANNER_NATIVE_BOOLEAN         0
+#define SCANNER_NATIVE_INTEGER         1
+#define SCANNER_NATIVE_FLOAT           2
+#define SCANNER_NATIVE_STRING          3
+#define SCANNER_NATIVE_CONDITION_QUEUE 4
+#define SCANNER_NATIVE_SELF            5
+extern const char* scanner_native[6];
 
 /*
  * Setup and Clean should be called before starting

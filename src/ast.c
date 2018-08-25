@@ -127,7 +127,7 @@ Id* ast_id(Line line, const char* name) {
         v->primitive = true; \
         v->immutable = true; \
         v->llvm_type = NULL; \
-        v->id = ast_id(-1, native_types[i]); \
+        v->id = ast_id(-1, scanner_native[i]); \
     } \
     return v; \
 
@@ -170,7 +170,7 @@ Type* ast_type_condition_queue(void) {
         type_condition_queue->immutable = false;
         type_condition_queue->llvm_type = NULL;
         type_condition_queue->id = ast_id(
-            -1, native_types[SCANNER_NATIVE_CONDITION_QUEUE]
+            -1, scanner_native[SCANNER_NATIVE_CONDITION_QUEUE]
         );
     }
     return type_condition_queue;
@@ -178,7 +178,7 @@ Type* ast_type_condition_queue(void) {
 
 static Type* checknative(Id* id) {
     #define CHECK_TYPE(i, v) \
-        if (native_types[i] == id->name) { \
+        if (scanner_native[i] == id->name) { \
             return free(id), v; \
         } \
 
@@ -436,36 +436,38 @@ Statement* ast_statement_block(Block* block) {
 //
 // ==================================================
 
-Capsa* ast_capsa_id(Id* id) {
+static Capsa* capsadefaults() {
     Capsa* capsa;
     MALLOC(capsa, Capsa);
-    capsa->tag = CAPSA_ID;
-    capsa->line = id->line;
     capsa->type = NULL;
     capsa->global = false;
     capsa->value = false;
     capsa->llvm_value = NULL;
     capsa->llvm_structure_index = -1;
+    return capsa;
+}
+
+Capsa* ast_capsa_id(Id* id) {
+    Capsa* capsa = capsadefaults();
+    capsa->tag = CAPSA_ID;
+    capsa->line = id->line;
     capsa->id = id;
     return capsa;
 }
 
-Capsa* ast_capsa_attribute(Id* id) {
-    Capsa* capsa = ast_capsa_id(id);
+Capsa* ast_capsa_attribute(Expression* expression, Id* id) {
+    Capsa* capsa = capsadefaults();
     capsa->tag = CAPSA_ATTRIBUTE;
+    capsa->line = id->line;
+    capsa->attribute.structure = expression;
+    capsa->attribute.field = id;
     return capsa;
 }
 
 Capsa* ast_capsa_indexed(Line ln, Expression* array, Expression* index) {
-    Capsa* capsa;
-    MALLOC(capsa, Capsa);
+    Capsa* capsa = capsadefaults();
     capsa->tag = CAPSA_INDEXED;
     capsa->line = ln;
-    capsa->type = NULL;
-    capsa->global = false;
-    capsa->value = false;
-    capsa->llvm_value = NULL;
-    capsa->llvm_structure_index = -1;
     capsa->indexed.array = array;
     capsa->indexed.index = index;
     return capsa;

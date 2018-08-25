@@ -41,7 +41,6 @@ int main(int argc, char* argv[]) {
         case TK_MONITOR:        printf("TK_MONITOR");       break;
         case TK_PRIVATE:        printf("TK_PRIVATE");       break;
         case TK_RETURN:         printf("TK_RETURN");        break;
-        case TK_SELF:           printf("TK_SELF");          break;
         case TK_SIGNAL:         printf("TK_SIGNAL");        break;
         case TK_SPAWN:          printf("TK_SPAWN");         break;
         case TK_STRUCTURE:      printf("TK_STRUCTURE");     break;
