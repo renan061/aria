@@ -204,18 +204,22 @@ static Capsa* astself(Line line) {
 //
 // ==================================================
 
-bool structurehasattribute(Type* t, Id* id) {
-    assert(t->tag == TYPE_STRUCTURE);
-    FOREACH(Definition, d, t->structure.definitions) {
+// TODO: use symtable? do the same for functions?
+// auxiliary - returns null if the structure does not contain the attribute
+Capsa* findattribute(Capsa* capsa) {
+    Type* type = capsa->attribute.structure->type;
+    Id* id = capsa->attribute.field;
+
+    assert(type->tag == TYPE_STRUCTURE);
+    FOREACH(Definition, d, type->structure.definitions) {
         if (d->tag != DEFINITION_CAPSA) {
             continue;
         }
-        assert(d->capsa.capsa->tag == CAPSA_ATTRIBUTE);
-        if (id == d->capsa.capsa->id) {
-            return true;
+        if (id->name == d->capsa.capsa->id->name) {
+            return d->capsa.capsa;
         }
     }
-    return false;
+    return NULL;
 }
 
 // ==================================================
@@ -232,6 +236,7 @@ static void sem_definition_structure(SS*, Definition*);
 static void sem_definition_monitor(SS*, Definition*);
 
 static void semfunc(SS*, Definition*);
+static void semstruct(SS*, Definition*);
 
 static void sem_definition(SS* ss, Definition* def) {
     switch (def->tag) {
@@ -336,29 +341,11 @@ static void sem_definition_constructor(SS* ss, Definition* def) {
 }
 
 static void sem_definition_structure(SS* ss, Definition* def) {
-    if (!symtable_insert(ss->table, def)) {
-        err_redeclaration(def->type->structure.id);
-    }
-    ss->structure = def->type;
-    symtable_enter_scope(ss->table);
-    FOREACH(Definition, d, def->type->structure.definitions) {
-        sem_definition(ss, d);
-    }
-    symtable_leave_scope(ss->table);
-    ss->structure = NULL;
+    semstruct(ss, def);
 }
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
-    if (!symtable_insert(ss->table, def)) {
-        err_redeclaration(def->type->structure.id);
-    }
-    ss->structure = def->type;
-    symtable_enter_scope(ss->table);
-    FOREACH(Definition, d, def->type->structure.definitions) {
-        sem_definition(ss, d);
-    }
-    symtable_leave_scope(ss->table);
-    ss->structure = NULL;
+    semstruct(ss, def);
 }
 
 // auxiliary - parameters & block
@@ -375,6 +362,29 @@ static void semfunc(SS* ss, Definition* def) {
     ss->return_ = def->function.type;
     sem_block(ss, def->function.block);
     ss->return_ = NULL;
+}
+
+// auxiliary - structures & monitors
+static void semstruct(SS* ss, Definition* def) {
+    if (!symtable_insert(ss->table, def)) {
+        err_redeclaration(def->type->structure.id);
+    }
+    ss->structure = def->type;
+    symtable_enter_scope(ss->table);
+    FOREACH(Definition, d, def->type->structure.definitions) {
+        if (d->tag == DEFINITION_CAPSA) {
+            sem_definition(ss, d);
+        }
+    }
+    symtable_leave_scope(ss->table);
+    // FIXME: still possible to call structure function from inside structure
+    // functions without adding "self." or "dog."
+    FOREACH(Definition, d, def->type->structure.definitions) {
+        if (d->tag == DEFINITION_METHOD || d->tag == DEFINITION_CONSTRUCTOR) {
+            sem_definition(ss, d);
+        }
+    }
+    ss->structure = NULL;
 }
 
 // ==================================================
@@ -479,7 +489,11 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
 static void sem_capsa_attribute(SS* ss, Capsa** capsa_pointer) {
     Capsa* capsa = *capsa_pointer;
     sem_expression(ss, capsa->attribute.structure);
-    // assert(structurehasattribute(structure, structure->attribute.id)) // TODO
+    Capsa* attribute = findattribute(capsa);
+    if (!attribute) {
+        TODOERR(capsa->line, "structure does not contain attribute");
+    }
+    capsa->type = attribute->type;
 }
 
 static void sem_capsa_indexed(SS* state, Capsa** capsa_pointer) {

@@ -49,7 +49,7 @@ structure Person {
 }
 --------------------------------------------------------------------------------
 -- Title
-Structure constructor
+Structure constructor (with self)
 -- Input
 structure Person {
     variable age: Integer;
@@ -64,3 +64,66 @@ structure Person {
         ((self: Person).age: Integer) = (number: Integer)
     }
 }
+--------------------------------------------------------------------------------
+-- Title
+Referencing inside the structure without using self
+-- Input
+structure Person {
+    variable age: Integer;
+    initializer(number: Integer) {
+        age = number;
+    }
+}
+-- Output
+line 4:
+    semantic error: unknown variable 'age' beeing used
+--------------------------------------------------------------------------------
+-- Title
+Accessing variables and values from structures
+-- Input
+structure Dog {
+    value species = "canis lupus familiaris";
+    variable name: String;
+    variable age: Integer;
+
+    initializer(name: String, age: Integer) {
+        self.name = name;
+        self.age = age;
+    }
+}
+function main {
+    value dog = Dog("susie", 2);
+    value species = dog.species;
+    value name = dog.name;
+    value age = dog.age;
+}
+-- Output
+structure Dog {
+    value species: String = ("canis lupus familiaris": String)
+    variable name: String
+    variable age: Integer
+    function Dog(value name: String, value age: Integer): Dog {
+        ((self: Dog).name: String) = (name: String)
+        ((self: Dog).age: Integer) = (age: Integer)
+    }
+}
+function main: Void {
+    value dog: Dog = (Dog(("susie": String), (2: Integer)): Dog)
+    value species: String = (((dog: Dog).species: String))
+    value name: String = (((dog: Dog).name: String))
+    value age: Integer = (((dog: Dog).age: Integer))
+}
+--------------------------------------------------------------------------------
+-- Title
+Structure does not contain attribute
+-- Input
+structure Person {
+    initializer {}
+}
+function main {
+    value person = Person();
+    print(person.age);
+}
+-- Output
+line 6:
+    semantic error: structure does not contain attribute
