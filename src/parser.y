@@ -56,7 +56,7 @@
     TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_WHILE TK_WAIT
     TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
     TK_FALSE TK_STRUCTURE TK_MONITOR TK_PRIVATE TK_INITIALIZER
-    TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG
+    TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG TK_INTERFACE
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -75,8 +75,13 @@
     capsa_definition block_capsa_definition
     value_definition variable_definition
     capsa_definition_assignment
-%type <definition> // functions
+%type <definition> // function declarations
+    function_declaration
+%type <definition> // function definitions
     function_definition method_definition constructor_definition
+%type <definition> // interfaces
+    interface_definition
+    interface_element interface_element_list
 %type <definition> // structures
     structure_definition
     structure_element structure_element_list
@@ -142,6 +147,10 @@ file_definition
             $$ = $1;
         }
     | function_definition
+        {
+            $$ = $1;
+        }
+    | interface_definition
         {
             $$ = $1;
         }
@@ -242,14 +251,27 @@ capsa_definition_assignment
 //
 // ==================================================
 
-function_definition
-    : TK_FUNCTION TK_LOWER_ID parameter_list0 ':' type block
+function_declaration
+    : TK_FUNCTION TK_LOWER_ID parameter_list0 ':' type
         {
-            $$ = ast_definition_function($2, $3, $5, $6);
+            // TODO: ast_declaration_function
+            $$ = ast_definition_function($2, $3, $5, NULL);
         }
-    | TK_FUNCTION TK_LOWER_ID parameter_list0 block
+    | TK_FUNCTION TK_LOWER_ID parameter_list0
         {
-            $$ = ast_definition_function($2, $3, ast_type_void(), $4);
+            // TODO: ast_declaration_function
+            $$ = ast_definition_function($2, $3, ast_type_void(), NULL);
+        }
+    ;
+
+function_definition
+    : function_declaration block
+        {
+            // TODO
+            // Definition* ast_declaration_function(name, parameters, return);
+            // Definition* ast_definition_function(declaration, block);
+            $1->function.block = $2;
+            $$ = $1;
         }
     ;
 
@@ -662,6 +684,37 @@ function_call
     | type '(' expression_list0 ')'
         {
             $$ = ast_call_constructor($2, $1, $3);
+        }
+    ;
+
+// ==================================================
+//
+//  Interface
+//
+// ==================================================
+
+interface_definition
+    : TK_INTERFACE TK_UPPER_ID '{' interface_element_list '}'
+        {
+            // TODO
+        }
+    ;
+
+interface_element_list
+    : /* empty */
+        {
+            $$ = NULL;
+        }
+    | interface_element_list interface_element
+        {
+            APPEND(Definition, $$, $1, $2);
+        }
+    ;
+
+interface_element
+    : function_declaration ';'
+        {
+            $$ = $1;
         }
     ;
 

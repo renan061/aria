@@ -4,17 +4,18 @@
 
 # TODO: gnu11 / c11
 # TODO: llvm include
-CC := gcc-7 
-CFLAGS := -I/usr/local/opt/llvm/include -std=gnu11 -Wall
+CC= gcc
+CPPC= clang++
+CFLAGS= -I/usr/local/opt/llvm/include -std=gnu11 -Wall
 
-CPPFLAGS := `llvm-config --cxxflags --ldflags --system-libs`
+CPPFLAGS= `llvm-config --cxxflags --ldflags --system-libs`
 CPPFLAGS += `llvm-config --libs analysis bitwriter core executionengine `
 CPPFLAGS += `llvm-config --libs target mcjit native`
 
 main: objs
 	@- $(CC) $(CFLAGS) -c src/aria.c -o obj/aria.o
 
-	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o \
+	@- $(CPPC) $(CPPFLAGS) obj/errs.o obj/vector.o \
 	obj/scanner.o obj/parser.o obj/ast.o \
 	obj/symtable.o obj/sem.o obj/ir.o \
 	obj/athreads.o obj/backend.o \

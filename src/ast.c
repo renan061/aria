@@ -38,28 +38,18 @@ Definition* ast_definition_capsa(Capsa* capsa, Expression* exp) {
     return definition;
 }
 
-// used by function and constructor definitions
-#define AST_FUNCTION(f, _tag, _private, _id, _parameters, _type, _block) \
-    assert(_block->tag == BLOCK); \
-    f->tag = _tag; \
-    f->next = NULL; \
-    f->llvm_value = NULL; \
-    f->function.private = _private; \
-    f->function.id = _id; \
-    f->function.parameters = _parameters; \
-    f->function.type = _type; \
-    f->function.block = _block; \
-
 Definition* ast_definition_function(Id* id, Definition* ps, Type* t, Block* b) {
     Definition* definition;
     MALLOC(definition, Definition);
-    AST_FUNCTION(definition, DEFINITION_FUNCTION,
-        /* Private      */ false,
-        /* Id           */ id,
-        /* Parameters   */ ps,
-        /* Type         */ t,
-        /* Block        */ b
-    );
+    // assert(block->tag == BLOCK); // TODO: ast_declaration_function
+    definition->tag = DEFINITION_FUNCTION;
+    definition->next = NULL;
+    definition->llvm_value = NULL;
+    definition->function.private = false;
+    definition->function.id = id;
+    definition->function.parameters = ps;
+    definition->function.type = t;
+    definition->function.block = b;
     return definition;
 }
 
@@ -73,13 +63,15 @@ Definition* ast_definition_method(bool private, Definition* function) {
 Definition* ast_definition_constructor(Definition* parameters, Block* block) {
     Definition* definition;
     MALLOC(definition, Definition);
-    AST_FUNCTION(definition, DEFINITION_CONSTRUCTOR,
-        /* Private      */ false,
-        /* Id           */ NULL,
-        /* Parameters   */ parameters,
-        /* Type         */ NULL,
-        /* Block        */ block
-    );
+    assert(block->tag == BLOCK);
+    definition->tag = DEFINITION_CONSTRUCTOR;
+    definition->next = NULL;
+    definition->llvm_value = NULL;
+    definition->function.private = false;
+    definition->function.id = NULL;
+    definition->function.parameters = parameters;
+    definition->function.type = NULL;
+    definition->function.block = block;
     return definition;
 }
 

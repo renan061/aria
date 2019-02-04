@@ -339,7 +339,8 @@ extern Statement* ast_statement_return(Line, Expression*);
 extern Statement* ast_statement_if(Line, Expression*, Block*);
 extern Statement* ast_statement_if_else(Line, Expression*, Block*, Block*);
 extern Statement* ast_statement_while(Line, Expression*, Block*);
-extern Statement* ast_statement_for(Line, Definition*, Expression*, Statement*, Block*);
+extern Statement* ast_statement_for(Line, Definition*, Expression*, Statement*,
+    Block*);
 extern Statement* ast_statement_spawn(Line, Block*);
 extern Statement* ast_statement_block(Block*);
 

@@ -110,6 +110,7 @@ string      "\""(\\.|[^\\"])*"\""
 "Immutable"     return TOKEN(TK_IMMUTABLE);
 "in"            return TOKEN(TK_IN);
 "initializer"   return TOKEN(TK_INITIALIZER);
+"interface"     return TOKEN(TK_INTERFACE);
 "monitor"       return TOKEN(TK_MONITOR);
 "private"       return TOKEN(TK_PRIVATE);
 "return"        return TOKEN(TK_RETURN);
@@ -189,11 +190,8 @@ void scanner_clean(void) {
 //
 // ==================================================
 
-/*
- * TODO:
- *  - Using a vector to deal with ids and strings is very inefficient.
- *      Therefore, another data structure should be used instead.
- */
+// TODO: Using a vector to deal with ids and strings is very inefficient.
+// Another data structure should be used instead.
 
 // used by lower-id and upper-id
 static void idaction() {

@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
         case TK_IMMUTABLE:      printf("TK_IMMUTABLE");     break;
         case TK_IN:             printf("TK_IN");            break;
         case TK_INITIALIZER:    printf("TK_INITIALIZER");   break;
+        case TK_INTERFACE:      printf("TK_INTERFACE");     break;
         case TK_MONITOR:        printf("TK_MONITOR");       break;
         case TK_PRIVATE:        printf("TK_PRIVATE");       break;
         case TK_RETURN:         printf("TK_RETURN");        break;

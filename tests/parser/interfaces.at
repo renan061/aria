@@ -1,0 +1,28 @@
+--------------------------------------------------------------------------------
+-- Title
+Empty interface
+-- Input
+interface Interface {}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Interface with one function
+-- Input
+interface Interface {
+    function foo;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Interface with many functions
+-- Input
+interface Interface {
+    function foo;
+    function bar(a: Integer);
+    function baz: Interface;
+    function bam(x: String, y: Float): Integer;
+}
+-- Output
+OK

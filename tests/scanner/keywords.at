@@ -12,6 +12,7 @@ if
 Immutable
 in
 initializer
+interface
 monitor
 not
 or
@@ -36,6 +37,7 @@ TK_IF
 TK_IMMUTABLE
 TK_IN
 TK_INITIALIZER
+TK_INTERFACE
 TK_MONITOR
 TK_NOT
 TK_OR
