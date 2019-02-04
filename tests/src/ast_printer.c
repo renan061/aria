@@ -86,12 +86,19 @@ static void print_ast_definition(Definition* definition) {
         } else {
             printtype(definition->function.type);
         }
-        printf(" ");
-        print_ast_block(definition->function.block);
+        if (definition->function.block) {
+            printf(" ");
+            print_ast_block(definition->function.block);
+        } else {
+            printf(";");
+        }
         printf("\n");
         break;
     case DEFINITION_TYPE:
         switch (definition->type->tag) {
+        case TYPE_INTERFACE:
+            printf("interface ");
+            break;
         case TYPE_STRUCTURE:
             printf("structure ");
             break;
@@ -138,8 +145,10 @@ static void print_ast_type(Type* type) {
         print_ast_type(type->array);
         printf("]");
         break;
+    case TYPE_INTERFACE:
+        // fallthrough
     case TYPE_STRUCTURE:
-        // fallthrough  
+        // fallthrough
     case TYPE_MONITOR:
         print_ast_id(type->structure.id);
         break;

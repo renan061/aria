@@ -78,6 +78,7 @@ Definition* ast_definition_constructor(Definition* parameters, Block* block) {
 Definition* ast_definition_type(Type* type) {
     assert(
         type->tag == TYPE_ID ||
+        type->tag == TYPE_INTERFACE ||
         type->tag == TYPE_STRUCTURE ||
         type->tag == TYPE_MONITOR
     );

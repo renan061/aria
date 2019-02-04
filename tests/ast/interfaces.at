@@ -4,7 +4,8 @@ Empty interface
 -- Input
 interface Interface {}
 -- Output
-OK
+interface Interface {
+}
 --------------------------------------------------------------------------------
 -- Title
 Interface with one function
@@ -13,7 +14,9 @@ interface Interface {
     function foo;
 }
 -- Output
-OK
+interface Interface {
+    function foo: Void;
+}
 --------------------------------------------------------------------------------
 -- Title
 Interface with many functions
@@ -25,16 +28,9 @@ interface Interface {
     function bam(x: String, y: Float): Integer;
 }
 -- Output
-OK
---------------------------------------------------------------------------------
--- Title
-Interface with a function definition
--- Input
 interface Interface {
-    function foo {
-        print("foo");
-    }
+    function foo: Void;
+    function bar(value a: Integer): Void;
+    function baz: Interface;
+    function bam(value x: String, value y: Float): Integer;
 }
--- Output
-line 0:
-    parser error: syntax error

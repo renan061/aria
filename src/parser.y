@@ -696,7 +696,8 @@ function_call
 interface_definition
     : TK_INTERFACE TK_UPPER_ID '{' interface_element_list '}'
         {
-            // TODO
+            Type* type = ast_type_structure($2, TYPE_INTERFACE, $4);
+            $$ = ast_definition_type(type);
         }
     ;
 

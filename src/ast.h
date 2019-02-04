@@ -27,6 +27,7 @@ typedef enum TypeTag {
     TYPE_VOID,
     TYPE_ID,
     TYPE_ARRAY,
+    TYPE_INTERFACE,
     TYPE_STRUCTURE,
     TYPE_MONITOR
 } TypeTag;
