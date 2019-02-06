@@ -31,12 +31,11 @@
     printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
 
 // TODO
-#define PREPEND(Type, head, element) \
-    { \
-        Type* _temporary = head; \
-        head = element; \
-        head->next = _temporary; \
-    } \
+#define PREPEND(Type, head, element) do { \
+    Type* _temporary = head; \
+    head = element; \
+    head->next = _temporary; \
+} while (0); \
 
 // stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
@@ -78,6 +77,7 @@ static void sem_function_call(SS*, FunctionCall*);
 // Auxiliary functions that deal with type analysis
 static void linktype(SymbolTable*, Type**);
 static void assignment(Capsa*, Expression**);
+static bool typeequals(Type*, Type*);
 static void typecheck1(Type*, Expression**);
 static Type* typecheck2(Expression**, Expression**);
 static bool indextype(Type*);
@@ -189,10 +189,10 @@ void sem_analyse(AST* ast) {
     assert(!ss.spawn.function_call);
 }
 
-// TODO: what the hell is this, past-renan?
+// TODO: move this somewhere
 static Capsa* astself(Line line) {
-    static const char* keyword_self = "self";
-    Capsa* capsa = ast_capsa_id(ast_id(line, keyword_self));
+    const char* keyword = scanner_native[SCANNER_NATIVE_SELF];
+    Capsa* capsa = ast_capsa_id(ast_id(line, keyword));
     capsa->global = false;
     capsa->value = true;
     return capsa;
@@ -232,11 +232,14 @@ static void sem_definition_capsa(SS*, Definition*);
 static void sem_definition_function(SS*, Definition*);
 static void sem_definition_method(SS*, Definition*);
 static void sem_definition_constructor(SS*, Definition*);
+static void sem_definition_interface(SS* ss, Definition*);
 static void sem_definition_structure(SS*, Definition*);
 static void sem_definition_monitor(SS*, Definition*);
 
 static void semfunc(SS*, Definition*);
 static void semstruct(SS*, Definition*);
+static bool functionequals(Definition*, Definition*);
+static void interfacecheck(SS*, Type*, Type*);
 
 static void sem_definition(SS* ss, Definition* def) {
     switch (def->tag) {
@@ -254,6 +257,9 @@ static void sem_definition(SS* ss, Definition* def) {
         break;
     case DEFINITION_TYPE:
         switch (def->type->tag) {
+        case TYPE_INTERFACE:
+            sem_definition_interface(ss, def);
+            break;
         case TYPE_STRUCTURE:
             sem_definition_structure(ss, def);
             break;
@@ -271,29 +277,38 @@ static void sem_definition(SS* ss, Definition* def) {
 
 static void sem_definition_capsa(SS* ss, Definition* def) {
     Capsa* capsa = def->capsa.capsa;
+
+    // checks if the variable is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(capsa->id);
     }
-    if (capsa->type) { // For non-inferred types
+
+    // gets the variable's type from the symbol table (for non-inferred types)
+    if (capsa->type) {
         linktype(ss->table, &capsa->type);
     }
+
+    // deals with the variable's definition and it's type inference (if any)
     if (def->capsa.expression) {
         sem_expression(ss, def->capsa.expression);
         assignment(capsa, &def->capsa.expression);
         if (capsa->global && !safetype(capsa->type)) {
-            TODOERR(
-                capsa->line, "global variables need to have Immutable type"
-            );
+            TODOERR(capsa->line, "global values must have safe types");
         }
     }
 }
 
 static void sem_definition_function(SS* ss, Definition* def) {
     assert(!def->function.private);
+
+    // checks if the method is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(def->function.id);
     }
+
+    // gets the function's return type from the symbol table
     linktype(ss->table, &def->function.type);
+
     symtable_enter_scope(ss->table);
     semfunc(ss, def);
     symtable_leave_scope(ss->table);
@@ -301,23 +316,25 @@ static void sem_definition_function(SS* ss, Definition* def) {
 
 static void sem_definition_method(SS* ss, Definition* def) {
     assert(insidemonitor(ss));
-        
-    // TODO: take line (-1) from definition
-    Capsa* capsa = astself(-1);
-    capsa->type = ast_type_id(ast_id(
-        -1, ss->structure->structure.id->name)
-    );
 
-    PREPEND(
-        Definition, def->function.parameters, ast_definition_capsa(capsa, NULL)
-    );
+    // adds <self> as the first parameter to the method
+    Line line = def->function.id->line;
+    Capsa* self = astself(line);
+    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
+    Definition* self_definition = ast_definition_capsa(self, NULL);
+    PREPEND(Definition, def->function.parameters, self_definition);
 
+    // checks if the method is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(def->function.id);
     }
+
+    // checks if the function's return type is safe
     if (!safetype(def->function.type)) {
         err_monitor_function_type(def->function.id->line);
     }
+
+    // gets the function's return type from the symbol table
     linktype(ss->table, &def->function.type);
 
     symtable_enter_scope(ss->table);
@@ -328,16 +345,24 @@ static void sem_definition_method(SS* ss, Definition* def) {
 static void sem_definition_constructor(SS* ss, Definition* def) {
     assert(insidestructure(ss));
     ss->initializer = true;
+
     def->function.id = ss->structure->structure.id;
     def->function.type = ss->structure;
+
+    // creates the <self> value to be returned by the constructor
+    Capsa* self = astself(def->function.id->line);
+    self->type = ss->structure;
+
     symtable_enter_scope(ss->table);
-    const char* self = scanner_native[SCANNER_NATIVE_SELF];
-    Capsa* self_capsa = ast_capsa_id(ast_id(def->function.id->line, self));
-    self_capsa->type = ss->structure;
-    symtable_insert(ss->table, ast_definition_capsa(self_capsa, NULL));
+    symtable_insert(ss->table, ast_definition_capsa(self, NULL));
     semfunc(ss, def);
     symtable_leave_scope(ss->table);
+
     ss->initializer = false;
+}
+
+static void sem_definition_interface(SS* ss, Definition* def) {
+    semstruct(ss, def);
 }
 
 static void sem_definition_structure(SS* ss, Definition* def) {
@@ -346,9 +371,17 @@ static void sem_definition_structure(SS* ss, Definition* def) {
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
     semstruct(ss, def);
+
+    // checks interface implementation
+    if (def->type->structure.interface) {
+        linktype(ss->table, &def->type->structure.interface);
+        interfacecheck(ss, def->type->structure.interface, def->type);
+    }
 }
 
-// auxiliary - parameters & block
+// -----------------------------------------------------------------------------
+
+// auxiliary - parameters and block
 static void semfunc(SS* ss, Definition* def) {
     FOREACH(Definition, p, def->function.parameters) {
         sem_definition(ss, p);
@@ -360,31 +393,87 @@ static void semfunc(SS* ss, Definition* def) {
         }
     }
     ss->return_ = def->function.type;
-    sem_block(ss, def->function.block);
+    if (def->function.block) { // interface functions don't have blocks
+        sem_block(ss, def->function.block);
+    }
     ss->return_ = NULL;
 }
 
-// auxiliary - structures & monitors
+// auxiliary - interface, structures and monitors
 static void semstruct(SS* ss, Definition* def) {
+    Type* type = def->type;
     if (!symtable_insert(ss->table, def)) {
-        err_redeclaration(def->type->structure.id);
+        err_redeclaration(type->structure.id);
     }
-    ss->structure = def->type;
+    ss->structure = type;
     symtable_enter_scope(ss->table);
-    FOREACH(Definition, d, def->type->structure.definitions) {
+    FOREACH(Definition, d, type->structure.definitions) {
         if (d->tag == DEFINITION_CAPSA) {
             sem_definition(ss, d);
         }
     }
-    symtable_leave_scope(ss->table);
-    // FIXME: still possible to call structure function from inside structure
+    // FIXME: still possible to call a structure function from inside structure
     // functions without adding "self." or "dog."
-    FOREACH(Definition, d, def->type->structure.definitions) {
-        if (d->tag == DEFINITION_METHOD || d->tag == DEFINITION_CONSTRUCTOR) {
+    FOREACH(Definition, d, type->structure.definitions) {
+        if (d->tag == DEFINITION_FUNCTION ||
+            d->tag == DEFINITION_METHOD ||
+            d->tag == DEFINITION_CONSTRUCTOR) {
             sem_definition(ss, d);
         }
     }
+    symtable_leave_scope(ss->table);
     ss->structure = NULL;
+}
+
+// auxiliary - compares method declaration with interface function declaration
+static bool functionequals(Definition* ifunction, Definition* method) {
+    // same function name
+    if (ifunction->function.id->name != method->function.id->name) {
+        return false;
+    }
+    // same funtion returning type
+    if (!typeequals(ifunction->function.type, method->function.type)) {
+        return false;
+    }
+
+    // same parameters    
+    Definition* p2 = method->function.parameters;
+    assert(p2);
+    p2 = p2->next; // skipping self
+
+    FOREACH(Definition, p1, ifunction->function.parameters) {
+        if (!p2) {
+            return false; // parameters count
+        }
+        if (p1->capsa.capsa->id->name != p2->capsa.capsa->id->name) {
+            return false; // parameter name
+        }
+        if (!typeequals(p1->capsa.capsa->type, p2->capsa.capsa->type)) {
+            return false; // parameter type
+        }
+        p2 = p2->next;
+    }
+    if (p2) {
+        return false; // parameters count
+    }
+    return true;
+}
+
+// auxiliary - checks if the interface is implemented by a type
+static void interfacecheck(SS* ss, Type* interface, Type* type) {
+    FOREACH(Definition, f1, interface->structure.definitions) {
+        bool found = false;
+        FOREACH(Definition, f2, type->structure.definitions) {
+            if (functionequals(f1, f2)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            // TODO: "<name> does not implement interface <name>"
+            TODOERR(type->structure.id->line, "interface not implemented");
+        }
+    }
 }
 
 // ==================================================
@@ -942,8 +1031,10 @@ static void sem_function_call(SS* state, FunctionCall* call) {
         // Implicit self for method calls inside monitors
         if (call->function_definition->tag == DEFINITION_METHOD) {
             assert(insidemonitor(state));
-            PREPEND(Expression, call->arguments,
-                ast_expression_capsa(astself(call->line)));
+            PREPEND(Expression,
+                call->arguments,
+                ast_expression_capsa(astself(call->line))
+            );
         }
 
         call->type = call->function_definition->function.type;
@@ -1074,21 +1165,6 @@ static void sem_function_call(SS* state, FunctionCall* call) {
 //
 // ==================================================
 
-// TODO
-static bool typeequals(Type* type1, Type* type2) {
-    if (type1->immutable != type2->immutable) {
-        return false;
-    }
-    if (type1 == type2) {
-        return true;
-    }
-    if (type1->tag != TYPE_ARRAY || type2->tag != TYPE_ARRAY) {
-        return false;
-    }
-
-    return typeequals(type1->array, type2->array);
-}
-
 // static void freetype(Type* type) {
 //  switch (type->tag) {
 //  case TYPE_ID:
@@ -1131,7 +1207,7 @@ static void linktype(SymbolTable* table, Type** pointer) {
 
     switch ((*pointer)->tag) {
     case TYPE_VOID:
-        // Not necessary to look for in the symbol table because
+        // It's not necessary to look for in the symbol table because
         // TypeVoid instance is not provided by the user as an id
         break;
     case TYPE_ID: {
@@ -1141,7 +1217,7 @@ static void linktype(SymbolTable* table, Type** pointer) {
         }
         assert(definition->tag == DEFINITION_TYPE);
         freetypeid(*pointer);
-        (*pointer) = definition->type;
+        *pointer = definition->type;
         break;
     }
     case TYPE_ARRAY:
@@ -1164,6 +1240,23 @@ static void assignment(Capsa* capsa, Expression** expression) {
     } else { // when defining with implicit type
         capsa->type = (*expression)->type;
     }
+}
+
+/* 
+ * Checks for type equality between two types.
+ */
+static bool typeequals(Type* type1, Type* type2) {
+    if (type1->immutable != type2->immutable) {
+        return false;
+    }
+    if (type1 == type2) {
+        return true;
+    }
+    if (type1->tag != TYPE_ARRAY || type2->tag != TYPE_ARRAY) {
+        return false;
+    }
+
+    return typeequals(type1->array, type2->array);
 }
 
 /* 
@@ -1235,14 +1328,19 @@ static bool equatabletype(Type* type) { // TODO: Strings?
 static bool safetype(Type *type) {
     switch (type->tag) {
         case TYPE_VOID:
+            // fallthrough
         case TYPE_ID:
             return type->immutable;
         case TYPE_ARRAY:
             return type->immutable && safetype(type->array);
+        case TYPE_INTERFACE:
+            return true; // NOTE: for now
         case TYPE_STRUCTURE:
             return false; // TODO
         case TYPE_MONITOR:
             return true;
+        default:
+            UNREACHABLE;
     }
     UNREACHABLE;
 }

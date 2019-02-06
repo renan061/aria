@@ -71,13 +71,10 @@ static LLVMValueRef zerovalue(IRState*, Type*);
 static void backend_definition(IRState*, Definition*);
 static void backend_block(IRState*, Block*);
 static void backend_statement(IRState*, Statement*);
-static void backend_variable(IRState*, Variable*);
+static void backend_capsa(IRState*, Capsa*);
 static void backend_expression(IRState*, Expression*);
 static void backend_condition(
-    IRState*,
-    Expression*,
-    LLVMBasicBlockRef,
-    LLVMBasicBlockRef
+    IRState*, Expression*, LLVMBasicBlockRef, LLVMBasicBlockRef
 );
 static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
@@ -116,21 +113,21 @@ static void addgval(Definition* value) {
 // initializes all global values (should be called in the module's initializer)
 static void initgvals(IRState* state) {
     for (Global* g = globals; g; g = g->next) {
-        Variable* variable = g->value->variable.variable;
-        Expression* expression = g->value->variable.expression;
+        Capsa* capsa = g->value->capsa.capsa;
+        Expression* expression = g->value->capsa.expression;
         // declare
-        variable->llvm_value = LLVMAddGlobal(
-            state->module, llvm_type(variable->type), variable->id->name
+        capsa->llvm_value = LLVMAddGlobal(
+            state->module, llvm_type(capsa->type), capsa->id->name
         );
         // initialize with zero value
         LLVMSetInitializer( // FIXME: Why can't I just declare?
-            variable->llvm_value, zerovalue(state, variable->type)
+            capsa->llvm_value, zerovalue(state, capsa->type)
         );
         // evaluate
         backend_expression(state, expression);
         // store
         LLVMBuildStore(
-            state->builder, expression->llvm_value, variable->llvm_value
+            state->builder, expression->llvm_value, capsa->llvm_value
         );
     }
 }
@@ -155,7 +152,7 @@ static LLVMValueRef declare_function(LLVMModuleRef m, Definition* function) {
     LLVMTypeRef param_types[param_count]; // TODO: Isn't this local memory?
     p = function->function.parameters;
     for (unsigned int i = 0; p; p = p->next, i++) {
-        param_types[i] = llvm_type(p->variable.variable->type);
+        param_types[i] = llvm_type(p->capsa.capsa->type);
     }
 
     // Creating the function prototype and setting it as the current function
@@ -173,7 +170,7 @@ static LLVMValueRef declare_function(LLVMModuleRef m, Definition* function) {
     // Giving values to the parameters
     p = function->function.parameters;
     for (unsigned int i = 0; p; p = p->next, i++) {
-        p->variable.variable->llvm_value = LLVMGetParam(fn, i);
+        p->capsa.capsa->llvm_value = LLVMGetParam(fn, i);
     }
 
     return fn;
@@ -250,9 +247,11 @@ static void todospawn(IRState* state, FunctionCall* call) {
     );
     Definition* p = call->function_definition->function.parameters;
     for (unsigned int n = 0; p; p = p->next, n++) {
-        p->variable.variable->llvm_value = LLVMBuildLoad(
+        p->capsa.capsa->llvm_value = LLVMBuildLoad(
             spawn_state->builder,
-            LLVMBuildStructGEP(spawn_state->builder, parameter, n, LLVM_TEMPORARY),
+            LLVMBuildStructGEP(
+                spawn_state->builder, parameter, n, LLVM_TEMPORARY
+            ),
             LLVM_TEMPORARY
         );
     }
@@ -282,20 +281,20 @@ static void todospawn(IRState* state, FunctionCall* call) {
 }
 
 LLVMModuleRef backend_compile(AST* ast) {
-    // Setup
+    // setup
     __boolean = ast_type_boolean();
     __integer = ast_type_integer();
     __float = ast_type_float();
     __string = ast_type_string();
     __condition_queue = ast_type_condition_queue();
 
-    // LLVM Setup
+    // LLVM setup
     IRState* state = ir_state_new(
         LLVMModuleCreateWithName("main.aria"),
         LLVMCreateBuilder()
     );
 
-    // Includes
+    // includes
     ir_setup(state->module);
     ir_pthread_setup(state->module);
 
@@ -304,150 +303,167 @@ LLVMModuleRef backend_compile(AST* ast) {
         backend_definition(state, d);
     }
 
-    // Teardown
+    // teardown
     ir_state_done(state);
     LLVMModuleRef module = state->module;
     ir_state_free(state);
     return module;
 }
 
-static void backend_definition(IRState* state, Definition* definition) {
-    switch (definition->tag) {
-    case DEFINITION_VARIABLE: {
-        Variable* variable = definition->variable.variable;
-        Expression* expression = definition->variable.expression;
+// ==================================================
+//
+//  Definition
+//
+// ==================================================
 
-        if (variable->global) {
-            addgval(definition);
-            break;    
-        }
+static void backend_definition_capsa(IRState*, Definition*);
+// static void backend_definition_function(IRState*, Definition*);
+// static void backend_definition_method(IRState*, Definition*);
+// static void backend_definition_constructor(IRState*, Definition*);
+// static void backend_definition_interface(IRState* ss, Definition*);
+// static void backend_definition_structure(IRState*, Definition*);
+// static void backend_definition_monitor(IRState*, Definition*);
 
-        if (!(variable->llvm_structure_index > -1)) { // TODO: Refactor
-            // Common scoped variables
-            if (variable->value) { // values
-                backend_expression(state, expression);
-                variable->llvm_value = expression->llvm_value;
-            } else { // variables
-                variable->llvm_value = LLVMBuildAlloca(
-                    state->builder,
-                    llvm_type(variable->type),
-                    variable->id->name
-                );
-                if (expression) {
-                    backend_expression(state, expression);
-                    LLVMBuildStore(
-                        state->builder,
-                        expression->llvm_value,
-                        variable->llvm_value
-                    );
-                }
-            }
-        }
-        break;
+static void backend_definition_capsa(IRState* irs, Definition* def) {
+    Capsa* capsa = def->capsa.capsa;
+    Expression* exp = def->capsa.expression;
+
+    if (capsa->global) {
+        addgval(def);
+        return;
     }
+
+    // TODO: Refactor
+    // TODO: is this to detect if the capsa is inside a structure?
+    if (capsa->llvm_structure_index > -1) {
+        return;
+    }
+
+    // common scoped variables
+    if (capsa->value) { // values
+        backend_expression(irs, exp);
+        capsa->llvm_value = exp->llvm_value;
+    } else { // variables
+        capsa->llvm_value = LLVMBuildAlloca(
+            irs->builder, llvm_type(capsa->type), capsa->id->name
+        );
+        if (exp) {
+            backend_expression(irs, exp);
+            LLVMBuildStore(
+                irs->builder, exp->llvm_value, capsa->llvm_value
+            );
+        }
+    }
+}
+
+static void backend_definition(IRState* irs, Definition* def) {
+    switch (def->tag) {
+    case DEFINITION_CAPSA:
+        backend_definition_capsa(irs, def);
+        break;
     case DEFINITION_FUNCTION:
-        definition->llvm_value = declare_function(state->module, definition);
-        state->function = definition->llvm_value;
-        position_builder(state, LLVMAppendBasicBlock(
-            state->function,
+        def->llvm_value = declare_function(irs->module, def);
+        irs->function = def->llvm_value;
+        position_builder(irs, LLVMAppendBasicBlock(
+            irs->function,
             LABEL_FUNCTION_ENTRY
         ));
 
         // TODO: Remove gambiarra
-        if (!strcmp(definition->function.id->name, "main")) {
-            state->main = true;
-            initgvals(state);
+        if (!strcmp(def->function.id->name, "main")) {
+            irs->main = true;
+            initgvals(irs);
         }
 
-        backend_block(state, definition->function.block);
+        backend_block(irs, def->function.block);
 
         // Implicit return
-        if (state->block) {
-            llvm_return(state, zerovalue(state, definition->function.type));
+        if (irs->block) {
+            llvm_return(irs, zerovalue(irs, def->function.type));
         }
-        state->main = false; // TODO
+        irs->main = false; // TODO
         break;
     case DEFINITION_METHOD:
-        definition->llvm_value = declare_function(state->module, definition);
-        state->function = definition->llvm_value;
-        position_builder(state, LLVMAppendBasicBlock(
-            state->function,
+        def->llvm_value = declare_function(irs->module, def);
+        irs->function = def->llvm_value;
+        position_builder(irs, LLVMAppendBasicBlock(
+            irs->function,
             LABEL_FUNCTION_ENTRY
         ));
 
         // Self is the first parameter
-        state->self = definition->function.parameters->variable.variable->llvm_value;
+        irs->self = def->function.parameters->capsa.capsa->llvm_value;
 
-        backend_block(state, definition->function.block);
+        backend_block(irs, def->function.block);
 
         // Implicit return
-        if (state->block) {
-            llvm_return(state, zerovalue(state, definition->function.type));
+        if (irs->block) {
+            llvm_return(irs, zerovalue(irs, def->function.type));
         }
 
-        state->self = NULL;
+        irs->self = NULL;
         break;
     case DEFINITION_CONSTRUCTOR: {
-        state->initializer = true;
+        irs->initializer = true;
 
-        definition->llvm_value = declare_function(state->module, definition);
-        state->function = definition->llvm_value;
-        position_builder(state, LLVMAppendBasicBlock(
-            state->function,
+        def->llvm_value = declare_function(irs->module, def);
+        irs->function = def->llvm_value;
+        position_builder(irs, LLVMAppendBasicBlock(
+            irs->function,
             LABEL_FUNCTION_ENTRY
         ));
 
         // Monitor initializer
-        Type* monitor_type = definition->function.type;
+        Type* monitor_type = def->function.type;
         // Creating the instance
-        state->self = LLVMBuildMalloc(
-            state->builder, monitor_type->llvm_type, LLVM_TEMPORARY
+        irs->self = LLVMBuildMalloc(
+            irs->builder, monitor_type->llvm_type, LLVM_TEMPORARY
         );
         // Allocating memory and initializing the monitor's mutex
         // TODO: free and destroy the mutex one day
         // WORK: New Malloc
-        LLVMValueRef mutex = ir_malloc(state->builder, sizeof(pthread_mutex_t));
-        ir_pthread_mutex_init(state->builder, mutex);
+        LLVMValueRef mutex = ir_malloc(irs->builder, sizeof(pthread_mutex_t));
+        ir_pthread_mutex_init(irs->builder, mutex);
         LLVMBuildStore(
-            state->builder, mutex, LLVMBuildStructGEP(
-                state->builder, state->self, 0, LLVM_TEMPORARY
+            irs->builder, mutex, LLVMBuildStructGEP(
+                irs->builder, irs->self, 0, LLVM_TEMPORARY
             )
         );      
         // Initializing attributes (that have values)
-        Definition* monitor_definitions = monitor_type->monitor.definitions;
+        Definition* monitor_definitions = monitor_type->structure.definitions;
         for (Definition* d = monitor_definitions; d; d = d->next) {
-            if (d->tag == DEFINITION_VARIABLE) {
-                if (d->variable.expression) {
-                    backend_variable(state, d->variable.variable);
-                    backend_expression(state, d->variable.expression);
+            if (d->tag == DEFINITION_CAPSA) {
+                if (d->capsa.expression) {
+                    backend_capsa(irs, d->capsa.capsa);
+                    backend_expression(irs, d->capsa.expression);
                     LLVMBuildStore(
-                        state->builder,
-                        d->variable.expression->llvm_value,
-                        d->variable.variable->llvm_value
+                        irs->builder,
+                        d->capsa.expression->llvm_value,
+                        d->capsa.capsa->llvm_value
                     );
                 }
             }
         }
 
-        backend_block(state, definition->function.block);
+        backend_block(irs, def->function.block);
 
-        if (state->block) {
-            llvm_return(state, state->self);
+        if (irs->block) {
+            llvm_return(irs, irs->self);
         }
 
-        state->self = NULL;
-        state->initializer = false;
+        irs->self = NULL;
+        irs->initializer = false;
         break;
     }
     case DEFINITION_TYPE: {
-        assert(definition->type->tag == TYPE_MONITOR);
+        assert(def->type->tag == TYPE_MONITOR);
 
-        Type* type = definition->type;
-        Definition* monitor_definitions = type->monitor.definitions;
+        Type* type = def->type;
+        Definition* monitor_definitions = type->structure.definitions;
         unsigned int n = 1; // attribute count
 
         for (Definition* d = monitor_definitions; d; d = d->next, n++) {
-            if (d->tag != DEFINITION_VARIABLE) {
+            if (d->tag != DEFINITION_CAPSA) {
                 continue;
             }
         }
@@ -460,21 +476,23 @@ static void backend_definition(IRState* state, Definition* definition) {
         // Attributes
         n = 1;
         for (Definition* d = monitor_definitions; d; d = d->next) {
-            if (d->tag != DEFINITION_VARIABLE) {
+            if (d->tag != DEFINITION_CAPSA) {
                 continue;
             }
-            d->variable.variable->llvm_structure_index = n;
-            attributes[n++] = llvm_type(d->variable.variable->type);
+            d->capsa.capsa->llvm_structure_index = n;
+            attributes[n++] = llvm_type(d->capsa.capsa->type);
         }
 
-        type->llvm_type = llvm_structure(attributes, n, type->monitor.id->name);
+        type->llvm_type = llvm_structure(
+            attributes, n, type->structure.id->name
+        );
 
         for (Definition* d = monitor_definitions; d; d = d->next) {
             switch (d->tag) {
             case DEFINITION_METHOD:
                 /* fallthrough */
             case DEFINITION_CONSTRUCTOR:
-                backend_definition(state, d);
+                backend_definition(irs, d);
                 break;
             default:
                 continue;
@@ -487,6 +505,12 @@ static void backend_definition(IRState* state, Definition* definition) {
         UNREACHABLE;
     }
 }
+
+// ==================================================
+//
+//  TODO
+//
+// ==================================================
 
 static void backend_block(IRState* state, Block* block) {
     assert(block->tag == BLOCK);
@@ -509,12 +533,12 @@ static void backend_block(IRState* state, Block* block) {
 static void backend_statement(IRState* state, Statement* statement) {
     switch (statement->tag) {
     case STATEMENT_ASSIGNMENT:
-        backend_variable(state, statement->assignment.variable);
+        backend_capsa(state, statement->assignment.capsa);
         backend_expression(state, statement->assignment.expression);
         LLVMBuildStore(
             state->builder,
             statement->assignment.expression->llvm_value,
-            statement->assignment.variable->llvm_value
+            statement->assignment.capsa->llvm_value
         );
         break;
     case STATEMENT_FUNCTION_CALL:
@@ -695,27 +719,27 @@ static void backend_statement(IRState* state, Statement* statement) {
     }
 }
 
-static void backend_variable(IRState* state, Variable* variable) {
-    switch (variable->tag) {
-    case VARIABLE_ID:
+static void backend_capsa(IRState* state, Capsa* capsa) {
+    switch (capsa->tag) {
+    case CAPSA_ID:
         // llvm_value dealt with already, unless...
-        if (variable->llvm_structure_index > -1) { // attributes
+        if (capsa->llvm_structure_index > -1) { // attributes
             assert(state->self);
-            variable->llvm_value = LLVMBuildStructGEP(
+            capsa->llvm_value = LLVMBuildStructGEP(
                 state->builder,
                 state->self,
-                variable->llvm_structure_index,
+                capsa->llvm_structure_index,
                 LLVM_TEMPORARY
             );
         }
         break;
-    case VARIABLE_INDEXED: {
-        backend_expression(state, variable->indexed.array);
-        backend_expression(state, variable->indexed.index);
-        LLVMValueRef indices[1] = {variable->indexed.index->llvm_value};
-        variable->llvm_value = LLVMBuildGEP(
+    case CAPSA_INDEXED: {
+        backend_expression(state, capsa->indexed.array);
+        backend_expression(state, capsa->indexed.index);
+        LLVMValueRef indices[1] = {capsa->indexed.index->llvm_value};
+        capsa->llvm_value = LLVMBuildGEP(
             state->builder,
-            variable->indexed.array->llvm_value,
+            capsa->indexed.array->llvm_value,
             indices,
             1,
             LLVM_TEMPORARY
@@ -754,7 +778,10 @@ static void backend_expression(IRState* state, Expression* expression) {
         // allocating memory for the array
         LLVMValueRef size = LLVM_CONSTANT_INTEGER(n);
         expression->llvm_value = LLVMBuildArrayMalloc(
-            state->builder, llvm_type(expression->type->array), size, LLVM_TEMPORARY
+            state->builder,
+            llvm_type(expression->type->array),
+            size,
+            LLVM_TEMPORARY
         );
         // setting the values inside the array
         n = 0;
@@ -773,24 +800,22 @@ static void backend_expression(IRState* state, Expression* expression) {
         }
         break;
     }
-    case EXPRESSION_VARIABLE:
-        backend_variable(state, expression->variable);
+    case EXPRESSION_CAPSA:
+        backend_capsa(state, expression->capsa);
         // TODO: Find better way to write this
-        if (expression->variable->llvm_structure_index > -1) { // attributes
+        if (expression->capsa->llvm_structure_index > -1) { // attributes
             expression->llvm_value = LLVMBuildLoad(
                 state->builder,
-                expression->variable->llvm_value,
+                expression->capsa->llvm_value,
                 LLVM_TEMPORARY
             );
-        } else if (
-            expression->variable->value &&
-            !expression->variable->global) {  // local values
-
-            expression->llvm_value = expression->variable->llvm_value;
+        } else if (expression->capsa->value && !expression->capsa->global) {
+            // local values
+            expression->llvm_value = expression->capsa->llvm_value;
         } else { // variables
             expression->llvm_value = LLVMBuildLoad(
                 state->builder,
-                expression->variable->llvm_value,
+                expression->capsa->llvm_value,
                 LLVM_TEMPORARY
             );
         }
@@ -937,7 +962,7 @@ static void backend_condition(IRState* state, Expression* expression,
     case EXPRESSION_LITERAL_INTEGER:
     case EXPRESSION_LITERAL_FLOAT:
     case EXPRESSION_LITERAL_STRING:
-    case EXPRESSION_VARIABLE:
+    case EXPRESSION_CAPSA:
     case EXPRESSION_FUNCTION_CALL:
         goto EXPRESSION_CONDITION;
     case EXPRESSION_UNARY:

@@ -1,0 +1,143 @@
+--------------------------------------------------------------------------------
+-- Title
+Implementing the Any interface
+-- Input
+interface Any {}
+monitor Monitor: Any {
+    function foo {}
+}
+-- Output
+interface Any {
+}
+monitor Monitor: Any {
+    function foo(value self: Monitor): Void {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Implementing the Printable interface
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    function string: String { return "not a printable monitor"; }
+}
+-- Output
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    function string(value self: Monitor): String {
+        return ("not a printable monitor": String)
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Implementing the Dog interface
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    function catch(ball: Integer) {}
+    function bark: String { return "Woof!"; }
+}
+-- Output
+interface Dog {
+    function catch(value ball: Integer): Void;
+    function bark: String;
+}
+monitor Monitor: Dog {
+    function catch(value self: Monitor, value ball: Integer): Void {
+    }
+    function bark(value self: Monitor): String {
+        return ("Woof!": String)
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Dog interface (absent function)
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    function bark: String {
+        return "Woof!";
+    }
+}
+-- Output
+line 5:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Dog interface (wrong parameter name)
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    function catch(notball: Integer) {}
+    function bark: String { return "Woof!"; }
+}
+-- Output
+line 5:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Dog interface (wrong parameter type)
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    function catch(ball: Boolean) {}
+    function bark: String { return "Woof!"; }
+}
+-- Output
+line 5:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Printable interface (extra parameter)
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    function string(a: Integer): String {
+        return "not a printable monitor";
+    }
+}
+-- Output
+line 4:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Printable interface (wrong return type)
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    function string: Integer {
+        return 1;
+    }
+}
+-- Output
+line 4:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Redeclaring an interface
+-- Input
+interface Printable {}
+interface Printable {}
+-- Output
+line 2:
+    semantic error: redeclaration of name 'Printable'

@@ -120,7 +120,7 @@ LLVMValueRef ir_cmp(LLVMBuilderRef builder,
             builder, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
         );
     } else if (lhs->type == __float) {
-        return LLVMBuildICmp(
+        return LLVMBuildFCmp(
             builder, fop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
         );
     } else {

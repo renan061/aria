@@ -14,7 +14,7 @@
     #include "scanner.h"
 
     // Auxiliary macro to use with lists
-    #define APPEND(type, assignable, list, elem); \
+    #define APPEND(type, assignable, list, elem) do { \
         if (!list) { \
             assignable = elem; \
         } else { \
@@ -22,6 +22,7 @@
             for (e = assignable = list; e->next; e = e->next); \
             e->next = elem; \
         } \
+    } while (0); \
 
     static void yyerror(const char* err);
 %}
@@ -696,7 +697,7 @@ function_call
 interface_definition
     : TK_INTERFACE TK_UPPER_ID '{' interface_element_list '}'
         {
-            Type* type = ast_type_structure($2, TYPE_INTERFACE, $4);
+            Type* type = ast_type_structure($2, TYPE_INTERFACE, $4, NULL);
             $$ = ast_definition_type(type);
         }
     ;
@@ -728,7 +729,7 @@ interface_element
 structure_definition
     : TK_STRUCTURE TK_UPPER_ID '{' structure_element_list '}'
         {
-            Type* type = ast_type_structure($2, TYPE_STRUCTURE, $4);
+            Type* type = ast_type_structure($2, TYPE_STRUCTURE, $4, NULL);
             $$ = ast_definition_type(type);
         }
     ;
@@ -766,9 +767,14 @@ structure_element
 // ==================================================
 
 monitor_definition
-    : TK_MONITOR TK_UPPER_ID '{' monitor_element_list '}'
+    : TK_MONITOR TK_UPPER_ID ':' type '{' monitor_element_list '}'
         {
-            Type* type = ast_type_structure($2, TYPE_MONITOR, $4);
+            Type* type = ast_type_structure($2, TYPE_MONITOR, $6, $4);
+            $$ = ast_definition_type(type);
+        }
+    | TK_MONITOR TK_UPPER_ID '{' monitor_element_list '}'
+        {
+            Type* type = ast_type_structure($2, TYPE_MONITOR, $4, NULL);
             $$ = ast_definition_type(type);
         }
     ;

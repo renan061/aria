@@ -1,1 +1,1 @@
-tests/test.sh: line 26: ../../bin/backendtest: No such file or directory
+error: main function not found

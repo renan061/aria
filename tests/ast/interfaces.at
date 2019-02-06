@@ -34,3 +34,14 @@ interface Interface {
     function baz: Interface;
     function bam(value x: String, value y: Float): Integer;
 }
+--------------------------------------------------------------------------------
+-- Title
+Interface implementation annotation
+-- Input
+interface Interface {}
+monitor Monitor: Interface {}
+-- Output
+interface Interface {
+}
+monitor Monitor: Interface {
+}

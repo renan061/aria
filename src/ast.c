@@ -184,11 +184,10 @@ static Type* checknative(Id* id) {
 }
 
 Type* ast_type_id(Id* id) {
-    Type* type;
-    if ((type = checknative(id))) {
+    Type* type = checknative(id);
+    if (type) {
         return type;
     }
-
     MALLOC(type, Type);
     type->tag = TYPE_ID;
     type->primitive = false;
@@ -209,15 +208,16 @@ Type* ast_type_array(Type* type) {
     return arrayType;
 }
 
-Type* ast_type_structure(Id* id, TypeTag type_tag, Definition* definitions) {
+Type* ast_type_structure(Id* id, TypeTag ttag, Definition* defs, Type* itype) {
     Type* type;
     MALLOC(type, Type);
-    type->tag = type_tag;
+    type->tag = ttag;
     type->primitive = false;
     type->immutable = false;
     type->llvm_type = NULL;
     type->structure.id = id;
-    type->structure.definitions = definitions;
+    type->structure.interface = itype;
+    type->structure.definitions = defs;
     return type;
 }
 
@@ -576,7 +576,9 @@ Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
     return unaryExpression;
 }
 
-Expression* ast_expression_binary(Line ln, Token t, Expression* l, Expression* r) {
+Expression* ast_expression_binary(Line ln, Token t, Expression* l,
+    Expression* r) {
+
     Expression* expression;
     MALLOC(expression, Expression);
     expression->tag = EXPRESSION_BINARY;

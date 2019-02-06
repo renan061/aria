@@ -110,6 +110,12 @@ static void print_ast_definition(Definition* definition) {
         }
 
         print_ast_id(definition->type->structure.id);
+
+        if (definition->type->structure.interface) {
+            printf(": ");
+            print_ast_type(definition->type->structure.interface);
+        }
+
         printf(" {\n");
         tabs++;
         for (Definition* d = definition->type->structure.definitions; d;) {

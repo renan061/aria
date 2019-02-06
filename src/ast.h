@@ -142,10 +142,12 @@ struct Type {
         Id* id;
         // TypeArray
         Type* array;
+        // TypeInterface
         // TypeStructure
         // TypeMonitor
         struct {
             Id* id;
+            Type* interface;
             Definition* definitions;
         } structure;
     };
@@ -325,7 +327,7 @@ extern Type* ast_type_string(void);
 extern Type* ast_type_condition_queue(void);
 extern Type* ast_type_id(Id*);
 extern Type* ast_type_array(Type*);
-extern Type* ast_type_structure(Id*, TypeTag, Definition*);
+extern Type* ast_type_structure(Id*, TypeTag, Definition*, Type*);
 
 extern Block* ast_block(Line, Block*);
 extern Block* ast_block_definition(Definition*);

@@ -104,7 +104,7 @@ sem_test: errs vector parser scanner ast sem
 	tests/src/sem_test.c -Isrc/
 
 	@- lua tests/tester.lua tests/sem bin/semtest
-	@- sh tests/test.sh sem
+	# @- sh tests/test.sh sem
 
 backend_test: main
 	@- mv bin/aria bin/backendtest

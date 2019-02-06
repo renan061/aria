@@ -3,9 +3,7 @@
 
 #include "ast.h"
 
-/*
- * Analyses the program semantically.
- */
+// Analyses the program semantically.
 extern void sem_analyse(AST*);
 
 #endif

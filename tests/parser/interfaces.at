@@ -1,13 +1,13 @@
 --------------------------------------------------------------------------------
 -- Title
-Empty interface
+Defining an empty interface
 -- Input
 interface Interface {}
 -- Output
 OK
 --------------------------------------------------------------------------------
 -- Title
-Interface with one function
+Defining an interface with one function
 -- Input
 interface Interface {
     function foo;
@@ -16,7 +16,7 @@ interface Interface {
 OK
 --------------------------------------------------------------------------------
 -- Title
-Interface with many functions
+Defining an interface with many functions
 -- Input
 interface Interface {
     function foo;
@@ -28,7 +28,7 @@ interface Interface {
 OK
 --------------------------------------------------------------------------------
 -- Title
-Interface with a function definition
+Defining an invalid interface (function definition)
 -- Input
 interface Interface {
     function foo {
@@ -38,3 +38,21 @@ interface Interface {
 -- Output
 line 0:
     parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Defining an invalid interface (variable declaration)
+-- Input
+interface Interface {
+    variable a: Integer;
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Interface implementation annotation
+-- Input
+interface Interface {}
+monitor Monitor: Interface {}
+-- Output
+OK
