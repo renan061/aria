@@ -460,7 +460,8 @@ static void semstructure(SS* ss, Definition* def) {
         case DEFINITION_FUNCTION:
             // fallthrough
         case DEFINITION_METHOD:
-            def->type->structure.methods[i_methods++] = d;
+            def->type->structure.methods[i_methods] = d;
+            d->function.vmt_index = i_methods++;
             break;
         case DEFINITION_CONSTRUCTOR:
             break;
@@ -1100,6 +1101,7 @@ static void sem_function_call(SS* state, FunctionCall* call) {
         break;
     case FUNCTION_CALL_METHOD:
         sem_expression(state, call->instance);
+        // TODO: interfaces and structures
         if (call->instance->type->tag != TYPE_MONITOR) {
             err_function_call_no_monitor(call->line);
         }

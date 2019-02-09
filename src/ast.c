@@ -50,6 +50,7 @@ Definition* ast_definition_function(Id* id, Definition* ps, Type* t, Block* b) {
     definition->function.parameters = ps;
     definition->function.type = t;
     definition->function.block = b;
+    definition->function.vmt_index = -1;
     return definition;
 }
 

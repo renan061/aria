@@ -13,8 +13,9 @@
 // Temporary Names
 #define LLVM_TEMPORARY              "_t_"
 #define LLVM_TEMPORARY_NONE         ""
-#define LLVM_TEMPORARY_MONITOR_LOCK LLVM_TEMPORARY "monitor_lock_"
-#define LLVM_TEMPORARY_PHI          LLVM_TEMPORARY "phi_"
+#define LLVM_TEMPORARY_MONITOR_LOCK LLVM_TEMPORARY "monitor_lock"
+#define LLVM_TEMPORARY_PHI          LLVM_TEMPORARY "phi"
+#define LLVM_TEMPORARY_VMT          LLVM_TEMPORARY "vmt"
 
 // Types
 #define LLVM_TYPE_POINTER(t)    (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))

@@ -271,6 +271,7 @@ static void backend_definition_monitor(IRState*, Definition*);
 
 static void initializefunction(IRState*, Definition*);
 static void initializeglobals(IRState*);
+static void initializevmt(IRState*, Definition*);
 
 static void backend_definition(IRState* irs, Definition* def) {
     switch (def->tag) {
@@ -388,45 +389,7 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
     ));
 
     // creates the structure's VMT
-    size_t vmt_size = def->function.type->structure.methods_size;
-    LLVMTypeRef vmt_type = LLVMArrayType(LLVM_TYPE_POINTER_VOID, vmt_size);
-    LLVMValueRef vmt = LLVMBuildBitCast(
-        irs->builder,
-        LLVMBuildArrayMalloc(
-            irs->builder,
-            LLVM_TYPE_POINTER_VOID,
-            LLVM_CONSTANT_INTEGER(vmt_size),
-            "vmt_malloc"
-        ),
-        LLVM_TYPE_POINTER(vmt_type),
-        "vmt_bitcast"
-    );
-    LLVMBuildStore(irs->builder, vmt, LLVMBuildStructGEP(
-        irs->builder, irs->self, STRUCTURE_VMT, "vmt_house"
-    ));
-
-    // filling the structure's VMT
-    for (int i = 0; i < vmt_size; i++) {
-        LLVMValueRef
-            function = def->function.type->structure.methods[i]->llvm_value,
-            indices[2] = {LLVM_CONSTANT_INTEGER(0), LLVM_CONSTANT_INTEGER(i)},
-            ptr = LLVMBuildGEP(irs->builder, vmt, indices, 2, LLVM_TEMPORARY),
-            val = LLVMBuildBitCast(
-                irs->builder,
-                function,
-                LLVM_TYPE_POINTER_VOID,
-                LLVM_TEMPORARY
-            )
-        ;
-        LLVMBuildStore(irs->builder, val, ptr);
-    }
-
-    // %array = alloca i8*
-    // %pointer = bitcast i8* (%Monitor*)* @string to i8*
-    // store i8* %pointer, i8** %array
-    // %pointer2 = load i8*, i8** %array
-    // %func = bitcast i8* %pointer2 to i8* (%Monitor*)*
-    // %2 = call i8* %func(%Monitor* %0)
+    initializevmt(irs, def);
 
     // initializes attributes
     FOREACH(Definition, d, def->function.type->structure.definitions) {
@@ -557,6 +520,45 @@ static void initializeglobals(IRState* irs) {
         backend_expression(irs, expression);
         LLVMBuildStore(irs->builder, expression->llvm_value, capsa->llvm_value);
     }
+}
+
+static void initializevmt(IRState* irs, Definition* def) {
+    Definition** methods = def->function.type->structure.methods;
+    size_t methods_size = def->function.type->structure.methods_size;
+
+    // allocates memory for the VMT
+    LLVMTypeRef vmt_type = LLVMArrayType(LLVM_TYPE_POINTER_VOID, methods_size);
+    LLVMValueRef vmt = LLVMBuildBitCast(
+        irs->builder,
+        LLVMBuildArrayMalloc(
+            irs->builder,
+            LLVM_TYPE_POINTER_VOID,
+            LLVM_CONSTANT_INTEGER(methods_size),
+            LLVM_TEMPORARY_VMT
+        ),
+        LLVM_TYPE_POINTER(vmt_type),
+        LLVM_TEMPORARY_VMT
+    );
+
+    // fills VMT with the structure's methods
+    for (int i = 0; i < methods_size; i++) {
+        LLVMValueRef
+            indices[2] = {LLVM_CONSTANT_INTEGER(0), LLVM_CONSTANT_INTEGER(i)},
+            ptr = LLVMBuildGEP(irs->builder, vmt, indices, 2, LLVM_TEMPORARY),
+            val = LLVMBuildBitCast(
+                irs->builder,
+                methods[i]->llvm_value,
+                LLVM_TYPE_POINTER_VOID,
+                LLVM_TEMPORARY
+            )
+        ;
+        LLVMBuildStore(irs->builder, val, ptr);
+    }
+
+    // assigns the VMT to the <self> instance
+    LLVMBuildStore(irs->builder, vmt, LLVMBuildStructGEP(
+        irs->builder, irs->self, STRUCTURE_VMT, LLVM_TEMPORARY_VMT
+    ));
 }
 
 // ==================================================
@@ -1191,18 +1193,55 @@ static LLVMValueRef backend_fc_basic(IRState* irs, FunctionCall* fc) {
     return llvm_value;
 }
 
+static LLVMValueRef ir_structure_vmt(LLVMBuilderRef B, LLVMValueRef self) {
+    LLVMValueRef p = LLVMBuildStructGEP(B, self, STRUCTURE_VMT, LLVM_TEMPORARY);
+    return LLVMBuildLoad(B, p, LLVM_TEMPORARY_VMT);
+}
+
+static LLVMValueRef ir_array_get(LLVMBuilderRef B, LLVMValueRef array, int i) {
+    LLVMValueRef indices[2];
+    indices[0] = LLVM_CONSTANT_INTEGER(0);
+    indices[1] = LLVM_CONSTANT_INTEGER(i);
+    LLVMValueRef pointer = LLVMBuildGEP(B, array, indices, 2, LLVM_TEMPORARY);
+    return LLVMBuildLoad(B, pointer, LLVM_TEMPORARY);
+}
+
+static LLVMTypeRef llvm_function_type(Definition* def, size_t psize) {
+    int i = 0;
+    LLVMTypeRef ptypes[psize];
+    FOREACH(Definition, p, def->function.parameters) {
+        ptypes[i++] = llvm_type(p->capsa.capsa->type);
+    }
+    LLVMTypeRef rtype = llvm_type(def->function.type);
+    return LLVMFunctionType(rtype, ptypes, psize, false);
+}
+
 static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
     LLVMValueRef* arguments = fcarguments(irs, fc);
     LLVMValueRef self = arguments[0];
+
     LLVMValueRef mutex = monitormutex(irs->builder, self);
     ir_pthread_mutex_lock(irs->builder, mutex);
-    LLVMValueRef llvm_value = LLVMBuildCall(
-        irs->builder,
-        fc->function_definition->llvm_value,
-        arguments,
-        fc->argument_count,
-        LLVM_TEMPORARY_NONE
+
+    int vmt_index = fc->function_definition->function.vmt_index;
+
+    // VMT function call
+    // get VMT
+    LLVMValueRef vmt = ir_structure_vmt(irs->builder, self);
+    // get function
+    LLVMValueRef fn = ir_array_get(irs->builder, vmt, vmt_index);
+    // bitcast from i8* to (llvm_function_type)*
+    LLVMTypeRef function_type = llvm_function_type(
+        fc->function_definition, fc->argument_count
     );
+    fn = LLVMBuildBitCast(
+        irs->builder, fn, LLVM_TYPE_POINTER(function_type), LLVM_TEMPORARY
+    );
+
+    LLVMValueRef llvm_value = LLVMBuildCall(
+        irs->builder, fn, arguments, fc->argument_count, LLVM_TEMPORARY_NONE
+    );
+
     ir_pthread_mutex_unlock(irs->builder, mutex);
     free(arguments);
     return llvm_value;

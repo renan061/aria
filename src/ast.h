@@ -119,6 +119,7 @@ struct Definition {
             Definition* parameters;
             Type* type;
             Block* block;
+            int vmt_index; // default -1
         } function;
         // DefinitionType
         Type* type;
