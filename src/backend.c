@@ -68,6 +68,7 @@ static void state_close_block(IRState* state) {
 
 // LLVM (TODO: New Module?)
 static LLVMTypeRef llvm_type(Type* type);
+static LLVMTypeRef llvm_function_type(Definition*, size_t);
 static void llvm_return(IRState*, LLVMValueRef);
 static LLVMTypeRef llvm_structure(LLVMTypeRef[], size_t, const char*);
 
@@ -472,33 +473,20 @@ static void initializefunction(IRState* irs, Definition* def) {
     assert(def->function.type);
 
     // counts the number of parameters
-    unsigned int count = 0;
+    size_t parameters_size = 0;
     FOREACH(Definition, p, def->function.parameters) {
-        count++;
+        parameters_size++;
     }
 
-    // creates an array with parameter types
-    LLVMTypeRef types[count];
-    unsigned int i = 0;
-    FOREACH(Definition, p, def->function.parameters) {
-        types[i++] = llvm_type(p->capsa.capsa->type);
-    }
-
-    // creates the function prototype
-    // sets it as the current function
+    // creates the function prototype 
     LLVMValueRef fn = LLVMAddFunction(
-        /* Module       */ irs->module,
-        /* FunctionName */ def->function.id->name,
-        /* FunctionRef  */ LLVMFunctionType(
-            /* ReturnType   */ llvm_type(def->function.type),
-            /* ParamTypes   */ types,
-            /* ParamCount   */ count,
-            /* IsVarArg     */ false
-        )
+        irs->module,
+        def->function.id->name,
+        llvm_function_type(def, parameters_size)
     );
 
     // assigns LLVM values to each parameter
-    i = 0;
+    int i = 0;
     FOREACH(Definition, p, def->function.parameters) {
         p->capsa.capsa->llvm_value = LLVMGetParam(fn, i++);
     }
@@ -1193,27 +1181,20 @@ static LLVMValueRef backend_fc_basic(IRState* irs, FunctionCall* fc) {
     return llvm_value;
 }
 
+// TODO: move
 static LLVMValueRef ir_structure_vmt(LLVMBuilderRef B, LLVMValueRef self) {
     LLVMValueRef p = LLVMBuildStructGEP(B, self, STRUCTURE_VMT, LLVM_TEMPORARY);
     return LLVMBuildLoad(B, p, LLVM_TEMPORARY_VMT);
 }
 
-static LLVMValueRef ir_array_get(LLVMBuilderRef B, LLVMValueRef array, int i) {
+// TODO: move
+// returns (*ptr)[i], given <ptr> is a pointer to an array
+static LLVMValueRef ir_array_get(LLVMBuilderRef B, LLVMValueRef ptr, int i) {
     LLVMValueRef indices[2];
     indices[0] = LLVM_CONSTANT_INTEGER(0);
     indices[1] = LLVM_CONSTANT_INTEGER(i);
-    LLVMValueRef pointer = LLVMBuildGEP(B, array, indices, 2, LLVM_TEMPORARY);
-    return LLVMBuildLoad(B, pointer, LLVM_TEMPORARY);
-}
-
-static LLVMTypeRef llvm_function_type(Definition* def, size_t psize) {
-    int i = 0;
-    LLVMTypeRef ptypes[psize];
-    FOREACH(Definition, p, def->function.parameters) {
-        ptypes[i++] = llvm_type(p->capsa.capsa->type);
-    }
-    LLVMTypeRef rtype = llvm_type(def->function.type);
-    return LLVMFunctionType(rtype, ptypes, psize, false);
+    ptr = LLVMBuildGEP(B, ptr, indices, 2, LLVM_TEMPORARY);
+    return LLVMBuildLoad(B, ptr, LLVM_TEMPORARY);
 }
 
 static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
@@ -1226,9 +1207,7 @@ static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
     int vmt_index = fc->function_definition->function.vmt_index;
 
     // VMT function call
-    // get VMT
     LLVMValueRef vmt = ir_structure_vmt(irs->builder, self);
-    // get function
     LLVMValueRef fn = ir_array_get(irs->builder, vmt, vmt_index);
     // bitcast from i8* to (llvm_function_type)*
     LLVMTypeRef function_type = llvm_function_type(
@@ -1321,6 +1300,17 @@ static LLVMTypeRef llvm_type(Type* type) {
     default:
         UNREACHABLE;
     }
+}
+
+// given a function definition, returns its LLVM type
+static LLVMTypeRef llvm_function_type(Definition* def, size_t psize) {
+    int i = 0;
+    LLVMTypeRef ptypes[psize];
+    FOREACH(Definition, p, def->function.parameters) {
+        ptypes[i++] = llvm_type(p->capsa.capsa->type);
+    }
+    LLVMTypeRef rtype = llvm_type(def->function.type);
+    return LLVMFunctionType(rtype, ptypes, psize, false);
 }
 
 // TODO: Rename this: backend_return?
