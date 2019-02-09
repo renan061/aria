@@ -4,12 +4,15 @@ Implementing the Any interface
 -- Input
 interface Any {}
 monitor Monitor: Any {
+    initializer {}
     function foo {}
 }
 -- Output
 interface Any {
 }
 monitor Monitor: Any {
+    function Monitor: Monitor {
+    }
     function foo(value self: Monitor): Void {
     }
 }
@@ -21,15 +24,20 @@ interface Printable {
     function string: String;
 }
 monitor Monitor: Printable {
+    variable a: Integer;
     function string: String { return "not a printable monitor"; }
+    initializer {}
 }
 -- Output
 interface Printable {
     function string: String;
 }
 monitor Monitor: Printable {
+    variable a: Integer
     function string(value self: Monitor): String {
         return ("not a printable monitor": String)
+    }
+    function Monitor: Monitor {
     }
 }
 --------------------------------------------------------------------------------
@@ -43,6 +51,7 @@ interface Dog {
 monitor Monitor: Dog {
     function catch(ball: Integer) {}
     function bark: String { return "Woof!"; }
+    initializer {}
 }
 -- Output
 interface Dog {
@@ -55,6 +64,8 @@ monitor Monitor: Dog {
     function bark(value self: Monitor): String {
         return ("Woof!": String)
     }
+    function Monitor: Monitor {
+    }
 }
 --------------------------------------------------------------------------------
 -- Title
@@ -65,6 +76,7 @@ interface Dog {
     function bark: String;
 }
 monitor Monitor: Dog {
+    initializer {}
     function bark: String {
         return "Woof!";
     }
@@ -81,6 +93,7 @@ interface Dog {
     function bark: String;
 }
 monitor Monitor: Dog {
+    initializer {}
     function catch(notball: Integer) {}
     function bark: String { return "Woof!"; }
 }
@@ -96,6 +109,7 @@ interface Dog {
     function bark: String;
 }
 monitor Monitor: Dog {
+    initializer {}
     function catch(ball: Boolean) {}
     function bark: String { return "Woof!"; }
 }
@@ -110,6 +124,7 @@ interface Printable {
     function string: String;
 }
 monitor Monitor: Printable {
+    initializer {}
     function string(a: Integer): String {
         return "not a printable monitor";
     }
@@ -125,6 +140,7 @@ interface Printable {
     function string: String;
 }
 monitor Monitor: Printable {
+    initializer {}
     function string: Integer {
         return 1;
     }

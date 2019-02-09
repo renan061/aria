@@ -218,6 +218,11 @@ Type* ast_type_structure(Id* id, TypeTag ttag, Definition* defs, Type* itype) {
     type->structure.id = id;
     type->structure.interface = itype;
     type->structure.definitions = defs;
+    type->structure.attributes = NULL;
+    type->structure.attributes_size = -1;
+    type->structure.methods = NULL;
+    type->structure.methods_size = -1;
+    type->structure.constructor = NULL;
     return type;
 }
 

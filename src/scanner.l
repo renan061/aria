@@ -154,7 +154,7 @@ string      "\""(\\.|[^\\"])*"\""
 
 %%
 
-const char* scanner_native[6];
+const char* scanner_native[SCANNER_NATIVE_SIZE];
 
 // initializes strs vector and sets yyin
 void scanner_setup(const char* file) {
@@ -169,6 +169,7 @@ void scanner_setup(const char* file) {
     scanner_native[SCANNER_NATIVE_STRING] = "String";
     scanner_native[SCANNER_NATIVE_CONDITION_QUEUE] = "ConditionQueue";
     scanner_native[SCANNER_NATIVE_SELF] = "self";
+    scanner_native[SCANNER_NATIVE_MAIN] = "main";
 
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_BOOLEAN]);
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_INTEGER]);
@@ -176,6 +177,7 @@ void scanner_setup(const char* file) {
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_STRING]);
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_CONDITION_QUEUE]);
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_SELF]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_MAIN]);
 }
 
 // frees strs vector and closes yyin

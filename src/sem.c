@@ -232,12 +232,12 @@ static void sem_definition_capsa(SS*, Definition*);
 static void sem_definition_function(SS*, Definition*);
 static void sem_definition_method(SS*, Definition*);
 static void sem_definition_constructor(SS*, Definition*);
-static void sem_definition_interface(SS* ss, Definition*);
+static void sem_definition_interface(SS*, Definition*);
 static void sem_definition_structure(SS*, Definition*);
 static void sem_definition_monitor(SS*, Definition*);
 
-static void semfunc(SS*, Definition*);
-static void semstruct(SS*, Definition*);
+static void semfunction(SS*, Definition*);
+static void semstructure(SS*, Definition*);
 static bool functionequals(Definition*, Definition*);
 static void interfacecheck(SS*, Type*, Type*);
 
@@ -310,7 +310,7 @@ static void sem_definition_function(SS* ss, Definition* def) {
     linktype(ss->table, &def->function.type);
 
     symtable_enter_scope(ss->table);
-    semfunc(ss, def);
+    semfunction(ss, def);
     symtable_leave_scope(ss->table);
 }
 
@@ -338,7 +338,7 @@ static void sem_definition_method(SS* ss, Definition* def) {
     linktype(ss->table, &def->function.type);
 
     symtable_enter_scope(ss->table);
-    semfunc(ss, def);
+    semfunction(ss, def);
     symtable_leave_scope(ss->table);
 }
 
@@ -355,22 +355,22 @@ static void sem_definition_constructor(SS* ss, Definition* def) {
 
     symtable_enter_scope(ss->table);
     symtable_insert(ss->table, ast_definition_capsa(self, NULL));
-    semfunc(ss, def);
+    semfunction(ss, def);
     symtable_leave_scope(ss->table);
 
     ss->initializer = false;
 }
 
 static void sem_definition_interface(SS* ss, Definition* def) {
-    semstruct(ss, def);
+    semstructure(ss, def);
 }
 
 static void sem_definition_structure(SS* ss, Definition* def) {
-    semstruct(ss, def);
+    semstructure(ss, def);
 }
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
-    semstruct(ss, def);
+    semstructure(ss, def);
 
     // checks interface implementation
     if (def->type->structure.interface) {
@@ -382,7 +382,7 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
 // -----------------------------------------------------------------------------
 
 // auxiliary - parameters and block
-static void semfunc(SS* ss, Definition* def) {
+static void semfunction(SS* ss, Definition* def) {
     FOREACH(Definition, p, def->function.parameters) {
         sem_definition(ss, p);
         if (insidemonitor(ss) && !safetype(p->capsa.capsa->type)) {
@@ -400,29 +400,76 @@ static void semfunc(SS* ss, Definition* def) {
 }
 
 // auxiliary - interface, structures and monitors
-static void semstruct(SS* ss, Definition* def) {
-    Type* type = def->type;
+static void semstructure(SS* ss, Definition* def) {
+    def->type->structure.attributes_size = 0;
+    def->type->structure.methods_size = 0;
+
     if (!symtable_insert(ss->table, def)) {
-        err_redeclaration(type->structure.id);
+        err_redeclaration(def->type->structure.id);
     }
-    ss->structure = type;
+    ss->structure = def->type;
     symtable_enter_scope(ss->table);
-    FOREACH(Definition, d, type->structure.definitions) {
+    FOREACH(Definition, d, def->type->structure.definitions) {
         if (d->tag == DEFINITION_CAPSA) {
             sem_definition(ss, d);
+            def->type->structure.attributes_size++;
         }
     }
+
     // FIXME: still possible to call a structure function from inside structure
     // functions without adding "self." or "dog."
-    FOREACH(Definition, d, type->structure.definitions) {
-        if (d->tag == DEFINITION_FUNCTION ||
-            d->tag == DEFINITION_METHOD ||
-            d->tag == DEFINITION_CONSTRUCTOR) {
-            sem_definition(ss, d);
+    FOREACH(Definition, d, def->type->structure.definitions) {
+        switch (d->tag) {
+            case DEFINITION_FUNCTION:
+                // fallthrough
+            case DEFINITION_METHOD:
+                sem_definition(ss, d);
+                def->type->structure.methods_size++;
+                break;
+            case DEFINITION_CONSTRUCTOR:
+                def->type->structure.constructor = d;
+                break;
+            default:
+                break;
         }
+    }
+    if (def->type->tag == TYPE_MONITOR) {
+        assert(def->type->structure.constructor); // TODO: user error message
+        sem_definition(ss, def->type->structure.constructor);
     }
     symtable_leave_scope(ss->table);
     ss->structure = NULL;
+
+    MALLOC_ARRAY(
+        def->type->structure.attributes,
+        Definition*,
+        def->type->structure.attributes_size
+    );
+    MALLOC_ARRAY(
+        def->type->structure.methods,
+        Definition*,
+        def->type->structure.methods_size
+    );
+    unsigned int i_attributes = 0;
+    unsigned int i_methods = 0;
+    FOREACH(Definition, d, def->type->structure.definitions) {
+        switch (d->tag) {
+        case DEFINITION_CAPSA:
+            def->type->structure.attributes[i_attributes++] = d;
+            break;
+        case DEFINITION_FUNCTION:
+            // fallthrough
+        case DEFINITION_METHOD:
+            def->type->structure.methods[i_methods++] = d;
+            break;
+        case DEFINITION_CONSTRUCTOR:
+            break;
+        default:
+            UNREACHABLE;
+        }
+    }
+    assert(i_attributes == def->type->structure.attributes_size);
+    assert(i_methods == def->type->structure.methods_size);
 }
 
 // auxiliary - compares method declaration with interface function declaration
@@ -464,7 +511,7 @@ static void interfacecheck(SS* ss, Type* interface, Type* type) {
     FOREACH(Definition, f1, interface->structure.definitions) {
         bool found = false;
         FOREACH(Definition, f2, type->structure.definitions) {
-            if (functionequals(f1, f2)) {
+            if (f2->tag == DEFINITION_METHOD && functionequals(f1, f2)) {
                 found = true;
                 break;
             }

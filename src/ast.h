@@ -149,6 +149,12 @@ struct Type {
             Id* id;
             Type* interface;
             Definition* definitions;
+            // after semantics analysis
+            Definition** attributes;
+            size_t attributes_size;
+            Definition** methods;
+            size_t methods_size;
+            Definition* constructor;
         } structure;
     };
 };

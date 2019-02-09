@@ -17,10 +17,18 @@
  *  - Create macro for function calls?
  *  - malloc error: mallocs que vc da na main podem ser perdidos quando a main
  *      termina e vc está usando esse malloc em outra thread?
+ *  - free and destroy the mutex one day
  */
+
+// TODO: move this elsewhere
+#define FOREACH(Type, e, e0) for (Type* e = e0; e; e = e->next)
 
 #define UNREACHABLE assert(NULL)    // TODO: Move this and look for assert(NULL)
 #define TODO assert(NULL)           // TODO: Remove
+
+#define STRUCTURE_MUTEX             (0)
+#define STRUCTURE_VMT               (1)
+#define STRUCTURE_ATTRIBUTE_START   (STRUCTURE_VMT + 1)
 
 // TODO: Move
 // Other names
@@ -61,7 +69,7 @@ static void state_close_block(IRState* state) {
 // LLVM (TODO: New Module?)
 static LLVMTypeRef llvm_type(Type* type);
 static void llvm_return(IRState*, LLVMValueRef);
-static LLVMTypeRef llvm_structure(LLVMTypeRef[], unsigned int, const char*);
+static LLVMTypeRef llvm_structure(LLVMTypeRef[], size_t, const char*);
 
 // Auxiliary
 static LLVMValueRef stringliteral(IRState*, const char*);
@@ -103,32 +111,11 @@ static void addgval(Definition* value) {
         globals = global;
         globals->previous = NULL;
     } else {
+        // TODO: idiot, make it constant time
         Global* g = globals;
         for (; g->next; g = g->next);
         g->next = global;
         global->previous = g;
-    }
-}
-
-// initializes all global values (should be called in the module's initializer)
-static void initgvals(IRState* state) {
-    for (Global* g = globals; g; g = g->next) {
-        Capsa* capsa = g->value->capsa.capsa;
-        Expression* expression = g->value->capsa.expression;
-        // declare
-        capsa->llvm_value = LLVMAddGlobal(
-            state->module, llvm_type(capsa->type), capsa->id->name
-        );
-        // initialize with zero value
-        LLVMSetInitializer( // FIXME: Why can't I just declare?
-            capsa->llvm_value, zerovalue(state, capsa->type)
-        );
-        // evaluate
-        backend_expression(state, expression);
-        // store
-        LLVMBuildStore(
-            state->builder, expression->llvm_value, capsa->llvm_value
-        );
     }
 }
 
@@ -138,44 +125,6 @@ static void initgvals(IRState* state) {
 //
 // ==================================================
 
-static LLVMValueRef declare_function(LLVMModuleRef m, Definition* function) {
-    assert(function->function.id);
-    assert(function->function.type);
-    
-    Definition* p; // parameter
-
-    // Counting the number of parameters
-    unsigned int param_count = 0;
-    for (p = function->function.parameters; p; p = p->next, param_count++);
-
-    // Creating a list of parameter types
-    LLVMTypeRef param_types[param_count]; // TODO: Isn't this local memory?
-    p = function->function.parameters;
-    for (unsigned int i = 0; p; p = p->next, i++) {
-        param_types[i] = llvm_type(p->capsa.capsa->type);
-    }
-
-    // Creating the function prototype and setting it as the current function
-    LLVMValueRef fn = LLVMAddFunction(
-        /* Module       */ m,
-        /* FunctionName */ function->function.id->name,
-        /* FunctionRef  */ LLVMFunctionType(
-            /* ReturnType   */ llvm_type(function->function.type),
-            /* ParamTypes   */ param_types,
-            /* ParamCount   */ param_count,
-            /* IsVarArg     */ false
-        )
-    );
-
-    // Giving values to the parameters
-    p = function->function.parameters;
-    for (unsigned int i = 0; p; p = p->next, i++) {
-        p->capsa.capsa->llvm_value = LLVMGetParam(fn, i);
-    }
-
-    return fn;
-}
-
 static void position_builder(IRState* state, LLVMBasicBlockRef block) {
     assert(!state->block);
     LLVMPositionBuilderAtEnd(state->builder, block);
@@ -184,13 +133,10 @@ static void position_builder(IRState* state, LLVMBasicBlockRef block) {
 
 // TODO: Move to auxiliary area
 // returns the mutex lock from a monitor
-static LLVMValueRef monitormutex(
-    LLVMBuilderRef builder,
-    LLVMValueRef monitor) {
-
+static LLVMValueRef monitormutex(LLVMBuilderRef builder, LLVMValueRef monitor) {
     return LLVMBuildLoad(
         builder,
-        LLVMBuildStructGEP(builder, monitor, 0, LLVM_TEMPORARY),
+        LLVMBuildStructGEP(builder, monitor, STRUCTURE_MUTEX, LLVM_TEMPORARY),
         LLVM_TEMPORARY
     );
 }
@@ -317,12 +263,47 @@ LLVMModuleRef backend_compile(AST* ast) {
 // ==================================================
 
 static void backend_definition_capsa(IRState*, Definition*);
-// static void backend_definition_function(IRState*, Definition*);
-// static void backend_definition_method(IRState*, Definition*);
-// static void backend_definition_constructor(IRState*, Definition*);
-// static void backend_definition_interface(IRState* ss, Definition*);
-// static void backend_definition_structure(IRState*, Definition*);
-// static void backend_definition_monitor(IRState*, Definition*);
+static void backend_definition_function(IRState*, Definition*);
+static void backend_definition_method(IRState*, Definition*);
+static void backend_definition_constructor(IRState*, Definition*);
+static void backend_definition_structure(IRState*, Definition*);
+static void backend_definition_monitor(IRState*, Definition*);
+
+static void initializefunction(IRState*, Definition*);
+static void initializeglobals(IRState*);
+
+static void backend_definition(IRState* irs, Definition* def) {
+    switch (def->tag) {
+    case DEFINITION_CAPSA:
+        backend_definition_capsa(irs, def);
+        break;
+    case DEFINITION_FUNCTION:
+        backend_definition_function(irs, def);
+        break;
+    case DEFINITION_METHOD:
+        backend_definition_method(irs, def);
+        break;
+    case DEFINITION_CONSTRUCTOR:
+        backend_definition_constructor(irs, def);
+        break;
+    case DEFINITION_TYPE:
+        switch (def->type->tag) {
+        case TYPE_INTERFACE:
+            break;
+        case TYPE_STRUCTURE:
+            backend_definition_structure(irs, def);
+            break;
+        case TYPE_MONITOR:
+            backend_definition_monitor(irs, def);
+            break;
+        default:
+            UNREACHABLE;
+        }
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
 
 static void backend_definition_capsa(IRState* irs, Definition* def) {
     Capsa* capsa = def->capsa.capsa;
@@ -356,153 +337,249 @@ static void backend_definition_capsa(IRState* irs, Definition* def) {
     }
 }
 
-static void backend_definition(IRState* irs, Definition* def) {
-    switch (def->tag) {
-    case DEFINITION_CAPSA:
-        backend_definition_capsa(irs, def);
-        break;
-    case DEFINITION_FUNCTION:
-        def->llvm_value = declare_function(irs->module, def);
-        irs->function = def->llvm_value;
-        position_builder(irs, LLVMAppendBasicBlock(
-            irs->function,
-            LABEL_FUNCTION_ENTRY
-        ));
+static void backend_definition_function(IRState* irs, Definition* def) {
+    initializefunction(irs, def);
 
-        // TODO: Remove gambiarra
-        if (!strcmp(def->function.id->name, "main")) {
-            irs->main = true;
-            initgvals(irs);
-        }
+    if (def->function.id->name == scanner_native[SCANNER_NATIVE_MAIN]) {
+        irs->main = true;
+        initializeglobals(irs);
+    }
 
-        backend_block(irs, def->function.block);
+    backend_block(irs, def->function.block);
 
-        // Implicit return
-        if (irs->block) {
-            llvm_return(irs, zerovalue(irs, def->function.type));
-        }
-        irs->main = false; // TODO
-        break;
-    case DEFINITION_METHOD:
-        def->llvm_value = declare_function(irs->module, def);
-        irs->function = def->llvm_value;
-        position_builder(irs, LLVMAppendBasicBlock(
-            irs->function,
-            LABEL_FUNCTION_ENTRY
-        ));
+    // implicit return
+    if (irs->block) {
+        llvm_return(irs, zerovalue(irs, def->function.type));
+    }
 
-        // Self is the first parameter
-        irs->self = def->function.parameters->capsa.capsa->llvm_value;
+    irs->main = false;
+}
 
-        backend_block(irs, def->function.block);
+static void backend_definition_method(IRState* irs, Definition* def) {
+    initializefunction(irs, def);
 
-        // Implicit return
-        if (irs->block) {
-            llvm_return(irs, zerovalue(irs, def->function.type));
-        }
+    // self is the first parameter
+    irs->self = def->function.parameters->capsa.capsa->llvm_value;
 
-        irs->self = NULL;
-        break;
-    case DEFINITION_CONSTRUCTOR: {
-        irs->initializer = true;
+    backend_block(irs, def->function.block);
 
-        def->llvm_value = declare_function(irs->module, def);
-        irs->function = def->llvm_value;
-        position_builder(irs, LLVMAppendBasicBlock(
-            irs->function,
-            LABEL_FUNCTION_ENTRY
-        ));
+    // implicit return
+    if (irs->block) {
+        llvm_return(irs, zerovalue(irs, def->function.type));
+    }
 
-        // Monitor initializer
-        Type* monitor_type = def->function.type;
-        // Creating the instance
-        irs->self = LLVMBuildMalloc(
-            irs->builder, monitor_type->llvm_type, LLVM_TEMPORARY
-        );
-        // Allocating memory and initializing the monitor's mutex
-        // TODO: free and destroy the mutex one day
-        // WORK: New Malloc
-        LLVMValueRef mutex = ir_malloc(irs->builder, sizeof(pthread_mutex_t));
-        ir_pthread_mutex_init(irs->builder, mutex);
-        LLVMBuildStore(
-            irs->builder, mutex, LLVMBuildStructGEP(
-                irs->builder, irs->self, 0, LLVM_TEMPORARY
+    irs->self = NULL;
+}
+
+static void backend_definition_constructor(IRState* irs, Definition* def) {
+    irs->initializer = true;
+
+    initializefunction(irs, def);
+
+    // creates the <self> instance
+    LLVMTypeRef self_llvm_type = def->function.type->llvm_type;
+    irs->self = LLVMBuildMalloc(irs->builder, self_llvm_type, LLVM_TEMPORARY);
+
+    // creates the monitor's mutex
+    LLVMValueRef mutex = ir_malloc(irs->builder, sizeof(pthread_mutex_t));
+    ir_pthread_mutex_init(irs->builder, mutex);
+    LLVMBuildStore(irs->builder, mutex, LLVMBuildStructGEP(
+        irs->builder, irs->self, STRUCTURE_MUTEX, LLVM_TEMPORARY
+    ));
+
+    // creates the structure's VMT
+    size_t vmt_size = def->function.type->structure.methods_size;
+    LLVMTypeRef vmt_type = LLVMArrayType(LLVM_TYPE_POINTER_VOID, vmt_size);
+    LLVMValueRef vmt = LLVMBuildBitCast(
+        irs->builder,
+        LLVMBuildArrayMalloc(
+            irs->builder,
+            LLVM_TYPE_POINTER_VOID,
+            LLVM_CONSTANT_INTEGER(vmt_size),
+            "vmt_malloc"
+        ),
+        LLVM_TYPE_POINTER(vmt_type),
+        "vmt_bitcast"
+    );
+    LLVMBuildStore(irs->builder, vmt, LLVMBuildStructGEP(
+        irs->builder, irs->self, STRUCTURE_VMT, "vmt_house"
+    ));
+
+    // filling the structure's VMT
+    for (int i = 0; i < vmt_size; i++) {
+        LLVMValueRef
+            function = def->function.type->structure.methods[i]->llvm_value,
+            indices[2] = {LLVM_CONSTANT_INTEGER(0), LLVM_CONSTANT_INTEGER(i)},
+            ptr = LLVMBuildGEP(irs->builder, vmt, indices, 2, LLVM_TEMPORARY),
+            val = LLVMBuildBitCast(
+                irs->builder,
+                function,
+                LLVM_TYPE_POINTER_VOID,
+                LLVM_TEMPORARY
             )
-        );      
-        // Initializing attributes (that have values)
-        Definition* monitor_definitions = monitor_type->structure.definitions;
-        for (Definition* d = monitor_definitions; d; d = d->next) {
-            if (d->tag == DEFINITION_CAPSA) {
-                if (d->capsa.expression) {
-                    backend_capsa(irs, d->capsa.capsa);
-                    backend_expression(irs, d->capsa.expression);
-                    LLVMBuildStore(
-                        irs->builder,
-                        d->capsa.expression->llvm_value,
-                        d->capsa.capsa->llvm_value
-                    );
-                }
-            }
-        }
-
-        backend_block(irs, def->function.block);
-
-        if (irs->block) {
-            llvm_return(irs, irs->self);
-        }
-
-        irs->self = NULL;
-        irs->initializer = false;
-        break;
+        ;
+        LLVMBuildStore(irs->builder, val, ptr);
     }
-    case DEFINITION_TYPE: {
-        assert(def->type->tag == TYPE_MONITOR);
 
-        Type* type = def->type;
-        Definition* monitor_definitions = type->structure.definitions;
-        unsigned int n = 1; // attribute count
+    // %array = alloca i8*
+    // %pointer = bitcast i8* (%Monitor*)* @string to i8*
+    // store i8* %pointer, i8** %array
+    // %pointer2 = load i8*, i8** %array
+    // %func = bitcast i8* %pointer2 to i8* (%Monitor*)*
+    // %2 = call i8* %func(%Monitor* %0)
 
-        for (Definition* d = monitor_definitions; d; d = d->next, n++) {
-            if (d->tag != DEFINITION_CAPSA) {
-                continue;
-            }
+    // initializes attributes
+    FOREACH(Definition, d, def->function.type->structure.definitions) {
+        if (d->tag != DEFINITION_CAPSA) {
+            continue;
         }
-
-        LLVMTypeRef attributes[n];
-
-        // Monitor's mutex
-        attributes[0] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
-
-        // Attributes
-        n = 1;
-        for (Definition* d = monitor_definitions; d; d = d->next) {
-            if (d->tag != DEFINITION_CAPSA) {
-                continue;
-            }
-            d->capsa.capsa->llvm_structure_index = n;
-            attributes[n++] = llvm_type(d->capsa.capsa->type);
+        backend_capsa(irs, d->capsa.capsa);
+        LLVMValueRef expression;
+        if (d->capsa.expression) {
+            backend_expression(irs, d->capsa.expression);
+            expression = d->capsa.expression->llvm_value;
+        } else {
+            expression = LLVMGetUndef(llvm_type(d->capsa.capsa->type));
         }
+        LLVMBuildStore(irs->builder, expression, d->capsa.capsa->llvm_value);
+    }
 
-        type->llvm_type = llvm_structure(
-            attributes, n, type->structure.id->name
-        );
+    backend_block(irs, def->function.block);
 
-        for (Definition* d = monitor_definitions; d; d = d->next) {
-            switch (d->tag) {
-            case DEFINITION_METHOD:
-                /* fallthrough */
-            case DEFINITION_CONSTRUCTOR:
+    // FIXME: why?
+    if (irs->block) {
+        llvm_return(irs, irs->self);
+    }
+
+    irs->self = NULL;
+    irs->initializer = false;
+}
+
+static void backend_definition_structure(IRState* irs, Definition* def) {
+    UNREACHABLE; // TODO
+}
+
+static void backend_definition_monitor(IRState* irs, Definition* def) {
+    size_t attributes_size = def->type->structure.attributes_size;
+    LLVMTypeRef attributes[STRUCTURE_ATTRIBUTE_START + attributes_size];
+
+    // monitor's mutex
+    attributes[STRUCTURE_MUTEX] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
+    // attributes[STRUCTURE_VMT] = LLVM_TYPE_POINTER(LLVM_TYPE_POINTER_VOID);
+    attributes[STRUCTURE_VMT] = LLVM_TYPE_POINTER(LLVMArrayType(
+        LLVM_TYPE_POINTER_VOID, def->type->structure.methods_size
+    ));
+
+    // attributes
+    for (int i = 0; i < def->type->structure.attributes_size; i++) {
+        Capsa* capsa = def->type->structure.attributes[i]->capsa.capsa;
+        capsa->llvm_structure_index = STRUCTURE_ATTRIBUTE_START + i;
+        attributes[STRUCTURE_ATTRIBUTE_START + i] = llvm_type(capsa->type);
+    }
+
+    def->type->llvm_type = llvm_structure(
+        attributes,
+        def->type->structure.attributes_size + STRUCTURE_ATTRIBUTE_START,
+        def->type->structure.id->name
+    );
+
+    for (int i = 0; i < def->type->structure.methods_size; i++) {
+        Definition* function = def->type->structure.methods[i]; // FIXME
+        backend_definition(irs, function);
+    }
+    backend_definition(irs, def->type->structure.constructor);
+
+    // %array = alloca i8*
+    // %pointer = bitcast i8* (%Monitor*)* @string to i8*
+    // store i8* %pointer, i8** %array
+    // %pointer2 = load i8*, i8** %array
+    // %func = bitcast i8* %pointer2 to i8* (%Monitor*)*
+    // %2 = call i8* %func(%Monitor* %0)
+}
+
+// -----------------------------------------------------------------------------
+
+// auxiliary
+// declares a function in LLVM
+// links parameters' LLVM values inside the AST
+// creates the ENTRY blocks and positions the instruction builder
+// defines (def->llvm_value) and (irs->function)
+static void initializefunction(IRState* irs, Definition* def) {
+    assert(def->function.id);
+    assert(def->function.type);
+
+    // counts the number of parameters
+    unsigned int count = 0;
+    FOREACH(Definition, p, def->function.parameters) {
+        count++;
+    }
+
+    // creates an array with parameter types
+    LLVMTypeRef types[count];
+    unsigned int i = 0;
+    FOREACH(Definition, p, def->function.parameters) {
+        types[i++] = llvm_type(p->capsa.capsa->type);
+    }
+
+    // creates the function prototype
+    // sets it as the current function
+    LLVMValueRef fn = LLVMAddFunction(
+        /* Module       */ irs->module,
+        /* FunctionName */ def->function.id->name,
+        /* FunctionRef  */ LLVMFunctionType(
+            /* ReturnType   */ llvm_type(def->function.type),
+            /* ParamTypes   */ types,
+            /* ParamCount   */ count,
+            /* IsVarArg     */ false
+        )
+    );
+
+    // assigns LLVM values to each parameter
+    i = 0;
+    FOREACH(Definition, p, def->function.parameters) {
+        p->capsa.capsa->llvm_value = LLVMGetParam(fn, i++);
+    }
+
+    position_builder(irs, LLVMAppendBasicBlock(fn, LABEL_FUNCTION_ENTRY));
+
+    def->llvm_value = fn;
+    irs->function = fn;
+}
+
+// auxiliary - initializes all global values
+static void initializeglobals(IRState* irs) {
+    FOREACH(Global, global, globals) {
+        Capsa* capsa = global->value->capsa.capsa;
+        Expression* expression = global->value->capsa.expression;
+        LLVMTypeRef type = llvm_type(capsa->type);
+        capsa->llvm_value = LLVMAddGlobal(irs->module, type, capsa->id->name);
+        LLVMSetInitializer(capsa->llvm_value, LLVMGetUndef(type));
+        backend_expression(irs, expression);
+        LLVMBuildStore(irs->builder, expression->llvm_value, capsa->llvm_value);
+    }
+}
+
+// ==================================================
+//
+//  Block
+//
+// ==================================================
+
+static void backend_block(IRState* irs, Block* block) {
+    assert(block->tag == BLOCK);
+    FOREACH(Block, b, block->next) {
+        switch (b->tag) {
+        case BLOCK_DEFINITION:
+            FOREACH(Definition, d, b->definition) {
                 backend_definition(irs, d);
-                break;
-            default:
-                continue;
             }
+            break;
+        case BLOCK_STATEMENT:
+            backend_statement(irs, b->statement);
+            break;
+        default:
+            UNREACHABLE;
         }
-
-        break;
-    }
-    default:
-        UNREACHABLE;
     }
 }
 
@@ -511,24 +588,6 @@ static void backend_definition(IRState* irs, Definition* def) {
 //  TODO
 //
 // ==================================================
-
-static void backend_block(IRState* state, Block* block) {
-    assert(block->tag == BLOCK);
-    for (Block* b = block->next; b; b = b->next) {
-        switch (b->tag) {
-        case BLOCK_DEFINITION:
-            for (Definition* d = b->definition; d; d = d->next) {
-                backend_definition(state, d);
-            }
-            continue;
-        case BLOCK_STATEMENT:
-            backend_statement(state, b->statement);
-            continue;
-        default:
-            UNREACHABLE;
-        }
-    }
-}
 
 static void backend_statement(IRState* state, Statement* statement) {
     switch (statement->tag) {
@@ -821,8 +880,9 @@ static void backend_expression(IRState* state, Expression* expression) {
         }
         break;
     case EXPRESSION_FUNCTION_CALL:
-        expression->llvm_value =
-            backend_function_call(state, expression->function_call);
+        expression->llvm_value = backend_function_call(
+            state, expression->function_call
+        );
         break;
     case EXPRESSION_UNARY:
         switch (expression->unary.token) {
@@ -1073,60 +1133,33 @@ static void backend_condition(IRState* state, Expression* expression,
     }
 }
 
-static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
-    // Arguments
-    assert(call->argument_count >= 0);
-    Expression* e;
-    for (e = call->arguments; e; e = e->next) {
-        backend_expression(state, e);
-    }
-    LLVMValueRef args[call->argument_count];
-    for (int n = (e = call->arguments, 0); e; e = e->next, n++) {
-        args[n] = e->llvm_value;
-    }
+// ==================================================
+//
+//  FunctionCall
+//
+// ==================================================
 
-    switch (call->tag) {
+static LLVMValueRef backend_fc_basic(IRState*, FunctionCall*);
+static LLVMValueRef backend_fc_method(IRState*, FunctionCall*);
+static LLVMValueRef backend_fc_condition_queue(IRState*, FunctionCall*);
+static LLVMValueRef backend_fc_array(IRState*, FunctionCall*);
+
+static LLVMValueRef* fcarguments(IRState*, FunctionCall*);
+
+static LLVMValueRef backend_function_call(IRState* irs, FunctionCall* fc) {
+    switch (fc->tag) {
     case FUNCTION_CALL_BASIC:
-        // TODO: Remove this gambiarra
-        if (!call->function_definition && !strcmp(call->id->name, "print")) {
-            return ir_printf(state->builder, args, call->argument_count);
-        }
-        break;
-    case FUNCTION_CALL_METHOD: {
-        // Method calls need to acquire the monitor's mutex lock and release it
-        LLVMValueRef mutex = monitormutex(
-            state->builder, call->arguments->llvm_value
-        );
-
-        ir_pthread_mutex_lock(state->builder, mutex);
-        LLVMValueRef call_llvm_value = LLVMBuildCall(
-            /* Builder */   state->builder,
-            /* Function */  call->function_definition->llvm_value,
-            /* Arguments */ args,
-            /* NumArgs */   call->argument_count,
-            /* TempName */  LLVM_TEMPORARY_NONE /* TODO: Look down for OBS */
-        );
-        ir_pthread_mutex_unlock(state->builder, mutex);
-
-        return call_llvm_value;
-    }
+        return backend_fc_basic(irs, fc);
+    case FUNCTION_CALL_METHOD:
+        return backend_fc_method(irs, fc);
     case FUNCTION_CALL_CONSTRUCTOR:
-        switch (call->type->tag) {
+        switch (fc->type->tag) {
         case TYPE_ID: // ConditionQueue initializer
-            assert(call->type == __condition_queue);
-            LLVMValueRef cq = ir_malloc(state->builder, sizeof(pthread_cond_t));
-            ir_pthread_cond_init(state->builder, cq);
-            return cq;
+            return backend_fc_condition_queue(irs, fc);
         case TYPE_ARRAY: // new array
-            assert(call->argument_count == 1);
-            return LLVMBuildArrayMalloc(
-                /* Builder */       state->builder,
-                /* ElementType */   llvm_type(call->type->array),
-                /* Size */          args[0],
-                /* TempName */      LLVM_TEMPORARY
-            );
+            return backend_fc_array(irs, fc);
         case TYPE_MONITOR: // monitor constructor
-            break;
+            return backend_fc_basic(irs, fc);
         default:
             UNREACHABLE;
         }
@@ -1134,20 +1167,83 @@ static LLVMValueRef backend_function_call(IRState* state, FunctionCall* call) {
     default:
         UNREACHABLE;
     }
+}
 
-    // TODO: Make macro for this llvm call and repeat it instead of breaking
+static LLVMValueRef backend_fc_basic(IRState* irs, FunctionCall* fc) {
+    LLVMValueRef* arguments = fcarguments(irs, fc);
+    LLVMValueRef llvm_value = NULL;
+    
+    if (!fc->function_definition) {
+        // FIXME: libraries & native functions
+        if (!strcmp(fc->id->name, "print")) {
+            llvm_value = ir_printf(irs->builder, arguments, fc->argument_count);
+        }
+    } else {
+        llvm_value = LLVMBuildCall(
+            irs->builder,
+            fc->function_definition->llvm_value,
+            arguments,
+            fc->argument_count,
+            LLVM_TEMPORARY_NONE
+        );
+    }
+    free(arguments);
+    return llvm_value;
+}
 
-    /*
-     * OBS: TempName empty string avoids "Instruction has a name, but
-     * provides a void value!" error.
-     */
-    return LLVMBuildCall(
-        /* Builder */   state->builder,
-        /* Function */  call->function_definition->llvm_value,
-        /* Arguments */ args,
-        /* NumArgs */   call->argument_count,
-        /* TempName */  LLVM_TEMPORARY_NONE
+static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
+    LLVMValueRef* arguments = fcarguments(irs, fc);
+    LLVMValueRef self = arguments[0];
+    LLVMValueRef mutex = monitormutex(irs->builder, self);
+    ir_pthread_mutex_lock(irs->builder, mutex);
+    LLVMValueRef llvm_value = LLVMBuildCall(
+        irs->builder,
+        fc->function_definition->llvm_value,
+        arguments,
+        fc->argument_count,
+        LLVM_TEMPORARY_NONE
     );
+    ir_pthread_mutex_unlock(irs->builder, mutex);
+    free(arguments);
+    return llvm_value;
+}
+
+static LLVMValueRef backend_fc_condition_queue(IRState* irs, FunctionCall* fc) {
+    assert(fc->type == __condition_queue);
+    LLVMValueRef llvm_value = ir_malloc(irs->builder, sizeof(pthread_cond_t));
+    ir_pthread_cond_init(irs->builder, llvm_value);
+    return llvm_value;
+}
+
+static LLVMValueRef backend_fc_array(IRState* irs, FunctionCall* fc) {
+    assert(fc->argument_count == 1);
+    Expression* size = fc->arguments;
+    backend_expression(irs, size);
+    return LLVMBuildArrayMalloc(
+        irs->builder,
+        llvm_type(fc->type->array),
+        size->llvm_value,
+        LLVM_TEMPORARY
+    );
+}
+
+// -----------------------------------------------------------------------------
+
+// auxiliary
+// returns an array with the function call's arguments
+// must free the returned array
+static LLVMValueRef* fcarguments(IRState* irs, FunctionCall* fc) {
+    assert(fc->argument_count >= 0);
+    FOREACH(Expression, e, fc->arguments) {
+        backend_expression(irs, e);
+    }
+    LLVMValueRef* arguments;
+    MALLOC_ARRAY(arguments, LLVMValueRef, fc->argument_count);
+    size_t n = 0;
+    FOREACH(Expression, e, fc->arguments) {
+        arguments[n++] = e->llvm_value;
+    }
+    return arguments;
 }
 
 // ==================================================
@@ -1239,11 +1335,11 @@ static LLVMValueRef stringliteral(IRState* state, const char* string) {
 }
 
 // TODO: Doc
-static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], unsigned int length,
+static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], size_t size,
     const char* name) {
 
     LLVMTypeRef type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
-    LLVMStructSetBody(type, fields, length, false); // TODO: Packed?
+    LLVMStructSetBody(type, fields, size, false); // TODO: Packed?
     return type;
 }
 

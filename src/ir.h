@@ -17,12 +17,12 @@
 #define LLVM_TEMPORARY_PHI          LLVM_TEMPORARY "phi_"
 
 // Types
-#define LLVM_TYPE_POINTER(t)    LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE)
-#define LLVM_TYPE_POINTER_VOID  LLVM_TYPE_POINTER(LLVMInt8Type())
-#define LLVM_TYPE_VOID          LLVMVoidType()
-#define LLVM_TYPE_BOOLEAN       LLVMIntType(1)
-#define LLVM_TYPE_INTEGER       LLVMInt32Type()
-#define LLVM_TYPE_DOUBLE        LLVMDoubleType()
+#define LLVM_TYPE_POINTER(t)    (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))
+#define LLVM_TYPE_POINTER_VOID  (LLVM_TYPE_POINTER(LLVMInt8Type()))
+#define LLVM_TYPE_VOID          (LLVMVoidType())
+#define LLVM_TYPE_BOOLEAN       (LLVMIntType(1))
+#define LLVM_TYPE_INTEGER       (LLVMInt32Type())
+#define LLVM_TYPE_DOUBLE        (LLVMDoubleType())
 
 // Aria Types
 #define LLVM_ARIA_TYPE_VOID             LLVM_TYPE_VOID
@@ -30,8 +30,8 @@
 #define LLVM_ARIA_TYPE_INTEGER          LLVM_TYPE_INTEGER
 #define LLVM_ARIA_TYPE_FLOAT            LLVM_TYPE_DOUBLE
 #define LLVM_ARIA_TYPE_STRING           LLVM_TYPE_POINTER(LLVMInt8Type())
-#define LLVM_ARIA_TYPE_ARRAY(t)         LLVM_TYPE_POINTER(t);
-#define LLVM_ARIA_TYPE_MONITOR(s)       LLVM_TYPE_POINTER(s)
+#define LLVM_ARIA_TYPE_ARRAY(t)         LLVM_TYPE_POINTER(t)
+#define LLVM_ARIA_TYPE_MONITOR(t)       LLVM_TYPE_POINTER(t)
 #define LLVM_ARIA_TYPE_CONDITION_QUEUE  LLVM_TYPE_POINTER_PTHREAD_COND_T
 
 // ASK: Should SignExtend?
