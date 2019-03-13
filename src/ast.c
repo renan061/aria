@@ -27,31 +27,37 @@ void ast_set(Definition* definitions) {
 //
 // ==================================================
 
-Definition* ast_definition_capsa(Capsa* capsa, Expression* exp) {
+Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
+    Definition* d;
+    MALLOC(d, Definition);
+    d->tag = DECLARATION_FUNCTION;
+    d->next = NULL;
+    d->llvm_value = NULL;
+    d->function.private = false;
+    d->function.id = id;
+    d->function.parameters = parameters;
+    d->function.type = t;
+    d->function.block = NULL;
+    d->function.vmt_index = -1;
+    return d;
+}
+
+Definition* ast_definition_capsa(Capsa* capsa, Expression* expression) {
     Definition* definition;
     MALLOC(definition, Definition);
     definition->tag = DEFINITION_CAPSA;
     definition->next = NULL;
     definition->llvm_value = NULL;
     definition->capsa.capsa = capsa;
-    definition->capsa.expression = exp;
+    definition->capsa.expression = expression;
     return definition;
 }
 
-Definition* ast_definition_function(Id* id, Definition* ps, Type* t, Block* b) {
-    Definition* definition;
-    MALLOC(definition, Definition);
-    // assert(block->tag == BLOCK); // TODO: ast_declaration_function
-    definition->tag = DEFINITION_FUNCTION;
-    definition->next = NULL;
-    definition->llvm_value = NULL;
-    definition->function.private = false;
-    definition->function.id = id;
-    definition->function.parameters = ps;
-    definition->function.type = t;
-    definition->function.block = b;
-    definition->function.vmt_index = -1;
-    return definition;
+Definition* ast_definition_function(Definition* d, Block* block) {
+    assert(d->tag == DECLARATION_FUNCTION && block->tag == BLOCK);
+    d->tag = DEFINITION_FUNCTION;
+    d->function.block = block;
+    return d;
 }
 
 Definition* ast_definition_method(bool private, Definition* function) {
@@ -412,9 +418,9 @@ Statement* ast_statement_spawn(Line ln, Block* block) {
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_SPAWN;
     statement->line = ln;
-    statement->spawn = ast_call(ln, /* id */ NULL, /* arguments */ NULL);
+    statement->spawn = ast_call(ln, NULL, NULL);
     statement->spawn->function_definition = ast_definition_function(
-        /* id */ NULL, /* parameters */ NULL, ast_type_void(), block
+        ast_declaration_function(NULL, NULL, ast_type_void()), block
     );
     return statement;
 }
@@ -598,19 +604,19 @@ Expression* ast_expression_binary(Line ln, Token t, Expression* l,
     return expression;
 }
 
-Expression* ast_expression_cast(Expression* expression, Type* type) {
+Expression* ast_expression_cast(Line ln, Expression* expression, Type* type) {
     // TODO: Remove when 'as' gets in the language
     assert(expression->type != type);
 
     Expression* castExpression;
     MALLOC(castExpression, Expression);
     castExpression->tag = EXPRESSION_CAST;
-    castExpression->line = expression->line;
+    castExpression->line = ln;
     castExpression->type = type;
     castExpression->llvm_value = NULL;
     castExpression->cast = expression;
 
-    // Rearranging the list (only for arguments)
+    // rearranging the list (only for arguments)
     castExpression->previous = expression->previous;
     expression->previous = NULL;
     castExpression->next = expression->next;

@@ -21,15 +21,10 @@ Mixed monitor (properties, methods and constructor)
 monitor Monitor {
     value x = 1;
     value y: Integer = 1;
-
     variable b: Integer;
-
     function foo {}
-
     initializer {}
-
     variable c: Integer;
-
     function bar {}
 }
 -- Output
@@ -40,7 +35,6 @@ Private method definition
 -- Input
 monitor Monitor {
     function foo {}
-    
     private function bar {}
 }
 -- Output

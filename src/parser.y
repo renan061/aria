@@ -111,6 +111,7 @@
 %left       <ival> '+' '-'
 %left       <ival> '*' '/'
 %left       <ival> TK_NOT // precedence for unary minus
+%left       <ival> TK_AS
 
 // first nonterminal
 %start program
@@ -255,24 +256,18 @@ capsa_definition_assignment
 function_declaration
     : TK_FUNCTION TK_LOWER_ID parameter_list0 ':' type
         {
-            // TODO: ast_declaration_function
-            $$ = ast_definition_function($2, $3, $5, NULL);
+            $$ = ast_declaration_function($2, $3, $5);
         }
     | TK_FUNCTION TK_LOWER_ID parameter_list0
         {
-            // TODO: ast_declaration_function
-            $$ = ast_definition_function($2, $3, ast_type_void(), NULL);
+            $$ = ast_declaration_function($2, $3, ast_type_void());
         }
     ;
 
 function_definition
     : function_declaration block
         {
-            // TODO
-            // Definition* ast_declaration_function(name, parameters, return);
-            // Definition* ast_definition_function(declaration, block);
-            $1->function.block = $2;
-            $$ = $1;
+            $$ = ast_definition_function($1, $2);
         }
     ;
 
@@ -610,6 +605,10 @@ expression
     | TK_NOT expression
         {
             $$ = ast_expression_unary($1, TK_NOT, $2);
+        }
+    | expression TK_AS type
+        {
+            $$ = ast_expression_cast($2, $1, $3);
         }
     | primary_expression
         {

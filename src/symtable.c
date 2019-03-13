@@ -44,10 +44,12 @@ static const char* definitionstring(Definition* definition) {
     case DEFINITION_CAPSA:
         assert(definition->capsa.capsa->tag == CAPSA_ID);
         return definition->capsa.capsa->id->name;
+    case DECLARATION_FUNCTION:
+        // fallthrough
     case DEFINITION_FUNCTION:
-        /* fallthrough */
+        // fallthrough
     case DEFINITION_METHOD:
-        /* fallthrough */
+        // fallthrough
     case DEFINITION_CONSTRUCTOR:
         assert(definition->function.id);
         return definition->function.id->name;

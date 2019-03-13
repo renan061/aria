@@ -229,6 +229,7 @@ Capsa* findattribute(Capsa* capsa) {
 // ==================================================
 
 static void sem_definition_capsa(SS*, Definition*);
+static void sem_declaration_function(SS*, Definition*);
 static void sem_definition_function(SS*, Definition*);
 static void sem_definition_method(SS*, Definition*);
 static void sem_definition_constructor(SS*, Definition*);
@@ -245,6 +246,9 @@ static void sem_definition(SS* ss, Definition* def) {
     switch (def->tag) {
     case DEFINITION_CAPSA:
         sem_definition_capsa(ss, def);
+        break;
+    case DECLARATION_FUNCTION:
+        sem_declaration_function(ss, def);
         break;
     case DEFINITION_FUNCTION:
         sem_definition_function(ss, def);
@@ -298,10 +302,26 @@ static void sem_definition_capsa(SS* ss, Definition* def) {
     }
 }
 
+// auxiliary
+// adds <self> as the first parameter to the function
+static void prependself(SS* ss, Definition* def) {
+    Line line = def->function.id->line;
+    Capsa* self = astself(line);
+    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
+    Definition* self_definition = ast_definition_capsa(self, NULL);
+    PREPEND(Definition, def->function.parameters, self_definition);
+}
+
+static void sem_declaration_function(SS* ss, Definition* def) {
+    prependself(ss, def);
+    sem_definition_function(ss, def);
+    def->tag = DEFINITION_METHOD;
+}
+
 static void sem_definition_function(SS* ss, Definition* def) {
     assert(!def->function.private);
 
-    // checks if the method is being redeclared
+    // checks if the function is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(def->function.id);
     }
@@ -317,12 +337,7 @@ static void sem_definition_function(SS* ss, Definition* def) {
 static void sem_definition_method(SS* ss, Definition* def) {
     assert(insidemonitor(ss));
 
-    // adds <self> as the first parameter to the method
-    Line line = def->function.id->line;
-    Capsa* self = astself(line);
-    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
-    Definition* self_definition = ast_definition_capsa(self, NULL);
-    PREPEND(Definition, def->function.parameters, self_definition);
+    prependself(ss, def);
 
     // checks if the method is being redeclared
     if (!symtable_insert(ss->table, def)) {
@@ -371,7 +386,6 @@ static void sem_definition_structure(SS* ss, Definition* def) {
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
     semstructure(ss, def);
-
     // checks interface implementation
     if (def->type->structure.interface) {
         linktype(ss->table, &def->type->structure.interface);
@@ -393,7 +407,9 @@ static void semfunction(SS* ss, Definition* def) {
         }
     }
     ss->return_ = def->function.type;
-    if (def->function.block) { // interface functions don't have blocks
+    if (!def->function.block) { // interface functions don't have blocks
+        assert(def->tag == DECLARATION_FUNCTION);
+    } else {
         sem_block(ss, def->function.block);
     }
     ss->return_ = NULL;
@@ -409,6 +425,8 @@ static void semstructure(SS* ss, Definition* def) {
     }
     ss->structure = def->type;
     symtable_enter_scope(ss->table);
+
+    // capsas
     FOREACH(Definition, d, def->type->structure.definitions) {
         if (d->tag == DEFINITION_CAPSA) {
             sem_definition(ss, d);
@@ -418,8 +436,11 @@ static void semstructure(SS* ss, Definition* def) {
 
     // FIXME: still possible to call a structure function from inside structure
     // functions without adding "self." or "dog."
+    // functions
     FOREACH(Definition, d, def->type->structure.definitions) {
         switch (d->tag) {
+            case DECLARATION_FUNCTION:
+                // fallthrough
             case DEFINITION_FUNCTION:
                 // fallthrough
             case DEFINITION_METHOD:
@@ -457,6 +478,8 @@ static void semstructure(SS* ss, Definition* def) {
         case DEFINITION_CAPSA:
             def->type->structure.attributes[i_attributes++] = d;
             break;
+        case DECLARATION_FUNCTION:
+            // fallthrough
         case DEFINITION_FUNCTION:
             // fallthrough
         case DEFINITION_METHOD:
@@ -487,9 +510,9 @@ static bool functionequals(Definition* ifunction, Definition* method) {
     // same parameters    
     Definition* p2 = method->function.parameters;
     assert(p2);
-    p2 = p2->next; // skipping self
+    p2 = p2->next; // skipping <self> (also skips <self> for ifunction)
 
-    FOREACH(Definition, p1, ifunction->function.parameters) {
+    FOREACH(Definition, p1, ifunction->function.parameters->next) {
         if (!p2) {
             return false; // parameters count
         }
@@ -900,141 +923,179 @@ static void sem_statement_block(SS* ss, Statement* stmt) {
 //
 // ==================================================
 
-static void sem_expression(SS* state, Expression* expression) {
-    switch (expression->tag) {
+static void sem_expression_literal_array(SS*, Expression*);
+static void sem_expression_unary_minus(SS*, Expression*);
+static void sem_expression_unary_not(SS*, Expression*);
+static void sem_expression_binary_logic(SS*, Expression*);
+static void sem_expression_binary_equality(SS*, Expression*);
+static void sem_expression_binary_inequality(SS*, Expression*);
+static void sem_expression_binary_arithmetic(SS*, Expression*);
+
+static void sem_expression(SS* ss, Expression* exp) {
+    switch (exp->tag) {
     case EXPRESSION_LITERAL_BOOLEAN:
-        expression->type = __boolean;
+        exp->type = __boolean;
         break;
     case EXPRESSION_LITERAL_INTEGER:
-        expression->type = __integer;
+        exp->type = __integer;
         break;
     case EXPRESSION_LITERAL_FLOAT:
-        expression->type = __float;
+        exp->type = __float;
         break;
     case EXPRESSION_LITERAL_STRING:
-        expression->type = __string;
+        exp->type = __string;
         break;
     case EXPRESSION_LITERAL_ARRAY:
-        FOREACH(Expression, e, expression->literal.array) {
-            sem_expression(state, e);
-            typecheck2(&expression->literal.array, &e);
-        }
-        FOREACH(Expression, e, expression->literal.array->next) {
-            if (!typecheck2(&expression->literal.array, &e)) {
-                TODOERR(
-                    expression->line,
-                    "elements of an array literal must have equivalent types"
-                );
-            }
-        }
-        expression->type = ast_type_array(expression->literal.array->type);
-        if ((expression->type->immutable = expression->literal.immutable)) {
-            FOREACH(Expression, e, expression->literal.array) {
-                for (Type* t = e->type; t->tag == TYPE_ARRAY; t = t->array) {
-                    t->immutable = true;
-                }
-            }
-        }
+        sem_expression_literal_array(ss, exp);
         break;
     case EXPRESSION_CAPSA:
-        sem_capsa(state, &expression->capsa);
-        expression->type = expression->capsa->type;
+        sem_capsa(ss, &exp->capsa);
+        exp->type = exp->capsa->type;
         break;
     case EXPRESSION_FUNCTION_CALL:
-        sem_function_call(state, expression->function_call);
-        expression->type = expression->function_call->type;
+        sem_function_call(ss, exp->function_call);
+        exp->type = exp->function_call->type;
         break;
     case EXPRESSION_UNARY:
-        sem_expression(state, expression->unary.expression);
-        switch (expression->unary.token) {
+        sem_expression(ss, exp->unary.expression);
+        switch (exp->unary.token) {
         case '-':
-            if (!numerictype(expression->unary.expression->type)) {
-                err_expression(ERR_EXPRESSION_MINUS, expression);
-            }
-            expression->type = expression->unary.expression->type;
+            sem_expression_unary_minus(ss, exp);    
             break;
         case TK_NOT:
-            if (!conditiontype(expression->unary.expression->type)) {
-                err_expression(ERR_EXPRESSION_NOT, expression);
-            }
-            expression->type = __boolean;
+            sem_expression_unary_not(ss, exp);
             break;
         default:
             UNREACHABLE;
         }
         break;
-    case EXPRESSION_BINARY: {
-        Expression** lp = &expression->binary.left_expression;
-        Expression** rp = &expression->binary.right_expression;
-        sem_expression(state, *lp);
-        sem_expression(state, *rp);
-        switch (expression->binary.token) {
+    case EXPRESSION_BINARY:
+        sem_expression(ss, exp->binary.left_expression);
+        sem_expression(ss, exp->binary.right_expression);
+        switch (exp->binary.token) {
         case TK_OR: case TK_AND:
-            if (!conditiontype((*lp)->type)) {
-                err_expression(ERR_EXPRESSION_LEFT, expression);
-            }
-            if (!conditiontype((*rp)->type)) {
-                err_expression(ERR_EXPRESSION_RIGHT, expression);
-            }
-            expression->type = __boolean;
+            sem_expression_binary_logic(ss, exp);
             break;
         case TK_EQUAL: case TK_NEQUAL:
-            if (!equatabletype((*lp)->type)) {
-                err_expression(ERR_EXPRESSION_LEFT_EQUAL, expression);
-            }
-            if (!equatabletype((*rp)->type)) {
-                err_expression(ERR_EXPRESSION_RIGHT_EQUAL, expression);
-            }
-            if (!typecheck2(lp, rp)) {
-                err_expression(ERR_EXPRESSION_TYPECHECK_EQUAL, expression);
-            }
-            expression->type = __boolean;
+            sem_expression_binary_equality(ss, exp);
             break;
         case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
-            if (!numerictype((*lp)->type)) {
-                err_expression(ERR_EXPRESSION_LEFT, expression);
-            }
-            if (!numerictype((*rp)->type)) {
-                err_expression(ERR_EXPRESSION_RIGHT, expression);
-            }
-            assert(typecheck2(lp, rp)); // for casting, if necessary
-            expression->type = __boolean;
+            sem_expression_binary_inequality(ss, exp);
             break;
         case '+': case '-': case '*': case '/':
-            if (!numerictype((*lp)->type)) {
-                err_expression(ERR_EXPRESSION_LEFT, expression);
-            }
-            if (!numerictype((*rp)->type)) {
-                err_expression(ERR_EXPRESSION_RIGHT, expression);
-            }
-            expression->type = typecheck2(lp, rp); // for casting, if necessary
-            assert(expression->type);
+            sem_expression_binary_arithmetic(ss, exp);
             break;
         default:
-            printf("line: %d\n", expression->line);
             UNREACHABLE;
         }
         break;
-    }
     case EXPRESSION_CAST:
-        UNREACHABLE;
+        sem_expression(ss, exp->cast);
+        linktype(ss->table, &exp->type);
+        break;
     default:
         UNREACHABLE;
     }
 }
+
+static void sem_expression_literal_array(SS* ss, Expression* exp) {
+    FOREACH(Expression, e, exp->literal.array) {
+        sem_expression(ss, e);
+        typecheck2(&exp->literal.array, &e);
+    }
+    FOREACH(Expression, e, exp->literal.array->next) {
+        if (!typecheck2(&exp->literal.array, &e)) {
+            TODOERR(
+                exp->line,
+                "elements of an array literal must have equivalent types"
+            );
+        }
+    }
+    exp->type = ast_type_array(exp->literal.array->type);
+    if ((exp->type->immutable = exp->literal.immutable)) {
+        FOREACH(Expression, e, exp->literal.array) {
+            for (Type* t = e->type; t->tag == TYPE_ARRAY; t = t->array) {
+                t->immutable = true;
+            }
+        }
+    }
+}
+
+static void sem_expression_unary_minus(SS* ss, Expression* exp) {
+    if (!numerictype(exp->unary.expression->type)) {
+        err_expression(ERR_EXPRESSION_MINUS, exp);
+    }
+    exp->type = exp->unary.expression->type;
+}
+
+static void sem_expression_unary_not(SS* ss, Expression* exp) {
+    if (!conditiontype(exp->unary.expression->type)) {
+        err_expression(ERR_EXPRESSION_NOT, exp);
+    }
+    exp->type = __boolean;
+}
+
+static void sem_expression_binary_logic(SS* ss, Expression* exp) {
+    if (!conditiontype(exp->binary.left_expression->type)) {
+        err_expression(ERR_EXPRESSION_LEFT, exp);
+    }
+    if (!conditiontype(exp->binary.right_expression->type)) {
+        err_expression(ERR_EXPRESSION_RIGHT, exp);
+    }
+    exp->type = __boolean;
+}
+
+static void sem_expression_binary_equality(SS* ss, Expression* exp) {
+    if (!equatabletype(exp->binary.left_expression->type)) {
+        err_expression(ERR_EXPRESSION_LEFT_EQUAL, exp);
+    }
+    if (!equatabletype(exp->binary.right_expression->type)) {
+        err_expression(ERR_EXPRESSION_RIGHT_EQUAL, exp);
+    }
+    Expression** l = &exp->binary.left_expression;
+    Expression** r = &exp->binary.right_expression;
+    if (!typecheck2(l, r)) {
+        err_expression(ERR_EXPRESSION_TYPECHECK_EQUAL, exp);
+    }
+    exp->type = __boolean;
+}
+
+static void sem_expression_binary_inequality(SS* ss, Expression* exp) {
+    sem_expression_binary_arithmetic(ss, exp);
+    exp->type = __boolean;
+}
+
+static void sem_expression_binary_arithmetic(SS* ss, Expression* exp) {
+    if (!numerictype(exp->binary.left_expression->type)) {
+        err_expression(ERR_EXPRESSION_LEFT, exp);
+    }
+    if (!numerictype(exp->binary.right_expression->type)) {
+        err_expression(ERR_EXPRESSION_RIGHT, exp);
+    }
+    Expression** l = &exp->binary.left_expression;
+    Expression** r = &exp->binary.right_expression;
+    exp->type = typecheck2(l, r); // for casting, if necessary
+    assert(exp->type);
+}
+
+// ==================================================
+//
+//  TODO
+//
+// ==================================================
 
 // TODO: Doc
 // TODO: Currently checking only the first matching method
 // TODO: Currently no overloading
 static Definition* findmethod(FunctionCall* call) {
     Definition* method_definition = NULL;
-    Type* monitor = call->instance->type;
+    Type* structure = call->instance->type;
 
-    FOREACH(Definition, d, monitor->structure.definitions) {
-        if (d->tag == DEFINITION_METHOD) {
+    FOREACH(Definition, d, structure->structure.definitions) {
+        if (d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) {
             if (d->function.id->name == call->id->name) {
                 if (d->function.private) {
-                    err_function_call_private(call->line, call->id, monitor);
+                    err_function_call_private(call->line, call->id, structure);
                 }
                 method_definition = d;
                 break;
@@ -1043,7 +1104,7 @@ static Definition* findmethod(FunctionCall* call) {
     }
 
     if (!method_definition) {
-        err_function_call_no_method(call->line, monitor, call->id);
+        err_function_call_no_method(call->line, structure, call->id);
     }
 
     return method_definition;
@@ -1102,14 +1163,16 @@ static void sem_function_call(SS* state, FunctionCall* call) {
     case FUNCTION_CALL_METHOD:
         sem_expression(state, call->instance);
         // TODO: interfaces and structures
-        if (call->instance->type->tag != TYPE_MONITOR) {
+        if (call->instance->type->tag == TYPE_VOID ||
+            call->instance->type->tag == TYPE_ID ||
+            call->instance->type->tag == TYPE_ARRAY) {
             err_function_call_no_monitor(call->line);
         }
         // OBS: Instance type is already linked
 
-        // Finding the function definition in the monitor
+        // finding the function definition in the monitor
         call->function_definition = findmethod(call);
-        // Prepending self to arguments
+        // prepending self to arguments
         PREPEND(Expression, call->arguments, call->instance);
         if (call->arguments->next) {
             call->arguments->next->previous = call->instance;
@@ -1325,7 +1388,7 @@ static void typecheck1(Type* type, Expression** expression) {
     }
 
     // Performs casts
-    *expression = ast_expression_cast(*expression, type);
+    *expression = ast_expression_cast((*expression)->line, *expression, type);
 }
 
 /* 
@@ -1337,22 +1400,22 @@ static Type* typecheck2(Expression** l, Expression** r) {
     Type* t1 = (*l)->type;
     Type* t2 = (*r)->type;
 
-    // Checks equality
+    // checks equality
     if (typeequals(t1, t2)) {
         return t1;
     }
 
-    // Needs both to be numeric
+    // needs both to be numeric
     if (!(numerictype(t1) && numerictype(t2))) {
         return NULL;
     }
 
-    // Performs casts
+    // performs casts
     if (t1 == __float) {
-        return (*r = ast_expression_cast(*r, __float))->type;
+        return (*r = ast_expression_cast((*r)->line, *r, __float))->type;
     }
     if (t2 == __float) {
-        return (*l = ast_expression_cast(*l, __float))->type;
+        return (*l = ast_expression_cast((*l)->line, *l, __float))->type;
     }
 
     UNREACHABLE;
@@ -1427,6 +1490,11 @@ static const char* typestring(Type* type) {
         str[len] = '\0';
         break;
     }
+    case TYPE_INTERFACE:
+        str = (char*) type->structure.id->name;
+        break;
+    case TYPE_STRUCTURE:
+        UNREACHABLE;
     case TYPE_MONITOR:
         str = (char*) type->structure.id->name;
         break;

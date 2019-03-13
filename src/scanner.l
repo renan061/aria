@@ -101,7 +101,8 @@ string      "\""(\\.|[^\\"])*"\""
 "*="            return TOKEN(TK_MUL_ASG);
 "/="            return TOKEN(TK_DIV_ASG);
 
-"broadcast"     return TOKEN(TK_BROADCAST); // keywords
+"as"            return TOKEN(TK_AS); // keywords
+"broadcast"     return TOKEN(TK_BROADCAST);
 "else"          return TOKEN(TK_ELSE);
 "false"         return TOKEN(TK_FALSE);
 "for"           return TOKEN(TK_FOR);

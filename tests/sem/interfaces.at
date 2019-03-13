@@ -30,7 +30,7 @@ monitor Monitor: Printable {
 }
 -- Output
 interface Printable {
-    function string: String;
+    function string(value self: Printable): String;
 }
 monitor Monitor: Printable {
     variable a: Integer
@@ -55,8 +55,8 @@ monitor Monitor: Dog {
 }
 -- Output
 interface Dog {
-    function catch(value ball: Integer): Void;
-    function bark: String;
+    function catch(value self: Dog, value ball: Integer): Void;
+    function bark(value self: Dog): String;
 }
 monitor Monitor: Dog {
     function catch(value self: Monitor, value ball: Integer): Void {

@@ -57,6 +57,7 @@ static void print_ast_definition(Definition* definition) {
         }
         break;
     }
+    case DECLARATION_FUNCTION:
     case DEFINITION_FUNCTION:
     case DEFINITION_METHOD:
     case DEFINITION_CONSTRUCTOR:
@@ -378,12 +379,12 @@ static void print_ast_expression(Expression* expression) {
         print_ast_expression(expression->binary.right_expression);
         break;
     case EXPRESSION_CAST:
-        if (!should_print_types) {
-            assert(expression->tag != EXPRESSION_CAST);
-        }
         print_ast_expression(expression->cast);
         printf(" as");
+        bool before = should_print_types;
+        should_print_types = true;
         printtype(expression->type);
+        should_print_types = before;
         break;
     }
 

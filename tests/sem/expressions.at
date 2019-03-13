@@ -1,0 +1,39 @@
+--------------------------------------------------------------------------------
+-- Title
+Type Cast (Integer to Float)
+-- Input
+function main {
+    a := 1 as Float;
+}
+-- Output
+function main: Void {
+    value a: Float = ((1: Integer) as: Float)
+}
+--------------------------------------------------------------------------------
+-- Title
+Type Cast (Monitor to Interface)
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    initializer {}
+    function string: String { return "a printable monitor"; }
+}
+function main {
+    value a = Monitor() as Printable;
+}
+-- Output
+interface Printable {
+    function string(value self: Printable): String;
+}
+monitor Monitor: Printable {
+    function Monitor: Monitor {
+    }
+    function string(value self: Monitor): String {
+        return ("a printable monitor": String)
+    }
+}
+function main: Void {
+    value a: Printable = ((Monitor(): Monitor) as: Printable)
+}

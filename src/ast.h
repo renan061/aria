@@ -17,6 +17,7 @@ typedef unsigned int Line; // TODO
 
 typedef enum DefinitionTag {
     DEFINITION_CAPSA,
+    DECLARATION_FUNCTION, // TODO
     DEFINITION_FUNCTION,
     DEFINITION_METHOD,
     DEFINITION_CONSTRUCTOR,
@@ -295,17 +296,18 @@ struct FunctionCall {
     FunctionCallTag tag;
     Line line;
 
-    // Used by constructor calls before semantic analysis
+    // used by constructor calls before semantic analysis
     Type* type;
-    // Only used by methods (NULL for other types of calls)
+    // only used by methods (NULL for other types of calls)
     Expression* instance;
-    // Name of the function being called (NULL for constructors)
+    // name of the function being called (NULL for constructors)
     Id* id;
+    // list of function arguments
     Expression* arguments;
-    // Initialized with -1
+    // initialized with -1
     int argument_count;
 
-    // Used in the backend module
+    // used in the backend module
     Definition* function_definition;
 };
 
@@ -318,8 +320,10 @@ struct FunctionCall {
 extern AST* ast;
 extern void ast_set(Definition*);
 
+extern Definition* ast_declaration_function(Id*, Definition*, Type*);
+
 extern Definition* ast_definition_capsa(Capsa*, Expression*);
-extern Definition* ast_definition_function(Id*, Definition*, Type*, Block*);
+extern Definition* ast_definition_function(Definition*, Block*);
 extern Definition* ast_definition_method(bool, Definition*);
 extern Definition* ast_definition_constructor(Definition*, Block*);
 extern Definition* ast_definition_type(Type*);
@@ -367,7 +371,7 @@ extern Expression* ast_expression_capsa(Capsa*);
 extern Expression* ast_expression_function_call(FunctionCall*);
 extern Expression* ast_expression_unary(Line, Token, Expression*);
 extern Expression* ast_expression_binary(Line, Token, Expression*, Expression*);
-extern Expression* ast_expression_cast(Expression*, Type*);
+extern Expression* ast_expression_cast(Line, Expression*, Type*);
 
 extern FunctionCall* ast_call(Line, Id*, Expression*);
 extern FunctionCall* ast_call_method(Line, Expression*, Id*, Expression*);

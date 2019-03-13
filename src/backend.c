@@ -945,10 +945,12 @@ static void backend_expression(IRState* state, Expression* expression) {
             UNREACHABLE;
         }
         break;
-    case EXPRESSION_CAST:
+    case EXPRESSION_CAST: {
         backend_expression(state, expression->cast);
-        if (expression->cast->type == __integer &&
-            expression->type == __float) {
+        Type* from = expression->cast->type;
+        Type* to = expression->type;
+
+        if (from == __integer && to == __float) {
             // Integer to Float
             expression->llvm_value = LLVMBuildSIToFP(
                 state->builder,
@@ -956,8 +958,7 @@ static void backend_expression(IRState* state, Expression* expression) {
                 llvm_type(expression->type),
                 LLVM_TEMPORARY
             );
-        } else if (expression->cast->type == __float &&
-            expression->type == __integer) {
+        } else if (from == __float && to == __integer) {
             // Float to Integer
             expression->llvm_value = LLVMBuildFPToSI(
                 state->builder,
@@ -965,10 +966,15 @@ static void backend_expression(IRState* state, Expression* expression) {
                 llvm_type(expression->type),
                 LLVM_TEMPORARY
             );
+        } else if (from->tag == TYPE_MONITOR && to->tag == TYPE_INTERFACE) {
+            // Monitor to Interface
+            expression->llvm_value = expression->cast->llvm_value;
+            expression->type->llvm_type = expression->cast->type->llvm_type;
         } else {
             UNREACHABLE;
         }
         break;
+    }
     default:
         UNREACHABLE;
     }
@@ -1209,6 +1215,7 @@ static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
     // VMT function call
     LLVMValueRef vmt = ir_structure_vmt(irs->builder, self);
     LLVMValueRef fn = ir_array_get(irs->builder, vmt, vmt_index);
+
     // bitcast from i8* to (llvm_function_type)*
     LLVMTypeRef function_type = llvm_function_type(
         fc->function_definition, fc->argument_count
@@ -1216,13 +1223,13 @@ static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
     fn = LLVMBuildBitCast(
         irs->builder, fn, LLVM_TYPE_POINTER(function_type), LLVM_TEMPORARY
     );
-
     LLVMValueRef llvm_value = LLVMBuildCall(
         irs->builder, fn, arguments, fc->argument_count, LLVM_TEMPORARY_NONE
     );
 
     ir_pthread_mutex_unlock(irs->builder, mutex);
     free(arguments);
+
     return llvm_value;
 }
 
@@ -1251,9 +1258,12 @@ static LLVMValueRef backend_fc_array(IRState* irs, FunctionCall* fc) {
 // returns an array with the function call's arguments
 // must free the returned array
 static LLVMValueRef* fcarguments(IRState* irs, FunctionCall* fc) {
+    // printf("fcarguments start\n");
     assert(fc->argument_count >= 0);
     FOREACH(Expression, e, fc->arguments) {
+        // printf("bee A\n");
         backend_expression(irs, e);
+        // printf("bee B\n");
     }
     LLVMValueRef* arguments;
     MALLOC_ARRAY(arguments, LLVMValueRef, fc->argument_count);
@@ -1261,6 +1271,7 @@ static LLVMValueRef* fcarguments(IRState* irs, FunctionCall* fc) {
     FOREACH(Expression, e, fc->arguments) {
         arguments[n++] = e->llvm_value;
     }
+    // printf("fcarguments end\n");
     return arguments;
 }
 
@@ -1295,7 +1306,9 @@ static LLVMTypeRef llvm_type(Type* type) {
         UNREACHABLE;
     case TYPE_ARRAY:
         return LLVM_ARIA_TYPE_ARRAY(llvm_type(type->array));
-    case TYPE_MONITOR:
+    case TYPE_INTERFACE:
+        // fallthrough
+    case TYPE_MONITOR: // TODO: "object type"
         return LLVM_ARIA_TYPE_MONITOR(type->llvm_type);
     default:
         UNREACHABLE;

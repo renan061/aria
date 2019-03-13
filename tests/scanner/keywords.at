@@ -2,6 +2,7 @@
 -- Title
 Keywords
 -- Input
+as
 and
 broadcast
 else
@@ -27,6 +28,7 @@ variable
 wait
 while
 -- Output
+TK_AS
 TK_AND
 TK_BROADCAST
 TK_ELSE
