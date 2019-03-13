@@ -25,7 +25,7 @@ interface Printable {
 }
 monitor Monitor: Printable {
     variable a: Integer;
-    function string: String { return "not a printable monitor"; }
+    function string: String { return "a printable monitor"; }
     initializer {}
 }
 -- Output
@@ -35,7 +35,7 @@ interface Printable {
 monitor Monitor: Printable {
     variable a: Integer
     function string(value self: Monitor): String {
-        return ("not a printable monitor": String)
+        return ("a printable monitor": String)
     }
     function Monitor: Monitor {
     }

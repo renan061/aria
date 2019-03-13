@@ -1,0 +1,50 @@
+--------------------------------------------------------------------------------
+-- Title
+The Printable interface
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    initializer {}
+    function string: String {
+        return "a printable monitor";
+    }
+}
+function main {
+    value printable = Monitor() as Printable;
+    value string = printable.string();
+    print("%s\n", string);
+}
+-- Output
+a printable monitor
+--------------------------------------------------------------------------------
+-- Title
+The Dog interface
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    variable string = "I caught nothing!";
+    initializer {}
+    function catch(ball: Integer) {
+        print("Catch!\n");
+        string = "I caught something!";
+    }
+    function bark: String {
+        return string;
+    }
+}
+function main {
+    value m = Monitor();
+    value dog = m as Dog;
+    print("%s\n", dog.bark());
+    dog.catch(1);
+    print("%s\n", dog.bark());
+}
+-- Output
+I caught nothing!
+Catch!
+I caught something!
