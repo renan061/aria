@@ -360,7 +360,7 @@ static void backend_definition_function(IRState* irs, Definition* def) {
 static void backend_definition_method(IRState* irs, Definition* def) {
     initializefunction(irs, def);
 
-    // self is the first parameter
+    // <self> is the first parameter
     irs->self = def->function.parameters->capsa.capsa->llvm_value;
 
     backend_block(irs, def->function.block);
@@ -448,17 +448,10 @@ static void backend_definition_monitor(IRState* irs, Definition* def) {
     );
 
     for (int i = 0; i < def->type->structure.methods_size; i++) {
-        Definition* function = def->type->structure.methods[i]; // FIXME
+        Definition* function = def->type->structure.methods[i]; // FIXME: ?
         backend_definition(irs, function);
     }
     backend_definition(irs, def->type->structure.constructor);
-
-    // %array = alloca i8*
-    // %pointer = bitcast i8* (%Monitor*)* @string to i8*
-    // store i8* %pointer, i8** %array
-    // %pointer2 = load i8*, i8** %array
-    // %func = bitcast i8* %pointer2 to i8* (%Monitor*)*
-    // %2 = call i8* %func(%Monitor* %0)
 }
 
 // -----------------------------------------------------------------------------
@@ -510,6 +503,7 @@ static void initializeglobals(IRState* irs) {
     }
 }
 
+// auxiliary - creates the structure's VMT
 static void initializevmt(IRState* irs, Definition* def) {
     Definition** methods = def->function.type->structure.methods;
     size_t methods_size = def->function.type->structure.methods_size;
@@ -528,7 +522,7 @@ static void initializevmt(IRState* irs, Definition* def) {
         LLVM_TEMPORARY_VMT
     );
 
-    // fills VMT with the structure's methods
+    // fills the VMT with the structure's methods
     for (int i = 0; i < methods_size; i++) {
         LLVMValueRef
             indices[2] = {LLVM_CONSTANT_INTEGER(0), LLVM_CONSTANT_INTEGER(i)},
@@ -543,7 +537,7 @@ static void initializevmt(IRState* irs, Definition* def) {
         LLVMBuildStore(irs->builder, val, ptr);
     }
 
-    // assigns the VMT to the <self> instance
+    // stores the VMT inside the <self> instance
     LLVMBuildStore(irs->builder, vmt, LLVMBuildStructGEP(
         irs->builder, irs->self, STRUCTURE_VMT, LLVM_TEMPORARY_VMT
     ));
