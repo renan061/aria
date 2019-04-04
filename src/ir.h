@@ -32,7 +32,8 @@
 #define LLVM_ARIA_TYPE_FLOAT            LLVM_TYPE_DOUBLE
 #define LLVM_ARIA_TYPE_STRING           LLVM_TYPE_POINTER(LLVMInt8Type())
 #define LLVM_ARIA_TYPE_ARRAY(t)         LLVM_TYPE_POINTER(t)
-#define LLVM_ARIA_TYPE_MONITOR(t)       LLVM_TYPE_POINTER(t)
+#define LLVM_ARIA_TYPE_INTERFACE        LLVM_TYPE_POINTER_VOID
+#define LLVM_ARIA_TYPE_MONITOR          LLVM_TYPE_POINTER_VOID
 #define LLVM_ARIA_TYPE_CONDITION_QUEUE  LLVM_TYPE_POINTER_PTHREAD_COND_T
 
 // ASK: Should SignExtend?
@@ -52,8 +53,8 @@
 // ==================================================
 
 typedef struct IRState {
-    LLVMModuleRef module;
-    LLVMBuilderRef builder;
+    LLVMModuleRef M;
+    LLVMBuilderRef B;
 
     // current function
     LLVMValueRef function;
@@ -62,6 +63,11 @@ typedef struct IRState {
     // must always be set after repositioning the builder
     // must always be set to NULL after adding a terminator instruction
     LLVMBasicBlockRef block;
+
+    // type of the structure currently being evaluated
+    // must always be set before evaluating a structure's definitions
+    // must always be set to NULL after evaluating a structure's definitions
+    LLVMTypeRef structure_type;
 
     // TODO: gambiarra
     LLVMValueRef self;

@@ -48,3 +48,32 @@ function main {
 I caught nothing!
 Catch!
 I caught something!
+--------------------------------------------------------------------------------
+-- Title
+Using an interface value as an argument
+-- Input
+interface I {
+    function foo(n: Integer);
+}
+monitor M: I {
+    variable i = 0;
+    initializer {}
+    function foo(n: Integer) {
+        print("%d\n", n + i);
+        i = i + 1;
+    }
+}
+function call(i: I) {
+    i.foo(15);
+}
+function main {
+    value m = M();
+    m.foo(15);
+    value i = m as I;
+    i.foo(15);
+    call(i);
+}
+-- Output
+15
+16
+17
