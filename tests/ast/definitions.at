@@ -167,8 +167,8 @@ Monitor (functions - methods)
 monitor Monitor {
     function foo {}
     private function foo {}
-    acquire function foo {}
-    release function foo {}
+    function acquire foo {}
+    function release foo {}
 }
 -- Output
 monitor Monitor {
@@ -176,9 +176,9 @@ monitor Monitor {
     }
     private function foo: Void {
     }
-    acquire function foo: Void {
+    function acquire foo: Void {
     }
-    release function foo: Void {
+    function release foo: Void {
     }
 }
 --------------------------------------------------------------------------------

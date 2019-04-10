@@ -78,6 +78,7 @@
     value_definition variable_definition
     capsa_definition_assignment
 %type <definition> // function declarations
+    id_parameters_type
     function_declaration
 %type <definition> // function definitions
     function_definition method_definition constructor_definition
@@ -254,14 +255,31 @@ capsa_definition_assignment
 //
 // ==================================================
 
-function_declaration
-    : TK_FUNCTION TK_LOWER_ID parameter_list0 ':' type
+id_parameters_type
+    : TK_LOWER_ID parameter_list0 ':' type
         {
-            $$ = ast_declaration_function($2, $3, $5);
+            $$ = ast_declaration_function($1, $2, $4);
         }
-    | TK_FUNCTION TK_LOWER_ID parameter_list0
+    | TK_LOWER_ID parameter_list0
         {
-            $$ = ast_declaration_function($2, $3, ast_type_void());
+            $$ = ast_declaration_function($1, $2, ast_type_void());
+        }
+    ;
+
+function_declaration
+    : TK_FUNCTION id_parameters_type
+        {
+            $$ = $2;
+        }
+    | TK_FUNCTION TK_ACQUIRE id_parameters_type
+        {
+            $$ = $3;
+            $$->function.qualifiers |= FQ_ACQUIRE;
+        }
+    | TK_FUNCTION TK_RELEASE id_parameters_type
+        {
+            $$ = $3;
+            $$->function.qualifiers |= FQ_RELEASE;
         }
     ;
 
@@ -275,19 +293,14 @@ function_definition
 method_definition
     : TK_PRIVATE function_definition
         {
-            $$ = ast_definition_method(FQ_PRIVATE, $2);
-        }
-    | TK_ACQUIRE function_definition
-        {
-            $$ = ast_definition_method(FQ_ACQUIRE, $2);
-        }
-    | TK_RELEASE function_definition
-        {
-            $$ = ast_definition_method(FQ_RELEASE, $2);
+            $$ = $2;
+            $$->function.qualifiers |= FQ_PRIVATE;
+            $$->tag = DEFINITION_METHOD;
         }
     | function_definition
         {
-            $$ = ast_definition_method(FQ_NONE, $1);
+            $$ = $1;
+            $$->tag = DEFINITION_METHOD;
         }
     ;
 

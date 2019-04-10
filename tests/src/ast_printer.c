@@ -60,32 +60,27 @@ static void print_ast_definition(Definition* definition) {
     case DECLARATION_FUNCTION:
     case DEFINITION_FUNCTION:
     case DEFINITION_METHOD:
-    case DEFINITION_CONSTRUCTOR:
-        switch (definition->function.qualifier) {
-        case FQ_NONE:
-            break;
-        case FQ_PRIVATE:
+    case DEFINITION_CONSTRUCTOR: {
+        Bitmap q = definition->function.qualifiers;
+        if ((q & FQ_PRIVATE) == FQ_PRIVATE) {
             assert(definition->tag == DEFINITION_METHOD);
             printf("private ");
-            break;
-        case FQ_ACQUIRE:
-            assert(definition->tag == DEFINITION_METHOD);
-            printf("acquire ");
-            break;
-        case FQ_RELEASE:
-            assert(definition->tag == DEFINITION_METHOD);
-            printf("release ");
-            break;
-        default:
-            UNREACHABLE;
         }
 
         if (definition->function.id) {
             printf("function ");
+            if ((q & FQ_ACQUIRE) == FQ_ACQUIRE) {
+                assert(definition->tag == DEFINITION_METHOD);
+                printf("acquire ");
+            } else if ((q & FQ_RELEASE) == FQ_RELEASE) {
+                assert(definition->tag == DEFINITION_METHOD);
+                printf("release ");
+            }
             print_ast_id(definition->function.id);
         } else {
             printf("initializer");
         }
+
         if (definition->function.parameters) {
             printf("(");
             for (Definition* p = definition->function.parameters; p;) {
@@ -110,6 +105,7 @@ static void print_ast_definition(Definition* definition) {
         }
         printf("\n");
         break;
+    }
     case DEFINITION_TYPE:
         switch (definition->type->tag) {
         case TYPE_INTERFACE:

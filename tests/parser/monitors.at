@@ -36,31 +36,14 @@ Private method and acquire-release function definitions
 monitor Monitor {
     function foo {}
     private function bar {}
-    acquire function bar {}
-    release function bar {}
+    function acquire bar {}
+    // private-acquire/release are valid in the parser, but
+    // invalid in the semantic analysis
+    private function acquire bar {}
+    private function release bar {}
 }
 -- Output
 OK
---------------------------------------------------------------------------------
--- Title
-Invalid private-acquire method
--- Input
-monitor Monitor {
-    private acquire function bar {}
-}
--- Output
-line 0:
-    parser error: syntax error
---------------------------------------------------------------------------------
--- Title
-Invalid release-private method
--- Input
-monitor Monitor {
-    release private function bar {}
-}
--- Output
-line 0:
-    parser error: syntax error
 --------------------------------------------------------------------------------
 -- Title
 Constructor definition

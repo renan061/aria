@@ -7,7 +7,21 @@
 
 #include "scanner.h"
 
+// ==================================================
+//
+//  Auxiliary
+//
+// ==================================================
+
 typedef unsigned int Line; // TODO
+
+typedef unsigned int Bitmap;
+
+typedef enum FunctionQualifier {
+    FQ_PRIVATE  = 1 << 0,
+    FQ_ACQUIRE  = 1 << 1,
+    FQ_RELEASE  = 1 << 2
+} FunctionQualifier;
 
 // ==================================================
 //
@@ -100,13 +114,6 @@ struct AST {
     Definition* definitions;
 };
 
-typedef enum FunctionQualifier {
-    FQ_NONE,
-    FQ_PRIVATE,
-    FQ_ACQUIRE,
-    FQ_RELEASE
-} FunctionQualifier;
-
 struct Definition {
     DefinitionTag tag;
     Definition* next;
@@ -122,7 +129,7 @@ struct Definition {
         // DefinitionMethod
         // DefinitionConstructor
         struct {
-            FunctionQualifier qualifier;
+            Bitmap qualifiers;
             Id* id;
             Definition* parameters;
             Type* type;
@@ -331,7 +338,6 @@ extern Definition* ast_declaration_function(Id*, Definition*, Type*);
 
 extern Definition* ast_definition_capsa(Capsa*, Expression*);
 extern Definition* ast_definition_function(Definition*, Block*);
-extern Definition* ast_definition_method(FunctionQualifier, Definition*);
 extern Definition* ast_definition_constructor(Definition*, Block*);
 extern Definition* ast_definition_type(Type*);
 
