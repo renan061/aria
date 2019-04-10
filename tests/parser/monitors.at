@@ -31,14 +31,36 @@ monitor Monitor {
 OK
 --------------------------------------------------------------------------------
 -- Title
-Private method definition
+Private method and acquire-release function definitions
 -- Input
 monitor Monitor {
     function foo {}
     private function bar {}
+    acquire function bar {}
+    release function bar {}
 }
 -- Output
 OK
+--------------------------------------------------------------------------------
+-- Title
+Invalid private-acquire method
+-- Input
+monitor Monitor {
+    private acquire function bar {}
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Invalid release-private method
+-- Input
+monitor Monitor {
+    release private function bar {}
+}
+-- Output
+line 0:
+    parser error: syntax error
 --------------------------------------------------------------------------------
 -- Title
 Constructor definition

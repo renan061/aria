@@ -167,12 +167,18 @@ Monitor (functions - methods)
 monitor Monitor {
     function foo {}
     private function foo {}
+    acquire function foo {}
+    release function foo {}
 }
 -- Output
 monitor Monitor {
     function foo: Void {
     }
     private function foo: Void {
+    }
+    acquire function foo: Void {
+    }
+    release function foo: Void {
     }
 }
 --------------------------------------------------------------------------------

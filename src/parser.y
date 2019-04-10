@@ -275,11 +275,19 @@ function_definition
 method_definition
     : TK_PRIVATE function_definition
         {
-            $$ = ast_definition_method(true, $2);
+            $$ = ast_definition_method(FQ_PRIVATE, $2);
+        }
+    | TK_ACQUIRE function_definition
+        {
+            $$ = ast_definition_method(FQ_ACQUIRE, $2);
+        }
+    | TK_RELEASE function_definition
+        {
+            $$ = ast_definition_method(FQ_RELEASE, $2);
         }
     | function_definition
         {
-            $$ = ast_definition_method(false, $1);
+            $$ = ast_definition_method(FQ_NONE, $1);
         }
     ;
 

@@ -61,10 +61,25 @@ static void print_ast_definition(Definition* definition) {
     case DEFINITION_FUNCTION:
     case DEFINITION_METHOD:
     case DEFINITION_CONSTRUCTOR:
-        if (definition->function.private) {
+        switch (definition->function.qualifier) {
+        case FQ_NONE:
+            break;
+        case FQ_PRIVATE:
             assert(definition->tag == DEFINITION_METHOD);
             printf("private ");
+            break;
+        case FQ_ACQUIRE:
+            assert(definition->tag == DEFINITION_METHOD);
+            printf("acquire ");
+            break;
+        case FQ_RELEASE:
+            assert(definition->tag == DEFINITION_METHOD);
+            printf("release ");
+            break;
+        default:
+            UNREACHABLE;
         }
+
         if (definition->function.id) {
             printf("function ");
             print_ast_id(definition->function.id);

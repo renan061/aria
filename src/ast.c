@@ -33,7 +33,7 @@ Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
     d->tag = DECLARATION_FUNCTION;
     d->next = NULL;
     d->llvm_value = NULL;
-    d->function.private = false;
+    d->function.qualifier = FQ_NONE;
     d->function.id = id;
     d->function.parameters = parameters;
     d->function.type = t;
@@ -60,10 +60,10 @@ Definition* ast_definition_function(Definition* d, Block* block) {
     return d;
 }
 
-Definition* ast_definition_method(bool private, Definition* function) {
+Definition* ast_definition_method(FunctionQualifier fq, Definition* function) {
     assert(function->tag == DEFINITION_FUNCTION);
     function->tag = DEFINITION_METHOD;
-    function->function.private = private;
+    function->function.qualifier = fq;
     return function;
 }
 
@@ -74,7 +74,7 @@ Definition* ast_definition_constructor(Definition* parameters, Block* block) {
     definition->tag = DEFINITION_CONSTRUCTOR;
     definition->next = NULL;
     definition->llvm_value = NULL;
-    definition->function.private = false;
+    definition->function.qualifier = FQ_NONE;
     definition->function.id = NULL;
     definition->function.parameters = parameters;
     definition->function.type = NULL;

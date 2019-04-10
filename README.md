@@ -16,3 +16,7 @@ The acquire-release pair of functions' rules:
     3. The acquire function must always return a monitor instance.
     4. An acquire function can't be called without the acquire-value statement.
     6. A release function can't be explicitly called.
+
+Notes:
+    
+    1. An acquire or release function can't be private.
