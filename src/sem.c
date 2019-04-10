@@ -302,6 +302,7 @@ static void sem_definition_capsa(SS* ss, Definition* def) {
     }
 }
 
+// TODO: move
 // auxiliary
 // adds <self> as the first parameter to the function
 static void prependself(SS* ss, Definition* def) {
@@ -319,7 +320,14 @@ static void sem_declaration_function(SS* ss, Definition* def) {
 }
 
 static void sem_definition_function(SS* ss, Definition* def) {
-    assert(def->function.qualifier == FQ_NONE);
+    assert(!insidemonitor(ss));
+
+    if (def->function.qualifiers) { // not a normal function without qualifiers
+        TODOERR(def->function.id->line,
+            "private and acquire-release functions must "
+            "be defined inside a monitor"
+        );
+    }
 
     // checks if the function is being redeclared
     if (!symtable_insert(ss->table, def)) {
@@ -386,11 +394,16 @@ static void sem_definition_structure(SS* ss, Definition* def) {
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
     semstructure(ss, def);
+
     // checks interface implementation
     if (def->type->structure.interface) {
         linktype(ss->table, &def->type->structure.interface);
         interfacecheck(ss, def->type->structure.interface, def->type);
     }
+
+    // checks for acquire-release pairs of functions
+    // TODO
+    // arpaircheck(Type* structure)
 }
 
 // -----------------------------------------------------------------------------
@@ -1094,7 +1107,7 @@ static Definition* findmethod(FunctionCall* call) {
     FOREACH(Definition, d, structure->structure.definitions) {
         if (d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) {
             if (d->function.id->name == call->id->name) {
-                if (d->function.qualifier == FQ_PRIVATE) {
+                if ((d->function.qualifiers & FQ_PRIVATE) == FQ_PRIVATE) {
                     err_function_call_private(call->line, call->id, structure);
                 }
                 method_definition = d;

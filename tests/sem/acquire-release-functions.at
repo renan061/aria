@@ -1,13 +1,28 @@
 --------------------------------------------------------------------------------
 -- Title
-They must be defined inside the same monitor with the same name
+Trying to define an acquire function outside a monitor definition
+-- Input
+function acquire foo {}
+-- Output
+line 1:
+    semantic error: private and acquire-release functions must be defined inside a monitor
+--------------------------------------------------------------------------------
+-- Title
+Trying to define a release function outside a monitor definition
+-- Input
+function release foo {}
+-- Output
+line 1:
+    semantic error: private and acquire-release functions must be defined inside a monitor
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair of functions must be defined inside the same monitor with the same name
 -- Input
 monitor M {
-    initializer {}    
+    initializer {}
 }
 -- Output
-1. Must be defined together, with the same name, and using the keywords.
-2. Must be defined inside a monitor.
-3. The acquire function must always return a monitor instance.
-4. An acquire function can't be called without the acquire-value statement.
-6. A release function can't be explicitly called.
+monitor M {
+    function M: M {
+    }
+}
