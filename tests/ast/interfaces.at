@@ -1,0 +1,47 @@
+--------------------------------------------------------------------------------
+-- Title
+Empty interface
+-- Input
+interface Interface {}
+-- Output
+interface Interface {
+}
+--------------------------------------------------------------------------------
+-- Title
+Interface with one function
+-- Input
+interface Interface {
+    function foo;
+}
+-- Output
+interface Interface {
+    function foo: Void;
+}
+--------------------------------------------------------------------------------
+-- Title
+Interface with many functions
+-- Input
+interface Interface {
+    function foo;
+    function bar(a: Integer);
+    function baz: Interface;
+    function bam(x: String, y: Float): Integer;
+}
+-- Output
+interface Interface {
+    function foo: Void;
+    function bar(value a: Integer): Void;
+    function baz: Interface;
+    function bam(value x: String, value y: Float): Integer;
+}
+--------------------------------------------------------------------------------
+-- Title
+Interface implementation annotation
+-- Input
+interface Interface {}
+monitor Monitor: Interface {}
+-- Output
+interface Interface {
+}
+monitor Monitor: Interface {
+}

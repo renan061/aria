@@ -1,5 +1,5 @@
 #if !defined(backend_h)
-#define errs_h
+#define backend_h
 
 #include "ast.h"
 

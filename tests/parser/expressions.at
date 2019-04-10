@@ -31,6 +31,8 @@ function main {
     a := -1;
     // not
     a := not true;
+    // cast
+    a := 1 as Integer;
     // literal boolean
     a := true;
     // literal false

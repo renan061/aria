@@ -11,7 +11,7 @@
 typedef struct SymbolTable SymbolTable;
 typedef struct Scope Scope;
 
-extern SymbolTable* symtable_new();
+extern SymbolTable* symtable_new(void);
 extern void symtable_free(SymbolTable*);
 
 extern Scope* symtable_enter_scope(SymbolTable*);

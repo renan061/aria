@@ -1,0 +1,56 @@
+--------------------------------------------------------------------------------
+-- Title
+Global values with primitive (immutable) types
+-- Input
+value a = true;
+value b = 1;
+value c = 1.0;
+value d = "string";
+-- Output
+value a: Boolean = (true: Boolean)
+value b: Integer = (1: Integer)
+value c: Float = (1.000000: Float)
+value d: String = ("string": String)
+--------------------------------------------------------------------------------
+-- Title
+Global value with immutable type
+-- Input
+value x = Immutable [1.0];
+-- Output
+value x: Immutable [Float] = (Immutable [(1.000000: Float)]: Immutable [Float])
+--------------------------------------------------------------------------------
+-- Title
+Global value with monitor type
+-- Input
+monitor M { initializer {} }
+value m = M();
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+value m: M = (M(): M)
+--------------------------------------------------------------------------------
+-- Title
+Global value with invalid type (mutable array)
+-- Input
+value mutableArray = [1, 2, 3];
+-- Output
+line 1:
+    semantic error: global values must have safe types
+--------------------------------------------------------------------------------
+-- Title
+Global value with invalid type (condition queue)
+-- Input
+value conditionQueue = ConditionQueue();
+-- Output
+line 1:
+    semantic error: global values must have safe types
+--------------------------------------------------------------------------------
+-- Title
+Global variable (redundant parser test)
+-- Input
+variable a = 1;
+-- Output
+line 0:
+    parser error: syntax error

@@ -4,17 +4,18 @@
 
 # TODO: gnu11 / c11
 # TODO: llvm include
-CC := gcc-7 
-CFLAGS := -I/usr/local/opt/llvm/include -std=gnu11 -Wall
+CC= gcc
+CPPC= clang++
+CFLAGS= -I/usr/local/opt/llvm/include -std=gnu11 -Wall
 
-CPPFLAGS := `llvm-config --cxxflags --ldflags --system-libs`
+CPPFLAGS= `llvm-config --cxxflags --ldflags --system-libs`
 CPPFLAGS += `llvm-config --libs analysis bitwriter core executionengine `
 CPPFLAGS += `llvm-config --libs target mcjit native`
 
 main: objs
 	@- $(CC) $(CFLAGS) -c src/aria.c -o obj/aria.o
 
-	@- clang++ $(CPPFLAGS) obj/errs.o obj/vector.o \
+	@- $(CPPC) $(CPPFLAGS) obj/errs.o obj/vector.o \
 	obj/scanner.o obj/parser.o obj/ast.o \
 	obj/symtable.o obj/sem.o obj/ir.o \
 	obj/athreads.o obj/backend.o \
@@ -103,14 +104,15 @@ sem_test: errs vector parser scanner ast sem
 	tests/src/sem_test.c -Isrc/
 
 	@- lua tests/tester.lua tests/sem bin/semtest
-	@- sh tests/test.sh sem
+	# @- sh tests/test.sh sem
 
 backend_test: main
 	@- mv bin/aria bin/backendtest
 	@- lua tests/tester.lua tests/backend "bin/backendtest -r"
 	@- sh tests/test.sh backend -r
 
-test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
+test: clean vector_test scanner_test parser_test ast_test sem_test
+# test: clean vector_test scanner_test parser_test ast_test sem_test backend_test
 
 # ==================================================
 # 

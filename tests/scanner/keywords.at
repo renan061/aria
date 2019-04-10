@@ -2,6 +2,7 @@
 -- Title
 Keywords
 -- Input
+as
 and
 broadcast
 else
@@ -12,6 +13,7 @@ if
 Immutable
 in
 initializer
+interface
 monitor
 not
 or
@@ -19,12 +21,14 @@ private
 return
 signal
 spawn
+structure
 true
 value
 variable
 wait
 while
 -- Output
+TK_AS
 TK_AND
 TK_BROADCAST
 TK_ELSE
@@ -35,6 +39,7 @@ TK_IF
 TK_IMMUTABLE
 TK_IN
 TK_INITIALIZER
+TK_INTERFACE
 TK_MONITOR
 TK_NOT
 TK_OR
@@ -42,6 +47,7 @@ TK_PRIVATE
 TK_RETURN
 TK_SIGNAL
 TK_SPAWN
+TK_STRUCTURE
 TK_TRUE
 TK_VALUE
 TK_VARIABLE

@@ -13,13 +13,14 @@ TK_UPPER_ID - WithNums19_AndUndersc0r3
 -- Title
 Lowercase IDs
 -- Input
-id anotherId underscore_id idWithNum3er5 withNums19_AndUndersc0r3
+id anotherId underscore_id idWithNum3er5 withNums19_AndUndersc0r3 self
 -- Output
 TK_LOWER_ID - id
 TK_LOWER_ID - anotherId
 TK_LOWER_ID - underscore_id
 TK_LOWER_ID - idWithNum3er5
 TK_LOWER_ID - withNums19_AndUndersc0r3
+TK_LOWER_ID - self
 --------------------------------------------------------------------------------
 -- Title
 Mixed valid and invalid ids

@@ -24,31 +24,32 @@ static LLVMValueRef
 //
 // ==================================================
 
-IRState* ir_state_new(LLVMModuleRef module, LLVMBuilderRef builder) {
-    IRState* s;
-    MALLOC(s, IRState);
-    s->module = module;
-    s->builder = builder;
-    s->function = NULL;
-    s->block = NULL;
-    s->self = NULL;
-    s->main = false;
-    s->initializer = false;
-    return s;
+IRState* ir_state_new(LLVMModuleRef M, LLVMBuilderRef B) {
+    IRState* irs;
+    MALLOC(irs, IRState);
+    irs->M = M;
+    irs->B = B;
+    irs->function = NULL;
+    irs->block = NULL;
+    irs->self = NULL;
+    irs->self = NULL;
+    irs->main = false;
+    irs->initializer = false;
+    return irs;
 }
 
-void ir_state_done(IRState* state) {
+void ir_state_done(IRState* irs) {
     char* error = NULL;
-    LLVMVerifyModule(state->module, LLVMAbortProcessAction, &error);
+    LLVMVerifyModule(irs->M, LLVMAbortProcessAction, &error);
     if (error) {
         LLVMDisposeMessage(error);
     }
 
-    LLVMDisposeBuilder(state->builder);
+    LLVMDisposeBuilder(irs->B);
 }
 
-void ir_state_free(IRState* state) {
-    free(state);
+void ir_state_free(IRState* irs) {
+    free(irs);
 }
 
 // ==================================================
@@ -94,16 +95,16 @@ void ir_setup(LLVMModuleRef module) {
 //
 // ==================================================
 
-LLVMValueRef ir_printf(LLVMBuilderRef builder, LLVMValueRef* args, int n) {
-    return LLVMBuildCall(builder, ir_printf_t, args, n, LLVM_TEMPORARY_NONE);
+LLVMValueRef ir_printf(LLVMBuilderRef B, LLVMValueRef* args, int n) {
+    return LLVMBuildCall(B, ir_printf_t, args, n, LLVM_TEMPORARY_NONE);
 }
 
-LLVMValueRef ir_malloc(LLVMBuilderRef builder, size_t size) {
+LLVMValueRef ir_malloc(LLVMBuilderRef B, size_t size) {
     LLVMValueRef args[1] = {LLVM_CONSTANT_INTEGER(size)};
-    return LLVMBuildCall(builder, ir_malloc_t, args, 1, LLVM_TEMPORARY_NONE);
+    return LLVMBuildCall(B, ir_malloc_t, args, 1, LLVM_TEMPORARY_NONE);
 }
 
-LLVMValueRef ir_cmp(LLVMBuilderRef builder,
+LLVMValueRef ir_cmp(LLVMBuilderRef B,
     LLVMIntPredicate iop,
     LLVMRealPredicate fop,
     Expression* lhs,
@@ -113,15 +114,15 @@ LLVMValueRef ir_cmp(LLVMBuilderRef builder,
 
     if (lhs->type == __boolean) {
         return LLVMBuildICmp(
-            builder, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
+            B, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
         );
     } else if (lhs->type == __integer) {
         return LLVMBuildICmp(
-            builder, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
+            B, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
         );
     } else if (lhs->type == __float) {
-        return LLVMBuildICmp(
-            builder, fop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
+        return LLVMBuildFCmp(
+            B, fop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
         );
     } else {
         UNREACHABLE;

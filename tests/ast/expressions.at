@@ -104,6 +104,21 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
+Type Cast
+-- Input
+function main {
+    a = 1 as String;
+    a = "a" as Integer;
+    a = Monitor() as Interface;
+}
+-- Output
+function main: Void {
+    a = ((1) as: String)
+    a = (("a") as: Integer)
+    a = ((Monitor()) as: Interface)
+}
+--------------------------------------------------------------------------------
+-- Title
 Unary Expression
 -- Input
 function main {
