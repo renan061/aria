@@ -319,7 +319,7 @@ static void sem_declaration_function(SS* ss, Definition* def) {
 }
 
 static void sem_definition_function(SS* ss, Definition* def) {
-    assert(!def->function.private);
+    assert(def->function.qualifier == FQ_NONE);
 
     // checks if the function is being redeclared
     if (!symtable_insert(ss->table, def)) {
@@ -1094,7 +1094,7 @@ static Definition* findmethod(FunctionCall* call) {
     FOREACH(Definition, d, structure->structure.definitions) {
         if (d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) {
             if (d->function.id->name == call->id->name) {
-                if (d->function.private) {
+                if (d->function.qualifier == FQ_PRIVATE) {
                     err_function_call_private(call->line, call->id, structure);
                 }
                 method_definition = d;
