@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
         case TK_MUL_ASG:        printf("TK_MUL_ASG");       break;
         case TK_DIV_ASG:        printf("TK_DIV_ASG");       break;
         // keywords
+        case TK_ACQUIRE:        printf("TK_ACQUIRE");       break;
         case TK_AS:             printf("TK_AS");            break;
         case TK_BROADCAST:      printf("TK_BROADCAST");     break;
         case TK_ELSE:           printf("TK_ELSE");          break;
@@ -42,6 +43,7 @@ int main(int argc, char* argv[]) {
         case TK_INTERFACE:      printf("TK_INTERFACE");     break;
         case TK_MONITOR:        printf("TK_MONITOR");       break;
         case TK_PRIVATE:        printf("TK_PRIVATE");       break;
+        case TK_RELEASE:        printf("TK_RELEASE");       break;
         case TK_RETURN:         printf("TK_RETURN");        break;
         case TK_SIGNAL:         printf("TK_SIGNAL");        break;
         case TK_SPAWN:          printf("TK_SPAWN");         break;

@@ -101,7 +101,8 @@ string      "\""(\\.|[^\\"])*"\""
 "*="            return TOKEN(TK_MUL_ASG);
 "/="            return TOKEN(TK_DIV_ASG);
 
-"as"            return TOKEN(TK_AS); // keywords
+"acquire"       return TOKEN(TK_ACQUIRE); // keywords
+"as"            return TOKEN(TK_AS);
 "broadcast"     return TOKEN(TK_BROADCAST);
 "else"          return TOKEN(TK_ELSE);
 "false"         return TOKEN(TK_FALSE);
@@ -114,6 +115,7 @@ string      "\""(\\.|[^\\"])*"\""
 "interface"     return TOKEN(TK_INTERFACE);
 "monitor"       return TOKEN(TK_MONITOR);
 "private"       return TOKEN(TK_PRIVATE);
+"release"       return TOKEN(TK_RELEASE);
 "return"        return TOKEN(TK_RETURN);
 "signal"        return TOKEN(TK_SIGNAL);
 "spawn"         return TOKEN(TK_SPAWN);
