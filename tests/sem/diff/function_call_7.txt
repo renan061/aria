@@ -1,0 +1,5 @@
+1,2c1
+< line 5:
+< 	semantic error: monitor 'Stack' has no defined initializer
+---
+> Assertion failed: (def->type->structure.constructor), function semstructure, file src/sem.c, line 471.

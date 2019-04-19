@@ -1,4 +1,0 @@
-// Call to an array initializer with an argument of the wrong type
-function foo {
-	x := [String]([Integer]());
-}

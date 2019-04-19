@@ -1,0 +1,43 @@
+--------------------------------------------------------------------------------
+-- Title
+Using an unknown (undeclared) variable
+-- Input
+function main {
+    value x = unknown;
+}
+-- Output
+line 2:
+    semantic error: unknown variable 'unknown' being used
+--------------------------------------------------------------------------------
+-- Title
+Using a non-variable identifier as a variable
+-- Input
+function f {}
+function main {
+    value x = f;
+}
+-- Output
+line 3:
+    semantic error: 'f' is not a variable
+--------------------------------------------------------------------------------
+-- Title
+Indexing an array with a non-integer type
+-- Input
+function main {
+    value x = ["array", "of", "strings"];
+    print(x["array"]);
+}
+-- Output
+line 3:
+    semantic error: type 'String' can't be used as an array index
+--------------------------------------------------------------------------------
+-- Title
+Indexing a variable of non-array type
+-- Input
+function main {
+    value not_an_array = false;
+    print(not_an_array[0]);
+}
+-- Output
+line 3:
+    semantic error: type 'Boolean' can't be used as an array

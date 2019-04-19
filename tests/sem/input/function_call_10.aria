@@ -1,9 +1,0 @@
-// Trying to call a private method
-monitor M {
-	initializer {}
-	private function foo {}
-}
-
-function bar {
-	M().foo();
-}

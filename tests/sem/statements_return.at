@@ -1,0 +1,85 @@
+--------------------------------------------------------------------------------
+-- Title
+Unusual return statements that do not cause errors
+-- Input
+// returns type Void, expects type Void
+function void {
+    return void();
+}
+// returns type A (equivalent to B), expects type B
+function equivalent(i: Integer): Float {
+    return i;
+}
+-- Output
+function void: Void {
+    return (void(): Void)
+}
+function equivalent(value i: Integer): Float {
+    return ((i: Integer) as: Float)
+}
+--------------------------------------------------------------------------------
+-- Title
+Statement returns nil, but the function declaration promised a non-nil value
+-- Input
+function f: Integer {
+    return;
+}
+-- Output
+line 2:
+    semantic error: return can't be empty, must return an expression of type 'Integer'
+--------------------------------------------------------------------------------
+-- Title
+Statement returns a non-nil value, but the function declaration promised nil
+-- Input
+function main {
+    return 1;
+}
+-- Output
+line 2:
+    semantic error: type error (expected 'Void', got 'Integer')
+--------------------------------------------------------------------------------
+-- Title
+Statement returns type A, but the function declaration promised type B
+-- Input
+function f: Boolean {
+    return "string";
+}
+-- Output
+line 2:
+    semantic error: type error (expected 'Boolean', got 'String')
+--------------------------------------------------------------------------------
+-- Title
+Returning from inside a monitor constructor
+-- Input
+monitor M {
+    initializer {
+        return "string";
+    }
+}
+-- Output
+line 3:
+    semantic error: can't return expression inside initializer
+--------------------------------------------------------------------------------
+-- Title
+Returning from inside a spawn block
+-- Input
+function main {
+    spawn {
+        return;
+    }
+}
+-- Output
+line 3:
+    semantic error: can't return inside a spawn block
+--------------------------------------------------------------------------------
+-- Title
+Returning from inside an acquire-value block
+-- Input
+function main {
+    acquire value m = m.unlocked() {
+        return;
+    }
+}
+-- Output
+line 0:
+    parser error: syntax error

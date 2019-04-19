@@ -1,0 +1,4 @@
+2c2
+< 	semantic error: global variables need to have Immutable type
+---
+> 	semantic error: global values must have safe types

@@ -1,4 +1,4 @@
-1,183c1,2
+1,183c1
 < value topValue1: Boolean = (true: Boolean)
 < value topValue2: String = ("string": String)
 < value topValue3: Integer = ((3.000000: Float) as: Integer)
@@ -183,5 +183,4 @@
 < 	}
 < }
 ---
-> line 127:
-> 	semantic error: redeclaration of name 'foo'
+> Assertion failed: (def->type->structure.constructor), function semstructure, file src/sem.c, line 471.

@@ -1,2 +1,2 @@
-line 12:
-	semantic error: redeclaration of name 'foo'
+line 14:
+	semantic error: type error (expecting 'Immutable [String]', got '[String]')

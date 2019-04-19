@@ -1,4 +1,0 @@
-// Not a variable
-function foo {
-	x := foo;
-}

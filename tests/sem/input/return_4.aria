@@ -1,6 +1,0 @@
-// Returning expression inside an initializer
-monitor M {
-	initializer {
-		return "string";
-	}
-}

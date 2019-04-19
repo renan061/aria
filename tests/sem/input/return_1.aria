@@ -1,4 +1,0 @@
-// With return type but empty return statement
-function foo: Integer {
-	return;
-}

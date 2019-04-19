@@ -1,4 +1,0 @@
-// Call to a monitor constructor that does not exist
-function foo {
-	x := A();
-}

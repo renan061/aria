@@ -1,0 +1,5 @@
+1,2c1
+< line 6:
+< 	semantic error: redeclaration of name 'Stack'
+---
+> Assertion failed: (def->type->structure.constructor), function semstructure, file src/sem.c, line 471.

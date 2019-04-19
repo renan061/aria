@@ -93,7 +93,7 @@ static void freetypeid(Type*);
 
 // Auxiliary functions that deal with errors
 static void err_redeclaration(Id*);
-static void err_unkown_type_name(Id*);
+static void err_unknown_type(Id*);
 static void err_invalid_condition_type(Expression*);
 static void err_type(Line, Type*, Type*);
 static void err_assignment_value(Statement*);
@@ -468,7 +468,11 @@ static void semstructure(SS* ss, Definition* def) {
         }
     }
     if (def->type->tag == TYPE_MONITOR) {
-        assert(def->type->structure.constructor); // TODO: user error message
+        if (!def->type->structure.constructor) {
+            TODOERR(def->type->structure.id->line,
+                "structure must define an initializer"
+            );
+        }
         sem_definition(ss, def->type->structure.constructor);
     }
     symtable_leave_scope(ss->table);
@@ -1338,7 +1342,7 @@ static void linktype(SymbolTable* table, Type** pointer) {
     case TYPE_ID: {
         Definition* definition = symtable_find(table, (*pointer)->id);
         if (!definition) {
-            err_unkown_type_name((*pointer)->id);
+            err_unknown_type((*pointer)->id);
         }
         assert(definition->tag == DEFINITION_TYPE);
         freetypeid(*pointer);
@@ -1588,8 +1592,8 @@ static void err_redeclaration(Id* id) {
     sem_error(id->line, err1("redeclaration of name '%s'", id->name));
 }
 
-static void err_unkown_type_name(Id* id) {
-    sem_error(id->line, err1("unkown type name '%s'", id->name));
+static void err_unknown_type(Id* id) {
+    sem_error(id->line, err1("unknown type '%s'", id->name));
 }
 
 static void err_invalid_condition_type(Expression* expression) {
@@ -1601,7 +1605,7 @@ static void err_invalid_condition_type(Expression* expression) {
 static void err_type(Line line, Type* type1, Type* type2) {
     const char* t1 = typestring(type1);
     const char* t2 = typestring(type2);
-    const char* err = err2("type error (expecting '%s', got '%s')", t1, t2);
+    const char* err = err2("type error (expected '%s', got '%s')", t1, t2);
     sem_error(line, err);
 }
 
@@ -1628,7 +1632,7 @@ static void err_return_void(Line line, Type* type) {
 }
 
 static void err_capsa_unknown(Id* id) {
-    const char* err = err1("unknown variable '%s' beeing used", id->name);
+    const char* err = err1("unknown variable '%s' being used", id->name);
     sem_error(id->line, err);
 }
 
@@ -1650,7 +1654,7 @@ static void err_capsa_array_index_type(Capsa* capsa) {
 }
 
 static void err_function_call_unknown(Id* id) {
-    const char* err = err1("unknown function '%s' beeing called", id->name);
+    const char* err = err1("unknown function '%s' being called", id->name);
     sem_error(id->line, err);
 }
 
@@ -1736,8 +1740,8 @@ static const char* errors[] = {
     "invalid type '%s' for the left side of the '%s' expression",
     "invalid type '%s' for the right side of the '%s' expression",
 
-    "invalid type for left side of the '==' ('%s' is not an equatable type)",
-    "invalid type for right side of the '==' ('%s' is not an equatable type)",
+    "invalid type for left side of the '%s' ('%s' is not an equatable type)",
+    "invalid type for right side of the '%s' ('%s' is not an equatable type)",
     "incompatible types '%s' and '%s' for '%s' expression"
 };
 
@@ -1751,18 +1755,28 @@ static void err_expression(ErrorType type, Expression* e) {
         err = err1(errors[type], typestring(e->unary.expression->type));
         break;
     case ERR_EXPRESSION_LEFT:
-        err = err2(errors[type], typestring(e->binary.left_expression->type),
-            tokenstring(e->binary.token));
+        err = err2(errors[type],
+            typestring(e->binary.left_expression->type),
+            tokenstring(e->binary.token)
+        );
         break;
     case ERR_EXPRESSION_RIGHT:
-        err = err2(errors[type], typestring(e->binary.right_expression->type),
-            tokenstring(e->binary.token));
+        err = err2(errors[type],
+            typestring(e->binary.right_expression->type),
+            tokenstring(e->binary.token)
+        );
         break;
     case ERR_EXPRESSION_LEFT_EQUAL:
-        err = err1(errors[type], typestring(e->binary.left_expression->type));
+        err = err2(errors[type],
+            tokenstring(e->binary.token),
+            typestring(e->binary.left_expression->type)
+        );
         break;
     case ERR_EXPRESSION_RIGHT_EQUAL:
-        err = err1(errors[type], typestring(e->binary.right_expression->type));
+        err = err2(errors[type],
+            tokenstring(e->binary.token),
+            typestring(e->binary.right_expression->type)
+        );
         break;
     case ERR_EXPRESSION_TYPECHECK_EQUAL:
         err = err3(errors[type], typestring(e->binary.left_expression->type),

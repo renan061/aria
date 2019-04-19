@@ -1,4 +1,0 @@
-// Invalid left expression for 'or'
-function foo {
-	if 1 or false {} else {}
-}
