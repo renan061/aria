@@ -88,21 +88,6 @@ function foo {
 	// While
 	while 1 > 2 {}
 
-	// Spawn
-	spawnMonitor := SpawnMonitor();
-	nestedSafeType := Immutable[Immutable[Immutable[Integer]]]();
-	spawn {
-		variable a = spawnMonitor;
-		b := value1;
-		c := nestedSafeType;
-		variable x = 1;
-		variable y = 2;
-		x = y * 2 + value1;
-		while x < 10 {
-			x = x + 1;
-		}
-	}
-
 	// Block
 	{
 		a := 1;
@@ -202,10 +187,6 @@ function expressions {
 
 	// Function Call
 	functionCall := newMonitor3();
-
-	// Unary
-	a = not true;
-	b = -1;
 
 	// Binary
 	a = true or false;

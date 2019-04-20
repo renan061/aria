@@ -1,0 +1,43 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+function main {
+    // unary minus (-)
+    value m1 = -0;
+    value m2 = -1;
+    value m3 = -0.0;
+    value m4 = -1.654321;
+    // unary not
+    value n1 = not true;
+    value n2 = not (1 > 2);
+}
+-- Output
+function main: Void {
+    value m1: Integer = (-(0: Integer): Integer)
+    value m2: Integer = (-(1: Integer): Integer)
+    value m3: Float = (-(0.000000: Float): Float)
+    value m4: Float = (-(1.654321: Float): Float)
+    value n1: Boolean = (not(true: Boolean): Boolean)
+    value n2: Boolean = (not((1: Integer) >: Boolean (2: Integer)): Boolean)
+}
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) expression for unary minus (-)
+-- Input
+function main {
+    value n = -true;
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Boolean' for unary minus (expecting numeric type)
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-boolean) expression for unary not
+-- Input
+function main {
+    if not 1 {}
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Integer' for unary not (expecting Boolean)

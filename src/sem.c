@@ -37,7 +37,7 @@
     head->next = _temporary; \
 } while (0); \
 
-// stores important information about the current state of the semantic analysis
+// stores information about the current state of the semantic analysis
 typedef struct SemanticState {
     // symbol table for definitions
     SymbolTable* table;
@@ -406,7 +406,7 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
     // arpaircheck(Type* structure)
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 // auxiliary - parameters and block
 static void semfunction(SS* ss, Definition* def) {
@@ -1220,7 +1220,9 @@ static void sem_function_call(SS* state, FunctionCall* call) {
             }
             if (call->argument_count == 0) { // defaults to 8
                 call->argument_count = 1;
-                call->arguments = ast_expression_literal_integer(call->line, 8);
+                call->arguments = ast_expression_literal_integer(
+                    call->line, 8
+                );
                 call->arguments->type = __integer;
             } else if (call->argument_count == 1) {
                 sem_expression(state, call->arguments);
@@ -1672,7 +1674,9 @@ static void err_function_call_array_constructor(Line line, unsigned int n) {
 }
 
 static void err_function_call_no_constructor(Line line, Id* id) {
-    const char* err = err1("monitor '%s' has no defined initializer", id->name);
+    const char* err = err1(
+        "monitor '%s' has no defined initializer", id->name
+    );
     sem_error(line, err);
 }
 
