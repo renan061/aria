@@ -22,12 +22,6 @@ monitor SpawnMonitor {
 
 // Inside a common top level function
 function foo {
-	// Indexed types
-	variable indexed: [[[Integer]]];
-	x := indexed[0];
-	y := indexed[0][0];
-	z := topFunction10()[0][0][0];
-
 	// Declaration of variables
 	variable variable1: Boolean;
 	variable variable2, variable3: Integer;
@@ -171,16 +165,6 @@ function expressions {
 	string1 := "c";
 	string2 := "string";
 	string3 := "s p a c e d s t r i n g";
-
-	// Literal Array
-	array1 := [1];
-	array2 := [true, false];
-	array3 := [1, 2.0, 3];
-	array4 := [1.0, 2, 3];
-	array5 := [1, 2, 3.0];
-	array6 := Immutable [1, 2, 3, 4];
-	array7 := Immutable [[1], [2], [3]];
-	array8 := Immutable [[[1]], [[2]]];
 
 	// Variable
 	var := string1;

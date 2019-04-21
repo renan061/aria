@@ -529,9 +529,7 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
     return expression;
 }
 
-Expression* ast_expression_literal_array(Line ln, Expression* elements,
-    bool immutable) {
-
+Expression* ast_expression_literal_array(Line ln, Expression* xs, bool immut) {
     Expression* expression;
     MALLOC(expression, Expression);
     expression->tag = EXPRESSION_LITERAL_ARRAY;
@@ -539,8 +537,8 @@ Expression* ast_expression_literal_array(Line ln, Expression* elements,
     expression->previous = expression->next = NULL;
     expression->type = NULL;
     expression->llvm_value = NULL;
-    expression->literal.immutable = immutable;
-    expression->literal.array = elements;
+    expression->literal.immutable = immut;
+    expression->literal.array = xs;
     return expression;
 }
 

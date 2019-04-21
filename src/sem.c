@@ -37,7 +37,7 @@
     head->next = _temporary; \
 } while (0); \
 
-// stores information about the current state of the semantic analysis
+// stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
     // symbol table for definitions
     SymbolTable* table;
@@ -406,7 +406,7 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
     // arpaircheck(Type* structure)
 }
 
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 // auxiliary - parameters and block
 static void semfunction(SS* ss, Definition* def) {
@@ -673,12 +673,12 @@ static void sem_capsa_attribute(SS* ss, Capsa** capsa_pointer) {
     capsa->type = attribute->type;
 }
 
-static void sem_capsa_indexed(SS* state, Capsa** capsa_pointer) {
+static void sem_capsa_indexed(SS* ss, Capsa** capsa_pointer) {
     Capsa* capsa = *capsa_pointer;
     assert(!capsa->type);
 
-    sem_expression(state, capsa->indexed.array);
-    sem_expression(state, capsa->indexed.index);
+    sem_expression(ss, capsa->indexed.array);
+    sem_expression(ss, capsa->indexed.index);
     if (capsa->indexed.array->type->tag != TYPE_ARRAY) {
         err_capsa_array_type(capsa);
     }
@@ -948,6 +948,8 @@ static void sem_expression_binary_equality(SS*, Expression*);
 static void sem_expression_binary_inequality(SS*, Expression*);
 static void sem_expression_binary_arithmetic(SS*, Expression*);
 
+static void semliteralarray(Expression*);
+
 static void sem_expression(SS* ss, Expression* exp) {
     switch (exp->tag) {
     case EXPRESSION_LITERAL_BOOLEAN:
@@ -1020,10 +1022,9 @@ static void sem_expression_literal_array(SS* ss, Expression* exp) {
         sem_expression(ss, e);
         typecheck2(&exp->literal.array, &e);
     }
-    FOREACH(Expression, e, exp->literal.array->next) {
+    FOREACH(Expression, e, exp->literal.array->next) { // not redundant
         if (!typecheck2(&exp->literal.array, &e)) {
-            TODOERR(
-                exp->line,
+            TODOERR(exp->line,
                 "elements of an array literal must have equivalent types"
             );
         }
@@ -1031,9 +1032,7 @@ static void sem_expression_literal_array(SS* ss, Expression* exp) {
     exp->type = ast_type_array(exp->literal.array->type);
     if ((exp->type->immutable = exp->literal.immutable)) {
         FOREACH(Expression, e, exp->literal.array) {
-            for (Type* t = e->type; t->tag == TYPE_ARRAY; t = t->array) {
-                t->immutable = true;
-            }
+            semliteralarray(e);
         }
     }
 }
@@ -1093,6 +1092,24 @@ static void sem_expression_binary_arithmetic(SS* ss, Expression* exp) {
     Expression** r = &exp->binary.right_expression;
     exp->type = typecheck2(l, r); // for casting, if necessary
     assert(exp->type);
+}
+
+// -----------------------------------------------------------------------------
+
+static void semliteralarray(Expression* e) {
+    if (e->type->tag != TYPE_ARRAY) {
+        return;
+    }
+    if (e->tag == EXPRESSION_LITERAL_ARRAY) {
+        if (!e->literal.immutable) {
+            e->literal.immutable = true;
+            e->type->immutable = true;
+        }
+        return semliteralarray(e->literal.array);
+    }
+    if (!e->type->immutable) {
+        TODOERR(e->line, "an immutable array can not contain a mutable array");
+    }
 }
 
 // ==================================================
@@ -1386,7 +1403,6 @@ static bool typeequals(Type* type1, Type* type2) {
     if (type1->tag != TYPE_ARRAY || type2->tag != TYPE_ARRAY) {
         return false;
     }
-
     return typeequals(type1->array, type2->array);
 }
 
@@ -1395,19 +1411,19 @@ static bool typeequals(Type* type1, Type* type2) {
  * Performes casts if necessary.
  * Deals with errors internally.
  */
-static void typecheck1(Type* type, Expression** expression) {
-    // Checks equality
-    if (typeequals(type, (*expression)->type)) {
+static void typecheck1(Type* type, Expression** e) {
+    // checks equality
+    if (typeequals(type, (*e)->type)) {
         return;
     }
 
-    // Needs both to be numeric
-    if (!(numerictype(type) && numerictype((*expression)->type))) {
-        err_type((*expression)->line, type, (*expression)->type);
+    // implicitly casts from Integer to Float
+    if (!(type == __float && (*e)->type == __integer)) {
+        err_type((*e)->line, type, (*e)->type);
     }
 
-    // Performs casts
-    *expression = ast_expression_cast((*expression)->line, *expression, type);
+    // performs the cast
+    *e = ast_expression_cast((*e)->line, *e, type);
 }
 
 /* 
@@ -1441,7 +1457,7 @@ static Type* typecheck2(Expression** l, Expression** r) {
 }
 
 static bool indextype(Type* type) {
-    return type == __integer; // TODO: Float also
+    return type == __integer;
 }
 
 static bool numerictype(Type* type) {

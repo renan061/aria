@@ -49,7 +49,7 @@ monitor M {
     initializer(i: Integer, f: Float) {}
 }
 function main {
-    value m = M(1.0);
+    value m = M(1);
 }
 -- Output
 line 5:

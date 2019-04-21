@@ -1,0 +1,238 @@
+--------------------------------------------------------------------------------
+-- Title
+Indexing arrays
+-- Input
+function f: [[[Integer]]] {
+    return [[[1]]];
+}
+function main {
+    variable array: [[[Integer]]];
+    value a = array[0];
+    value b = array[1][2];
+    value c = f()[3][40][500];
+}
+-- Output
+function f: [[[Integer]]] {
+    return ([([([(1: Integer)]: [Integer])]: [[Integer]])]: [[[Integer]]])
+}
+function main: Void {
+    variable array: [[[Integer]]]
+    value a: [[Integer]] = (((array: [[[Integer]]])[(0: Integer)]: [[Integer]]))
+    value b: [Integer] = (((((array: [[[Integer]]])[(1: Integer)]: [[Integer]]))[(2: Integer)]: [Integer]))
+    value c: Integer = (((((((f(): [[[Integer]]])[(3: Integer)]: [[Integer]]))[(40: Integer)]: [Integer]))[(500: Integer)]: Integer))
+}
+--------------------------------------------------------------------------------
+-- Title
+Indexing a value that is not an array (Void)
+-- Input
+function main {
+    main()[0] = 1;
+}
+-- Output
+line 2:
+    semantic error: type 'Void' can't be used as an array
+--------------------------------------------------------------------------------
+-- Title
+Indexing a value that is not an array (Integer)
+-- Input
+function main {
+    1[0] = 1;
+}
+-- Output
+line 2:
+    semantic error: type 'Integer' can't be used as an array
+--------------------------------------------------------------------------------
+-- Title
+Indexing a value that is not an array (String)
+-- Input
+function main {
+    "string"[0] = 1;
+}
+-- Output
+line 2:
+    semantic error: type 'String' can't be used as an array
+--------------------------------------------------------------------------------
+-- Title
+Indexing a value that is not an array (interface)
+-- Input
+interface I {}
+monitor M: I {
+    initializer {}
+}
+function main {
+    value i = M() as I;
+    i[0] = 1;
+}
+-- Output
+line 7:
+    semantic error: type 'I' can't be used as an array
+--------------------------------------------------------------------------------
+-- Title
+Indexing a value that is not an array (monitor)
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    M()[0] = 1;
+}
+-- Output
+line 5:
+    semantic error: type 'M' can't be used as an array
+--------------------------------------------------------------------------------
+-- Title
+Using an invalid index (Void)
+-- Input
+function main {
+    [1][main()] = 1;
+}
+-- Output
+line 2:
+    semantic error: type 'Void' can't be used as an array index
+--------------------------------------------------------------------------------
+-- Title
+Using an invalid index (Boolean)
+-- Input
+function main {
+    [1][false] = 1;
+}
+-- Output
+line 2:
+    semantic error: type 'Boolean' can't be used as an array index
+--------------------------------------------------------------------------------
+-- Title
+Using an invalid index (Float)
+-- Input
+function main {
+    [1][0.0] = 1;
+}
+-- Output
+line 2:
+    semantic error: type 'Float' can't be used as an array index
+--------------------------------------------------------------------------------
+-- Title
+Using an invalid index (monitor)
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    [1][M()] = 1;
+}
+-- Output
+line 5:
+    semantic error: type 'M' can't be used as an array index
+--------------------------------------------------------------------------------
+-- Title
+Creating simple literal arrays
+-- Input
+function main {
+    value a = [1];
+    value b = [true, false];
+}
+-- Output
+function main: Void {
+    value a: [Integer] = ([(1: Integer)]: [Integer])
+    value b: [Boolean] = ([(true: Boolean), (false: Boolean)]: [Boolean])
+}
+--------------------------------------------------------------------------------
+-- Title
+Casting from Integer to Float implicitly inside literal arrays
+-- Input
+function main {
+    value a = [1, 2, 3];
+    value b = [1, 2.0, 3];
+    value c = [1.0, 2, 3];
+    value d = [1, 2, 3.0];
+}
+-- Output
+function main: Void {
+    value a: [Integer] = ([(1: Integer), (2: Integer), (3: Integer)]: [Integer])
+    value b: [Float] = ([((1: Integer) as: Float), (2.000000: Float), ((3: Integer) as: Float)]: [Float])
+    value c: [Float] = ([(1.000000: Float), ((2: Integer) as: Float), ((3: Integer) as: Float)]: [Float])
+    value d: [Float] = ([((1: Integer) as: Float), ((2: Integer) as: Float), (3.000000: Float)]: [Float])
+}
+--------------------------------------------------------------------------------
+-- Title
+Converting (not casting) from mutable to immutable arrays implicitly inside literal arrays
+-- Input
+function main {
+    // immutable array of integers
+    value a = Immutable [1, 2, 3, 4];
+    // immutable array of immutable arrays of integers
+    value b = Immutable [[1], [2], [3]];
+    // immutable array of immutable arrays of immutable arrays of integers
+    value c = Immutable [[[1]], [[2]]];
+}
+-- Output
+function main: Void {
+    value a: Immutable [Integer] = (Immutable [(1: Integer), (2: Integer), (3: Integer), (4: Integer)]: Immutable [Integer])
+    value b: Immutable [Immutable [Integer]] = (Immutable [(Immutable [(1: Integer)]: Immutable [Integer]), (Immutable [(2: Integer)]: Immutable [Integer]), (Immutable [(3: Integer)]: Immutable [Integer])]: Immutable [Immutable [Integer]])
+    value c: Immutable [Immutable [Immutable [Integer]]] = (Immutable [(Immutable [(Immutable [(1: Integer)]: Immutable [Integer])]: Immutable [Immutable [Integer]]), (Immutable [(Immutable [(2: Integer)]: Immutable [Integer])]: Immutable [Immutable [Integer]])]: Immutable [Immutable [Immutable [Integer]]])
+}
+--------------------------------------------------------------------------------
+-- Title
+Creating literal arrays of literal arrays
+-- Input
+function main {
+    // it's ok to create an immutable array of arrays without explicitly using
+    // the Immutable keyword for the inner arrays, since the language implicitly
+    // makes the inner literal arrays immutable
+    value ok: Immutable [[Integer]] = Immutable [[1], [2, 4]];
+
+    // the type does not need to be provided in the definition for the language
+    // to behave this way, since this is done when creating the expression
+    value also_ok = Immutable [[1], [2, 3]];
+
+    // however, if the inner array is not a literal, a type error occurs, since
+    // the language can't cast a mutable non-literal array expression to
+    // immutable
+    value mutable = [1];
+    value not_ok = Immutable [mutable, [2, 3]];
+}
+-- Output
+line 15:
+    semantic error: an immutable array can not contain a mutable array
+--------------------------------------------------------------------------------
+-- Title
+Creating an empty literal array
+-- Input
+function main {
+    value array = [];
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Creating a literal array with expressions of different types (1)
+-- Input
+function main {
+    value array = [1, true];
+}
+-- Output
+line 2:
+    semantic error: elements of an array literal must have equivalent types
+--------------------------------------------------------------------------------
+-- Title
+Creating a literal array with expressions of different types (2)
+-- Input
+function f: [Integer] {
+    return [3, 4];
+}
+function main {
+    value array = [1, 2, f(), 5, 6];
+}
+-- Output
+line 5:
+    semantic error: elements of an array literal must have equivalent types
+--------------------------------------------------------------------------------
+-- Title
+Creating a literal array with expressions of different types (3)
+-- Input
+function main {
+    value array = [[1], [[2, 3], [4, 5]], [[[6]]]];
+}
+-- Output
+line 2:
+    semantic error: elements of an array literal must have equivalent types

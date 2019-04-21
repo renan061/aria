@@ -275,16 +275,18 @@ struct Expression {
     union {
         struct {
             bool immutable;
-            // ExpressionLiteralBoolean
-            bool boolean;
-            // ExpressionLiteralInteger
-            int integer;
-            // ExpressionLiteralFloat
-            double float_;
-            // ExpressionLiteralString
-            const char* string;
-            // ExpressionLiteralArray
-            Expression* array;
+            union {
+                // ExpressionLiteralBoolean
+                bool boolean;
+                // ExpressionLiteralInteger
+                int integer;
+                // ExpressionLiteralFloat
+                double float_;
+                // ExpressionLiteralString
+                const char* string;
+                // ExpressionLiteralArray
+                Expression* array;
+            };
         } literal;
         // ExpressionCapsa
         Capsa* capsa;
