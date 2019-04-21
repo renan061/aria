@@ -10,6 +10,8 @@ function main {
     value a = array[0];
     value b = array[1][2];
     value c = f()[3][40][500];
+    array[0] = [[1]];
+    array[0][1] = [1];
 }
 -- Output
 function f: [[[Integer]]] {
@@ -20,6 +22,8 @@ function main: Void {
     value a: [[Integer]] = (((array: [[[Integer]]])[(0: Integer)]: [[Integer]]))
     value b: [Integer] = (((((array: [[[Integer]]])[(1: Integer)]: [[Integer]]))[(2: Integer)]: [Integer]))
     value c: Integer = (((((((f(): [[[Integer]]])[(3: Integer)]: [[Integer]]))[(40: Integer)]: [Integer]))[(500: Integer)]: Integer))
+    ((array: [[[Integer]]])[(0: Integer)]: [[Integer]]) = ([([(1: Integer)]: [Integer])]: [[Integer]])
+    ((((array: [[[Integer]]])[(0: Integer)]: [[Integer]]))[(1: Integer)]: [Integer]) = ([(1: Integer)]: [Integer])
 }
 --------------------------------------------------------------------------------
 -- Title
