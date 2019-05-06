@@ -1,0 +1,4 @@
+2c2
+< 	semantic error: type error (expecting 'Integer', got 'Void')
+---
+> 	semantic error: type error (expected 'Integer', got 'Void')

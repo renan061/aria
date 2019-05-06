@@ -1,4 +1,0 @@
-// Assigning variable to expression of type Void
-function foo {
-	value x: Integer = foo();
-}

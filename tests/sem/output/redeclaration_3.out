@@ -1,1 +1,2 @@
-Assertion failed: (def->type->structure.constructor), function semstructure, file src/sem.c, line 471.
+line 2:
+	semantic error: structure must define an initializer

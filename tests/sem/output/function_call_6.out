@@ -1,2 +1,0 @@
-line 3:
-	semantic error: type error (expecting 'Integer', got '[Integer]')

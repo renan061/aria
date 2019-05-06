@@ -1,2 +1,2 @@
 line 3:
-	semantic error: unkown type name 'Id3'
+	semantic error: unknown type 'Id3'

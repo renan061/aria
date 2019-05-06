@@ -1,2 +1,2 @@
 line 3:
-	semantic error: type error (expecting 'Integer', got 'Void')
+	semantic error: type error (expected 'Integer', got 'Void')

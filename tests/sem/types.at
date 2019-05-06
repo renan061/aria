@@ -1,0 +1,80 @@
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (variable declaration)
+-- Input
+function main {
+    variable a: T;
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (function return type)
+-- Input
+function f: T {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (parameter)
+-- Input
+function f(a: T) {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (structure constructor call)
+-- Input
+function main {
+    value a = T();
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (variable declaration)
+-- Input
+function main {
+    variable a: [[[T]]];
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (function return type)
+-- Input
+function f: [[T]] {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (parameter)
+-- Input
+function f(array: [T]) {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (array constructor call)
+-- Input
+function main {
+    value a = [T](10);
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'

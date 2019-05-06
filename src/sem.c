@@ -1383,6 +1383,9 @@ static void linktype(SymbolTable* table, Type** pointer) {
  * Deals with errors internally.
  */
 static void assignment(Capsa* capsa, Expression** expression) {
+    if ((*expression)->type == __void) {
+        TODOERR(capsa->line, "can't assign to expression of type Void");
+    }
     if (capsa->type) {
         typecheck1(capsa->type, expression);
     } else { // when defining with implicit type

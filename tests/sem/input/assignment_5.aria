@@ -1,5 +1,0 @@
-// Assigning to element inside immutable array
-function foo {
-    array := Immutable [Integer](1);
-    array[0] = 10;
-}
