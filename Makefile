@@ -4,21 +4,14 @@
 
 # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
 
-# Your platform. See PLATS for possible values.
-PLAT= none
-
 # Install.
 BIN= bin/
 
-# Other utilities.
-# FMT= clang-format -i -style=file
+# Utilities.
 MKDIR= mkdir -p
 RM= rm -f
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
-
-# Platforms.
-PLATS= linux macosx
 
 # Aria version.
 V= 0.2
