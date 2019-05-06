@@ -1,0 +1,34 @@
+--------------------------------------------------------------------------------
+-- Title
+Invalid broadcast outside a monitor
+-- Input
+function main {
+    broadcast ConditionQueue();
+}
+-- Output
+line 2:
+    semantic error: invalid use of 'broadcast' statement outside a monitor's body
+--------------------------------------------------------------------------------
+-- Title
+Invalid broadcast inside a monitor's initializer
+-- Input
+monitor M {
+    initializer {
+        broadcast ConditionQueue();
+    }
+}
+-- Output
+line 3:
+    semantic error: invalid use of 'broadcast' statement inside a monitor's initializer
+--------------------------------------------------------------------------------
+-- Title
+Invalid condition queue type
+-- Input
+monitor M {
+    function f {
+        broadcast [1, 2];
+    }
+}
+-- Output
+line 3:
+    semantic error: 'broadcast' statement must receive an expression of type ConditionQueue

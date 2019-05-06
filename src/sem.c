@@ -804,9 +804,9 @@ static void sem_statement_wait_for_in(SS* ss, Statement* stmt) {
     }
     sem_expression(ss, stmt->wait_for_in.queue);
     if (stmt->wait_for_in.queue->type != __condition_queue) {
-        TODOERR(
-            stmt->line,
-            "wait-for-in second expression must be of type ConditionQueue"
+        TODOERR(stmt->line,
+            "'wait-for-in' statement's second expression must be "
+            "of type ConditionQueue"
         );
     }
 }
@@ -820,9 +820,9 @@ static void sem_statement_signal(SS* ss, Statement* stmt) {
     }
     sem_expression(ss, stmt->signal);
     if (stmt->signal->type != __condition_queue) {
-        TODOERR(
-            stmt->line,
-            "signal must receive expression of type ConditionQueue"
+        TODOERR(stmt->line,
+            "'signal' statement must receive an expression"
+            " of type ConditionQueue"
         );
     }
 }
@@ -836,9 +836,9 @@ static void sem_statement_broadcast(SS* ss, Statement* stmt) {
     }
     sem_expression(ss, stmt->broadcast);
     if (stmt->broadcast->type != __condition_queue) {
-        TODOERR(
-            stmt->line,
-            "broadcast must receive expression of type ConditionQueue"
+        TODOERR(stmt->line,
+            "'broadcast' statement must receive an expression"
+            " of type ConditionQueue"
         );
     }
 }

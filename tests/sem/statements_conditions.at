@@ -1,0 +1,38 @@
+--------------------------------------------------------------------------------
+-- Title
+Invalid condition type (if)
+-- Input
+function main {
+    if 1 {
+        // ...
+    }
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Integer' for condition (expecting Boolean)
+--------------------------------------------------------------------------------
+-- Title
+Invalid condition type (if-else)
+-- Input
+function main {
+    if main() {
+        // ...
+    } else {
+        // ...
+    }
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Void' for condition (expecting Boolean)
+--------------------------------------------------------------------------------
+-- Title
+Invalid condition type (while)
+-- Input
+function main {
+    while "true" {
+        // ...
+    }
+}
+-- Output
+line 2:
+    semantic error: invalid type 'String' for condition (expecting Boolean)

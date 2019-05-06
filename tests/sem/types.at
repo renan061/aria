@@ -78,3 +78,23 @@ function main {
 -- Output
 line 2:
     semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Normal types can't be used as immutable types
+-- Input
+function main {
+    variable a: Immutable [String] = ["invalid"];
+}
+-- Output
+line 2:
+    semantic error: type error (expected 'Immutable [String]', got '[String]')
+--------------------------------------------------------------------------------
+-- Title
+Immutable types can't be used as normal types
+-- Input
+function main {
+    variable a: [String] = Immutable ["invalid"];
+}
+-- Output
+line 2:
+    semantic error: type error (expected '[String]', got 'Immutable [String]')

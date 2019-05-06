@@ -1,7 +1,0 @@
-// Inside a monitor's initializer
-monitor M {
-	variable a: ConditionQueue;
-	initializer {
-		signal a;
-	}
-}

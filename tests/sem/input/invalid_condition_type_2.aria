@@ -1,4 +1,0 @@
-// In 'if's
-function foo {
-	if 1.0 {}
-}
