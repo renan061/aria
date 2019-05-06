@@ -7,7 +7,7 @@ then
 	exit 1
 fi
 
-cd tests/$1
+cd $1
 
 # Removing old diff and output test reports
 rm -f ./diff/*.txt
@@ -23,7 +23,7 @@ do
 	OUTPUT=$NAME".out"
 	DIFF="diff.txt"
 
-	../../bin/"$1""test" $2 $INPUT > $OUTPUT 2>&1
+	../bin/"$1""test" $2 $INPUT > $OUTPUT 2>&1
 
 	diff -W 200 -a --suppress-common-lines $ANSWER $OUTPUT > $DIFF
 	if [ -s $DIFF ]

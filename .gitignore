@@ -1,10 +1,4 @@
-obj/*.o
 bin/*
-temp/*
-
-src/bison.c
-src/bison.h
-src/flex.c
 
 *.bc
 

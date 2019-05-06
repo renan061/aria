@@ -4,7 +4,7 @@
 #include "parser.h"
 #include "scanner.h"
 
-#include "ast_printer.c"
+#include "printer.c"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {

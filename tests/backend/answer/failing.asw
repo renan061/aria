@@ -1,3 +1,3 @@
 -----
-Division not working: 155 / 12 = 12
+Division not working: 155 / 12 = 0.00000
 Works with floats: (155.0 / 12 = 12.91667) (155 / 12.0 = 12.91667)
