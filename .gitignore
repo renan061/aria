@@ -1,5 +1,7 @@
 bin/*
+tests/bin/*
 
+*.o
 *.bc
 
 test.aria
