@@ -1,2 +1,0 @@
-line 4:
-	semantic error: type error (expected 'Integer', got 'Float')

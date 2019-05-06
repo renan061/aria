@@ -1,5 +1,25 @@
 --------------------------------------------------------------------------------
 -- Title
+Ok
+-- Input
+monitor M {
+    value queue = ConditionQueue();
+    initializer {}
+    function f {
+        wait for true in queue;
+    }
+}
+-- Output
+monitor M {
+    value queue: ConditionQueue = (ConditionQueue(): ConditionQueue)
+    function M: M {
+    }
+    function f(value self: M): Void {
+        wait for (true: Boolean) in (queue: ConditionQueue)
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
 Invalid wait-for-in outside a monitor
 -- Input
 function main {

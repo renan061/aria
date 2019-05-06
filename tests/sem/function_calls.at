@@ -1,5 +1,128 @@
 --------------------------------------------------------------------------------
 -- Title
+Basic function calls
+-- Input
+value name = "testing";
+
+function nothing {}
+function check(a: Boolean) {}
+function status: Boolean {}
+function convert(n: Integer): Float {}
+function misc(a: Float, b: String, c: Boolean): Integer {}
+function sum(a, b, c: Float): Float {}
+
+function main {
+    variable global: String = name;
+    value notTrue: Boolean = false;
+
+    nothing();
+    check(42 == 1.0);
+    misc(1, global, notTrue or status());
+    sum(1, 2, 3);
+    sum(1.0, 2.0, convert(3));
+}
+-- Output
+value name: String = ("testing": String)
+function nothing: Void {
+}
+function check(value a: Boolean): Void {
+}
+function status: Boolean {
+}
+function convert(value n: Integer): Float {
+}
+function misc(value a: Float, value b: String, value c: Boolean): Integer {
+}
+function sum(value a: Float, value b: Float, value c: Float): Float {
+}
+function main: Void {
+    variable global: String = (name: String)
+    value notTrue: Boolean = (false: Boolean)
+    nothing(): Void
+    check((((42: Integer) as: Float) ==: Boolean (1.000000: Float))): Void
+    misc(((1: Integer) as: Float), (global: String), ((notTrue: Boolean) or: Boolean (status(): Boolean))): Integer
+    sum(((1: Integer) as: Float), ((2: Integer) as: Float), ((3: Integer) as: Float)): Float
+    sum((1.000000: Float), (2.000000: Float), (convert((3: Integer)): Float)): Float
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor constructor function calls
+-- Input
+monitor A {
+    initializer {}
+}
+monitor B {
+    initializer(x, y: Integer) {}
+}
+monitor C {
+    initializer(x: Boolean, y: Float, z: String) {}
+}
+function main {
+    value a = A();
+    value b = B(1, 2);
+    value c = C(true, 1.0, "string");
+}
+-- Output
+monitor A {
+    function A: A {
+    }
+}
+monitor B {
+    function B(value x: Integer, value y: Integer): B {
+    }
+}
+monitor C {
+    function C(value x: Boolean, value y: Float, value z: String): C {
+    }
+}
+function main: Void {
+    value a: A = (A(): A)
+    value b: B = (B((1: Integer), (2: Integer)): B)
+    value c: C = (C((true: Boolean), (1.000000: Float), ("string": String)): C)
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor function (method) calls
+-- Input
+monitor M {
+    initializer {}
+    function f: String {}
+    function g(x, y: Integer) {}
+    function h(x: Boolean, y: Float, z: String) {}
+}
+function new: M {}
+function main {
+    value m = M();
+
+    m.f();
+    m.g(1, 2);
+    M().g(1, 0); // FIXME: is this correct in the backend?
+    m.h(false, 1, "string");
+    new().f();
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function f(value self: M): String {
+    }
+    function g(value self: M, value x: Integer, value y: Integer): Void {
+    }
+    function h(value self: M, value x: Boolean, value y: Float, value z: String): Void {
+    }
+}
+function new: M {
+}
+function main: Void {
+    value m: M = (M(): M)
+    (m: M).f((m: M)): String
+    (m: M).g((m: M), (1: Integer), (2: Integer)): Void
+    (M(): M).g((M(): M), (1: Integer), (0: Integer)): Void
+    (m: M).h((m: M), (false: Boolean), ((1: Integer) as: Float), ("string": String)): Void
+    (new(): M).f((new(): M)): String
+}
+--------------------------------------------------------------------------------
+-- Title
 Calling an unknown (undeclared) function
 -- Input
 function main {

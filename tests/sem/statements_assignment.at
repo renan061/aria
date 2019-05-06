@@ -1,5 +1,20 @@
 --------------------------------------------------------------------------------
 -- Title
+Ok
+-- Input
+function main {
+    value a = 1;
+    variable b: Boolean;
+    b = a > 2;
+}
+-- Output
+function main: Void {
+    value a: Integer = (1: Integer)
+    variable b: Boolean
+    b: Boolean = ((a: Integer) >: Boolean (2: Integer))
+}
+--------------------------------------------------------------------------------
+-- Title
 Unusual assignments that do not cause errors
 -- Input
 // assigning to an indexed expression that is not a variable expression is ok

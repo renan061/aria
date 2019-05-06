@@ -1,2 +1,0 @@
-line 1:
-	semantic error: global variables need to have Immutable type

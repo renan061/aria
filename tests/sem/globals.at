@@ -5,7 +5,7 @@ Global values with primitive (immutable) types
 value a = true;
 value b = 1;
 value c = 1.0;
-value d = "string";
+value d: String = "string";
 -- Output
 value a: Boolean = (true: Boolean)
 value b: Integer = (1: Integer)

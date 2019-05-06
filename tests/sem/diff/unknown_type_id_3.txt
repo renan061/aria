@@ -1,4 +1,0 @@
-2c2
-< 	semantic error: unkown type name 'Id3'
----
-> 	semantic error: unknown type 'Id3'

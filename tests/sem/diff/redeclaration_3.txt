@@ -1,6 +1,0 @@
-1,2c1,2
-< line 6:
-< 	semantic error: redeclaration of name 'Stack'
----
-> line 2:
-> 	semantic error: structure must define an initializer

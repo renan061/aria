@@ -1,4 +1,0 @@
-2c2
-< 	semantic error: type error (expecting 'Immutable [String]', got '[String]')
----
-> 	semantic error: type error (expected 'Immutable [String]', got '[String]')

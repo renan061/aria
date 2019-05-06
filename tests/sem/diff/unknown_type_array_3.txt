@@ -1,4 +1,0 @@
-2c2
-< 	semantic error: unkown type name 'Array3'
----
-> 	semantic error: unknown type 'Array3'

@@ -1,0 +1,35 @@
+--------------------------------------------------------------------------------
+-- Title
+Should detect lack of return statement
+-- Input
+function f: Boolean {
+    // not returning a boolean
+}
+-- Output
+function f: Boolean {
+}
+--------------------------------------------------------------------------------
+-- Title
+Compound assignment
+-- Input
+function main {
+    variable a = 0;
+
+    /* Seg Fault
+    a += 1;
+    a -= 1;
+    a *= 1;
+    a /= 1;
+    */
+
+    /*
+    a = ((a: Integer) +:Integer (1: Integer));
+    a = ((a: Integer) -:Integer (1: Integer));
+    a = ((a: Integer) *:Integer (1: Integer));
+    a = ((a: Integer) /:Integer (1: Integer));
+    */
+}
+-- Output
+function main: Void {
+    variable a: Integer = (0: Integer)
+}

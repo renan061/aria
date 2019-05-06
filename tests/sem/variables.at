@@ -1,5 +1,48 @@
 --------------------------------------------------------------------------------
 -- Title
+Ok
+-- Input
+function main {
+    // declaring variables
+    variable status: Boolean;
+    variable m, n: Integer;
+    variable x, y, z: Float;
+
+    // definition variables and values
+    syntacticSugar := true;
+
+    value a1: Integer = 1;
+    value a2 = 1;
+
+    value b1: Float = 1;
+    value b2 = 1;
+
+    variable c1: Float = 1;
+    variable c2 = 1;
+
+    variable d1 = "string";
+    variable d2: String = d1;
+}
+-- Output
+function main: Void {
+    variable status: Boolean
+    variable m: Integer
+    variable n: Integer
+    variable x: Float
+    variable y: Float
+    variable z: Float
+    value syntacticSugar: Boolean = (true: Boolean)
+    value a1: Integer = (1: Integer)
+    value a2: Integer = (1: Integer)
+    value b1: Float = ((1: Integer) as: Float)
+    value b2: Integer = (1: Integer)
+    variable c1: Float = ((1: Integer) as: Float)
+    variable c2: Integer = (1: Integer)
+    variable d1: String = ("string": String)
+    variable d2: String = (d1: String)
+}
+--------------------------------------------------------------------------------
+-- Title
 Using an unknown (undeclared) variable
 -- Input
 function main {

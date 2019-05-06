@@ -1,5 +1,22 @@
 --------------------------------------------------------------------------------
 -- Title
+Ok
+-- Input
+function f: String {
+    return "string";
+}
+function main {
+    return;
+}
+-- Output
+function f: String {
+    return ("string": String)
+}
+function main: Void {
+    return
+}
+--------------------------------------------------------------------------------
+-- Title
 Unusual return statements that do not cause errors
 -- Input
 // returns type Void, expects type Void
