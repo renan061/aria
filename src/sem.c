@@ -14,6 +14,7 @@
 #include "alloc.h"
 #include "ast.h"
 #include "errs.h"
+#include "list.h"
 #include "parser.h" // for the tokens
 #include "scanner.h" // because of scanner_native[self]
 #include "symtable.h"
@@ -400,10 +401,6 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
         linktype(ss->table, &def->type->structure.interface);
         interfacecheck(ss, def->type->structure.interface, def->type);
     }
-
-    // checks for acquire-release pairs of functions
-    // TODO
-    // arpaircheck(Type* structure)
 }
 
 // -----------------------------------------------------------------------------
@@ -426,6 +423,59 @@ static void semfunction(SS* ss, Definition* def) {
         sem_block(ss, def->function.block);
     }
     ss->return_ = NULL;
+}
+
+// // TODO: remove
+// void print_method(ListValue value) {
+//     Definition* d = (Definition*) value;
+
+//     Bitmap q = d->function.qualifiers;
+//     if ((q & FQ_PRIVATE) == FQ_PRIVATE) {
+//             printf("private ");
+//         }
+
+//         assert(d->function.id);
+//         printf("function ");
+//         if ((q & FQ_ACQUIRE) == FQ_ACQUIRE) {
+//             printf("acquire ");
+//         } else if ((q & FQ_RELEASE) == FQ_RELEASE) {
+//             printf("release ");
+//         }
+//         printf("%s", d->function.id->name);
+
+//         if (d->function.parameters) {
+//             printf("(");
+//             for (Definition* p = d->function.parameters; p;) {
+//                 printf("*");
+//                 if ((p = p->next)) {
+//                     printf(", ");
+//                 }
+//             }
+//             printf(")");
+//         }
+//         if (d->function.type) {
+//             printf(": *");
+//         }
+// }
+
+// auxiliary - called inside function `semstructure`
+// compares function definitions and checks if they are an acquire-release pair
+static ListValue armatch(ListValue x, ListValue y) {
+    Definition* a = (Definition*) x;
+    Definition* b = (Definition*) y;
+    if (a->function.id->name != b->function.id->name) { // different names
+        return NULL;
+    }
+
+    Bitmap am = a->function.qualifiers;
+    Bitmap bm = b->function.qualifiers;
+    if ((am & FQ_PRIVATE) != (bm & FQ_PRIVATE) || // incompatible `private` tag
+        (am & FQ_ACQUIRE) == (bm & FQ_ACQUIRE) || // bot are `acquire`
+        (am & FQ_RELEASE) == (bm & FQ_RELEASE)) { // both are `release`
+        return NULL;
+    }
+
+    return x;
 }
 
 // auxiliary - interface, structures and monitors
@@ -511,6 +561,37 @@ static void semstructure(SS* ss, Definition* def) {
     }
     assert(i_attributes == def->type->structure.attributes_size);
     assert(i_methods == def->type->structure.methods_size);
+
+    { // checks for acquire-release pairs of functions
+        List* ars = list_new(); // list with acquire-release functions
+    
+        // filling the list
+        for (int i = 0; i < i_methods; i++) {
+            Definition* d = def->type->structure.methods[i];
+            Bitmap bm = d->function.qualifiers;
+            if (bm & FQ_ACQUIRE || bm & FQ_RELEASE) {
+                list_append(ars, d);
+            }
+        }
+    
+        // removing pairs from the list
+        for (int i = 0; i < i_methods; i++) {
+            Definition* d = def->type->structure.methods[i];
+            if (list_remove(ars, &armatch, d)) { // removes match
+                list_remove(ars, NULL, d); // removes self if found a match
+            }
+        }
+    
+        // checking if the list is empty
+        if (!list_empty(ars)) {
+            Definition* d = (Definition*) ars->first->value;
+            TODOERR(d->function.id->line,
+                "function needs its acquire-release pair"
+            );
+        }
+    
+        list_destroy(ars);
+    }
 }
 
 // auxiliary - compares method declaration with interface function declaration

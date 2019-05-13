@@ -11,22 +11,25 @@ BIN= bin/
 
 TEST= lua tester.lua
 
-# Targets start here.
-run: build
-	$(CP) ../bin/aria bin/backendtest
-	$(CLEAR)
+SIMPLE= scanner parser ast sem
+TESTS= all $(SIMPLE) backend
 
+# Targets start here.
+all: build $(SIMPLE) backend
 	@- ./$(BIN)vectortest
-	@- $(TEST) scanner $(BIN)scannertest
-	@- $(TEST) parser $(BIN)parsertest
-	@- $(TEST) ast $(BIN)asttest
-	@- $(TEST) sem $(BIN)semtest
-	@- $(TEST) backend "$(BIN)backendtest -r"
+
+$(SIMPLE): build
+	@- $(TEST) $@ $(BIN)$@test
+
+backend: build
+	@- $(CP) ../bin/aria bin/backendtest
+	@- $(TEST) $@ "$(BIN)$@test -r"
 	@- sh test.sh backend -r
 
 build: aria
 	$(MKDIR) $(BIN)
 	cd src && $(MAKE)
+	$(CLEAR)
 
 aria:
 	cd .. && $(MAKE)

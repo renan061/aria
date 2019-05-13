@@ -156,11 +156,32 @@ Definition* symtable_find(SymbolTable* table, Id* id) {
     return found;
 }
 
+// // TODO: remove
+// static void printbits(Bitmap n) {
+//     while (n) {
+//         printf((n & 1) ? "1" : "0");
+//         n >>= 1;
+//     }
+//     printf("\n");
+// }
+
 bool symtable_insert(SymbolTable* table, Definition* definition) {
-    if (finddefinition(table->top_scope, definitionstring(definition))) {
-        return false; // repetition
+    Definition* found = finddefinition(
+        table->top_scope, definitionstring(definition)
+    );
+
+    if (found) { // repetition
+        // TODO: gambiarra
+        if (definition->tag == DECLARATION_FUNCTION ||
+            definition->tag == DEFINITION_FUNCTION  ||
+            definition->tag == DEFINITION_METHOD)   {
+            Bitmap bm1 = found->function.qualifiers & ~FQ_PRIVATE;
+            Bitmap bm2 = definition->function.qualifiers & ~FQ_PRIVATE;
+            return bm1 != bm2;
+        }
+        return false;
     }
-    
+
     Symbol* symbol;
     MALLOC(symbol, Symbol);
     symbol->next = table->top_scope->first_symbol;

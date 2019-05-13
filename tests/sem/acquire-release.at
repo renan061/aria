@@ -1,8 +1,32 @@
 --------------------------------------------------------------------------------
 -- Title
+Ok
+-- Input
+monitor M {
+    initializer {}
+    function acquire f {}
+    function release f {}
+    private function acquire g {}
+    private function release g {}
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function acquire f(value self: M): Void {
+    }
+    function release f(value self: M): Void {
+    }
+    private function acquire g(value self: M): Void {
+    }
+    private function release g(value self: M): Void {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
 Trying to define an acquire function outside a monitor definition
 -- Input
-function acquire foo {}
+function acquire f {}
 -- Output
 line 1:
     semantic error: private and acquire-release functions must be defined inside a monitor
@@ -10,19 +34,27 @@ line 1:
 -- Title
 Trying to define a release function outside a monitor definition
 -- Input
-function release foo {}
+function release f {}
 -- Output
 line 1:
     semantic error: private and acquire-release functions must be defined inside a monitor
 --------------------------------------------------------------------------------
 -- Title
-An acquire-release pair of functions must be defined inside the same monitor with the same name
+An acquire-release pair must be defined together with the same name (1)
 -- Input
 monitor M {
     initializer {}
+    function acquire f {}
 }
 -- Output
+error
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must be defined together with the same name (2)
+-- Input
 monitor M {
-    function M: M {
-    }
+    initializer {}
+    function release f {}
 }
+-- Output
+error
