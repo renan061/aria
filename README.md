@@ -12,6 +12,7 @@ Lex (Flex), Yacc (Bison), LLVM (LLVM C API) & POSIX Threads.
 The acquire-release pair of functions' rules:
 
     1. Must be defined together, with the same name, and using the keywords.
+        - Ensured by the semantic analysis.
     2. Must be defined inside a monitor.
         - Ensured by the semantic analysis.
     3. The acquire function must always return a monitor instance.
@@ -23,3 +24,4 @@ Notes:
     1. An acquire or release function can't be private.
         - Why?
         - I would say both have to be private or both have to be non-private.
+            - Ensured by the semantic analysis.

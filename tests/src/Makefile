@@ -18,7 +18,7 @@ CFLAGS= -O2 -Wall -Werror -std=gnu11 $(LLVM_INCLUDEDIR) -I$(SRC)
 # Objects.
 OBJS= vector_test.o scanner_test.o parser_test.o ast_test.o sem_test.o
 
-VECTOR_OBJS= errs.o vector.o
+VECTOR_OBJS= errs.o vector.o list.o
 SCANNER_OBJS= $(VECTOR_OBJS) scanner.o bison.o ast.o
 PARSER_OBJS= $(SCANNER_OBJS)
 AST_OBJS= $(SCANNER_OBJS)

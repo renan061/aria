@@ -242,6 +242,7 @@ static void semfunction(SS*, Definition*);
 static void semstructure(SS*, Definition*);
 static bool functionequals(Definition*, Definition*);
 static void interfacecheck(SS*, Type*, Type*);
+static ListValue armatch(ListValue, ListValue);
 
 static void sem_definition(SS* ss, Definition* def) {
     switch (def->tag) {
@@ -425,59 +426,6 @@ static void semfunction(SS* ss, Definition* def) {
     ss->return_ = NULL;
 }
 
-// // TODO: remove
-// void print_method(ListValue value) {
-//     Definition* d = (Definition*) value;
-
-//     Bitmap q = d->function.qualifiers;
-//     if ((q & FQ_PRIVATE) == FQ_PRIVATE) {
-//             printf("private ");
-//         }
-
-//         assert(d->function.id);
-//         printf("function ");
-//         if ((q & FQ_ACQUIRE) == FQ_ACQUIRE) {
-//             printf("acquire ");
-//         } else if ((q & FQ_RELEASE) == FQ_RELEASE) {
-//             printf("release ");
-//         }
-//         printf("%s", d->function.id->name);
-
-//         if (d->function.parameters) {
-//             printf("(");
-//             for (Definition* p = d->function.parameters; p;) {
-//                 printf("*");
-//                 if ((p = p->next)) {
-//                     printf(", ");
-//                 }
-//             }
-//             printf(")");
-//         }
-//         if (d->function.type) {
-//             printf(": *");
-//         }
-// }
-
-// auxiliary - called inside function `semstructure`
-// compares function definitions and checks if they are an acquire-release pair
-static ListValue armatch(ListValue x, ListValue y) {
-    Definition* a = (Definition*) x;
-    Definition* b = (Definition*) y;
-    if (a->function.id->name != b->function.id->name) { // different names
-        return NULL;
-    }
-
-    Bitmap am = a->function.qualifiers;
-    Bitmap bm = b->function.qualifiers;
-    if ((am & FQ_PRIVATE) != (bm & FQ_PRIVATE) || // incompatible `private` tag
-        (am & FQ_ACQUIRE) == (bm & FQ_ACQUIRE) || // bot are `acquire`
-        (am & FQ_RELEASE) == (bm & FQ_RELEASE)) { // both are `release`
-        return NULL;
-    }
-
-    return x;
-}
-
 // auxiliary - interface, structures and monitors
 static void semstructure(SS* ss, Definition* def) {
     def->type->structure.attributes_size = 0;
@@ -643,6 +591,26 @@ static void interfacecheck(SS* ss, Type* interface, Type* type) {
             TODOERR(type->structure.id->line, "interface not implemented");
         }
     }
+}
+
+// auxiliary - called inside function `semstructure`
+// compares function definitions and checks if they are an acquire-release pair
+static ListValue armatch(ListValue x, ListValue y) {
+    Definition* a = (Definition*) x;
+    Definition* b = (Definition*) y;
+    if (a->function.id->name != b->function.id->name) { // different names
+        return NULL;
+    }
+
+    Bitmap am = a->function.qualifiers;
+    Bitmap bm = b->function.qualifiers;
+    if ((am & FQ_PRIVATE) != (bm & FQ_PRIVATE) || // incompatible `private` tag
+        (am & FQ_ACQUIRE) == (bm & FQ_ACQUIRE) || // bot are `acquire`
+        (am & FQ_RELEASE) == (bm & FQ_RELEASE)) { // both are `release`
+        return NULL;
+    }
+
+    return x;
 }
 
 // ==================================================
