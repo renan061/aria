@@ -86,6 +86,7 @@ end
 local directory = assert(arg[1], "must provide a directory")
 local binary = assert(arg[2], "must provide a binary")
 
+local i = 0
 for _, test in ipairs(listTests(directory)) do
     local testCases = readTestCases(test)
     for title, case in pairs(testCases) do
@@ -93,8 +94,9 @@ for _, test in ipairs(listTests(directory)) do
             io.write("\nIn \"" .. test .. "\" failed [" .. title .. "]\n")
             return false
         end
+        i = i + 1
     end
 end
 
-io.write("Ok " .. directory .. "\n")
+io.write("Ok ".. directory .. " [".. i .." tests]\n")
 return true

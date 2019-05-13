@@ -16,8 +16,12 @@ The acquire-release pair of functions' rules:
     2. Must be defined inside a monitor.
         - Ensured by the semantic analysis.
     3. The acquire function must always return a monitor instance.
+        - Ensured by the semantic analysis.
     4. An acquire function can't be called without the acquire-value statement.
+        - Ensured by the semantic analysis.
     6. A release function can't be explicitly called.
+        - Ensured by the semantic analysis.
+        - TODO: findmethod to receive special flag parameter?
 
 Notes:
     

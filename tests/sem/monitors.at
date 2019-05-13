@@ -15,22 +15,24 @@ line 2:
 Monitor functions can only have parameters with safe types
 -- Input
 monitor M {
+    initializer {}
     function f(array: [String]) {
         // ...
     }
 }
 -- Output
-line 2:
+line 3:
     semantic error: parameters of monitor functions need to have safe types
 --------------------------------------------------------------------------------
 -- Title
 Monitor functions can only return safe types
 -- Input
 monitor M {
+    initializer {}
     function f: [String] {
         return ["unsafe"];
     }
 }
 -- Output
-line 2:
+line 3:
     semantic error: a monitor's function can only return immutable or monitor types

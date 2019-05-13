@@ -242,6 +242,7 @@ static void semfunction(SS*, Definition*);
 static void semstructure(SS*, Definition*);
 static bool functionequals(Definition*, Definition*);
 static void interfacecheck(SS*, Type*, Type*);
+static void acquirecheck(Definition*);
 static ListValue armatch(ListValue, ListValue);
 
 static void sem_definition(SS* ss, Definition* def) {
@@ -354,11 +355,6 @@ static void sem_definition_method(SS* ss, Definition* def) {
         err_redeclaration(def->function.id);
     }
 
-    // checks if the function's return type is safe
-    if (!safetype(def->function.type)) {
-        err_monitor_function_type(def->function.id->line);
-    }
-
     // gets the function's return type from the symbol table
     linktype(ss->table, &def->function.type);
 
@@ -446,7 +442,7 @@ static void semstructure(SS* ss, Definition* def) {
     }
 
     // FIXME: still possible to call a structure function from inside structure
-    // functions without adding "self." or "dog."
+    //        functions without adding "self." or "dog."
     // functions
     FOREACH(Definition, d, def->type->structure.definitions) {
         switch (d->tag) {
@@ -457,6 +453,9 @@ static void semstructure(SS* ss, Definition* def) {
             case DEFINITION_METHOD:
                 sem_definition(ss, d);
                 def->type->structure.methods_size++;
+                if (d->function.qualifiers & FQ_ACQUIRE) {
+                    acquirecheck(d);
+                }
                 break;
             case DEFINITION_CONSTRUCTOR:
                 def->type->structure.constructor = d;
@@ -493,11 +492,17 @@ static void semstructure(SS* ss, Definition* def) {
         case DEFINITION_CAPSA:
             def->type->structure.attributes[i_attributes++] = d;
             break;
+        case DEFINITION_METHOD:
+            // checks if all methods return types are safe (can't be placed
+            // inside `sem_definition_method` in case one of the methods returns
+            // the current monitor type)
+            if (!safetype(d->function.type)) {
+                err_monitor_function_type(d->function.id->line);
+            }
+            // fallthrough
         case DECLARATION_FUNCTION:
             // fallthrough
         case DEFINITION_FUNCTION:
-            // fallthrough
-        case DEFINITION_METHOD:
             def->type->structure.methods[i_methods] = d;
             d->function.vmt_index = i_methods++;
             break;
@@ -590,6 +595,15 @@ static void interfacecheck(SS* ss, Type* interface, Type* type) {
             // TODO: "<name> does not implement interface <name>"
             TODOERR(type->structure.id->line, "interface not implemented");
         }
+    }
+}
+
+// checks if the acquire function returns a monitor type
+static void acquirecheck(Definition* method) {
+    if (method->function.type->tag != TYPE_MONITOR) {
+        TODOERR(method->function.id->line,
+            "an acquire function must always return a monitor type"
+        );
     }
 }
 
@@ -1167,9 +1181,9 @@ static void semliteralarray(Expression* e) {
 //
 // ==================================================
 
-// TODO: Doc
-// TODO: Currently checking only the first matching method
-// TODO: Currently no overloading
+// TODO: doc
+// TODO: currently checking only the first matching method
+// TODO: currently no overloading
 static Definition* findmethod(FunctionCall* call) {
     Definition* method_definition = NULL;
     Type* structure = call->instance->type;
@@ -1220,7 +1234,7 @@ static void sem_function_call(SS* state, FunctionCall* call) {
             err_function_call_misuse(call->id);
         }
 
-        // Implicit self for method calls inside monitors
+        // implicit self for method calls inside monitors
         if (call->function_definition->tag == DEFINITION_METHOD) {
             assert(insidemonitor(state));
             PREPEND(Expression,
@@ -1233,10 +1247,9 @@ static void sem_function_call(SS* state, FunctionCall* call) {
         free(call->id);
         call->id = NULL;
 
-        // Can't call non-safe functions from inside a monitor
+        // can't call non-safe functions from inside a monitor
         if (insidemonitor(state) && !safetype(call->type)) {
-            TODOERR(
-                call->line,
+            TODOERR(call->line,
                 "can't call a function that returns a "
                 "non-safe type from inside a monitor"
             );
@@ -1251,10 +1264,18 @@ static void sem_function_call(SS* state, FunctionCall* call) {
             call->instance->type->tag == TYPE_ARRAY) {
             err_function_call_no_monitor(call->line);
         }
-        // OBS: Instance type is already linked
+        // OBS: instance type is already linked
 
         // finding the function definition in the monitor
         call->function_definition = findmethod(call);
+        if (call->function_definition->function.qualifiers & FQ_ACQUIRE ||
+            call->function_definition->function.qualifiers & FQ_RELEASE) {
+            TODOERR(call->line,
+                "an acquire function can't be called "
+                "without the acquire-value statement"
+            );
+        }
+
         // prepending self to arguments
         PREPEND(Expression, call->arguments, call->instance);
         if (call->arguments->next) {
