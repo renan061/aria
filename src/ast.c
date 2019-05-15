@@ -418,6 +418,17 @@ Statement* ast_statement_spawn(Line ln, Block* block) {
     return statement;
 }
 
+Statement* ast_statement_acquire_value(Line ln, Definition* v, Block* b) {
+    assert(b->tag == BLOCK);
+    Statement* statement;
+    MALLOC(statement, Statement);
+    statement->tag = STATEMENT_ACQUIRE_VALUE;
+    statement->line = ln;
+    statement->acquire_value.value = v;
+    statement->acquire_value.block = b;
+    return statement;
+}
+
 Statement* ast_statement_block(Block* block) {
     assert(block->tag == BLOCK);
     Statement* statement;

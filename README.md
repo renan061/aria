@@ -9,19 +9,33 @@ Lex (Flex), Yacc (Bison), LLVM (LLVM C API) & POSIX Threads.
 
 ## Extending Monitors
 
-The acquire-release pair of functions' rules:
-
     1. Must be defined together, with the same name, and using the keywords.
         - Ensured by the semantic analysis.
+
     2. Must be defined inside a monitor.
         - Ensured by the semantic analysis.
+
     3. The acquire function must always return a monitor instance.
         - Ensured by the semantic analysis.
+
     4. An acquire function can't be called without the acquire-value statement.
         - Ensured by the semantic analysis.
+
     6. A release function can't be explicitly called.
         - Ensured by the semantic analysis.
         - TODO: findmethod to receive special flag parameter?
+
+    7. A syntax block delimited by an acquire-value statement must not return
+       from its enclosing function.
+        - Ensured by the semantic analysis.
+    
+    8. An acquire-value statement can only call `acquire` functions.
+        - Ensured by the semantic analysis.
+
+    9. The scoped value is of type `Unlocked A`.
+
+    10. Monitors in Aria natively provide an acquire-release pair of functions
+       called unlocked.
 
 Notes:
     

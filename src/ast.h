@@ -49,7 +49,6 @@ typedef enum TypeTag {
 
 typedef enum BlockTag {
     BLOCK,
-    BLOCK_DECLARATION,
     BLOCK_DEFINITION,
     BLOCK_STATEMENT
 } BlockTag;
@@ -66,6 +65,7 @@ typedef enum StatementTag {
     STATEMENT_WHILE,
     STATEMENT_FOR,
     STATEMENT_SPAWN,
+    STATEMENT_ACQUIRE_VALUE,
     STATEMENT_BLOCK
 } StatementTag;
 
@@ -234,6 +234,11 @@ struct Statement {
         } for_;
         // StatementSpawn
         FunctionCall* spawn;
+        // StatementAcquireValue
+        struct {
+            Definition* value; // scoped value
+            Block* block;
+        } acquire_value;
         // StatementBlock
         Block* block;
     };
@@ -371,6 +376,7 @@ extern Statement* ast_statement_while(Line, Expression*, Block*);
 extern Statement* ast_statement_for(Line, Definition*, Expression*, Statement*,
     Block*);
 extern Statement* ast_statement_spawn(Line, Block*);
+extern Statement* ast_statement_acquire_value(Line, Definition*, Block*);
 extern Statement* ast_statement_block(Block*);
 
 extern Capsa* ast_capsa_id(Id*);

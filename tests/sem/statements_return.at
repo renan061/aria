@@ -90,13 +90,55 @@ line 3:
     semantic error: can't return inside a spawn block
 --------------------------------------------------------------------------------
 -- Title
-Returning from inside an acquire-value block
+Can't return from inside an acquire-value block
 -- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
 function main {
-    acquire value m = m.unlocked() {
+    value m = M();
+    acquire value m = m.f() {
         return;
     }
 }
 -- Output
-line 0:
-    parser error: syntax error
+line 9:
+    semantic error: can't return inside an acquire-value block
+--------------------------------------------------------------------------------
+-- Title
+Checking returns from other functions called inside an acquire-value block
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function g {
+    return;
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {
+        g();
+    }
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function acquire f(value self: M): M {
+    }
+    function release f(value self: M): Void {
+    }
+}
+function g: Void {
+    return
+}
+function main: Void {
+    value m: M = (M(): M)
+    acquire value m: M = ((m: M).f((m: M)): M) {
+        g(): Void
+    }
+}

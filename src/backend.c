@@ -773,10 +773,12 @@ static void backend_statement(IRState* irs, Statement* statement) {
         position_builder(irs, bend);
         break;
     }
-    case STATEMENT_SPAWN: {
+    case STATEMENT_SPAWN:
         todospawn(irs, statement->spawn);
         break;
-    }
+    case STATEMENT_ACQUIRE_VALUE:
+        // TODO: UNREACHABLE;
+        break;
     case STATEMENT_BLOCK:
         backend_block(irs, statement->block);
         break;

@@ -205,7 +205,7 @@ static void print_ast_block(Block* block) {
             printf("\n");
             break;
         default:
-            assert(b->tag != BLOCK);
+            UNREACHABLE;
         }
     }
 }
@@ -304,6 +304,12 @@ static void print_ast_statement(Statement* statement) {
         printf(")");
         break;
     }
+    case STATEMENT_ACQUIRE_VALUE:
+        printf("acquire ");
+        print_ast_definition(statement->acquire_value.value);
+        printf(" ");
+        print_ast_block(statement->acquire_value.block);
+        break;
     case STATEMENT_BLOCK:
         print_ast_block(statement->block);
         break;

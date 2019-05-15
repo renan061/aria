@@ -103,7 +103,7 @@
     expression_list0 expression_list1
     expression primary_expression literal
 %type <function_call>
-    function_call
+    function_call method_call
 
 // operator precedence and associativity
 %left       <ival> TK_OR
@@ -477,6 +477,16 @@ compound_statement
         {
             $$ = ast_statement_spawn($1, $2);
         }
+    | TK_ACQUIRE TK_VALUE TK_LOWER_ID '=' method_call block
+        {
+            // TODO: change this to allow `foo().method()` where `foo()`
+            //       returns a monitor
+            Capsa* capsa = ast_capsa_id($3);
+            capsa->value = true;
+            Expression* expression = ast_expression_function_call($5);
+            Definition* value = ast_definition_capsa(capsa, expression);
+            $$ = ast_statement_acquire_value($1, value, $6);
+        }
     | block
         {
             $$ = ast_statement_block($1);
@@ -694,14 +704,20 @@ literal
 //
 // ==================================================
 
+method_call
+    : primary_expression '.' TK_LOWER_ID '(' expression_list0 ')'
+        {
+            $$ = ast_call_method($4, $1, $3, $5);
+        }
+
 function_call
     : TK_LOWER_ID '(' expression_list0 ')'
         {
             $$ = ast_call($2, $1, $3);
         }
-    | primary_expression '.' TK_LOWER_ID '(' expression_list0 ')'
+    | method_call
         {
-            $$ = ast_call_method($4, $1, $3, $5);
+            $$ = $1;
         }
     | type '(' expression_list0 ')'
         {

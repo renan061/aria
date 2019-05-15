@@ -52,6 +52,13 @@ typedef struct SemanticState {
     // <true> if currently analysing a monitor's initializer, <false> otherwise
     bool initializer;
 
+    // <true> if can call an acquire function, <false> otherwise
+    bool can_acquire;
+
+    // <true> if currently analysing an acquire-value statement, <false>
+    // otherwise (switches to <false> when jumps to a function call)
+    bool acquire_value;
+
     // the spawn scope if currently analysing a spawn block, NULL otherwise
     struct {
         Scope* scope;
@@ -159,6 +166,7 @@ void sem_analyse(AST* ast) {
         /* current monitor      */ NULL,
         /* return type          */ NULL,
         /* inside initializer   */ false,
+        /* inside acquire-value */ false,
     };
     ss.spawn.scope = NULL;
     ss.spawn.function_call = NULL;
@@ -186,6 +194,8 @@ void sem_analyse(AST* ast) {
     assert(!ss.structure);
     assert(!ss.return_);
     assert(!ss.initializer);
+    assert(!ss.can_acquire);
+    assert(!ss.acquire_value);
     assert(!ss.spawn.scope);
     assert(!ss.spawn.function_call);
 }
@@ -285,6 +295,11 @@ static void sem_definition(SS* ss, Definition* def) {
 static void sem_definition_capsa(SS* ss, Definition* def) {
     Capsa* capsa = def->capsa.capsa;
 
+    // checkes if it's a definition
+    if (def->capsa.expression) {
+        sem_expression(ss, def->capsa.expression);
+    }
+
     // checks if the variable is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(capsa->id);
@@ -297,7 +312,6 @@ static void sem_definition_capsa(SS* ss, Definition* def) {
 
     // deals with the variable's definition and it's type inference (if any)
     if (def->capsa.expression) {
-        sem_expression(ss, def->capsa.expression);
         assignment(capsa, &def->capsa.expression);
         if (capsa->global && !safetype(capsa->type)) {
             TODOERR(capsa->line, "global values must have safe types");
@@ -680,7 +694,7 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
         }
     }
 
-    // TODO: this is messy (define lambdas someday)
+    // TODO: this is messy [and wrong] (define lambdas someday)
     if (from_outside_spawn_scope && !capsa->global) {
         FunctionCall* call = state->spawn.function_call;
         Definition* function = call->function_definition;
@@ -792,6 +806,7 @@ static void sem_statement_if_else(SS*, Statement*);
 static void sem_statement_while(SS*, Statement*);
 static void sem_statement_for(SS*, Statement*);
 static void sem_statement_spawn(SS*, Statement*);
+static void sem_statement_acquire_value(SS*, Statement*);
 static void sem_statement_block(SS*, Statement*);
 
 static void sem_statement(SS* ss, Statement* stmt) {
@@ -828,6 +843,9 @@ static void sem_statement(SS* ss, Statement* stmt) {
         break;
     case STATEMENT_SPAWN:
         sem_statement_spawn(ss, stmt);
+        break;
+    case STATEMENT_ACQUIRE_VALUE:
+        sem_statement_acquire_value(ss, stmt);
         break;
     case STATEMENT_BLOCK:
         sem_statement_block(ss, stmt);
@@ -911,6 +929,10 @@ static void sem_statement_return(SS* ss, Statement* stmt) {
     if (ss->spawn.scope) {
         err_return_inside_spawn(stmt->line);
     }
+    // can't return inside an acquire-value block
+    if (ss->acquire_value) {
+        TODOERR(stmt->line, "can't return inside an acquire-value block");
+    }
     // can't return an expression inside an initializer
     if (ss->initializer) {
         if (stmt->return_) {
@@ -989,6 +1011,32 @@ static void sem_statement_spawn(SS* ss, Statement* stmt) {
 
     ss->spawn.scope = previous_spawn_scope;
     ss->spawn.function_call = previous_spawn_function_call;
+}
+
+static void sem_statement_acquire_value(SS* ss, Statement* stmt) {
+    bool previous;
+
+    symtable_enter_scope(ss->table);
+
+    previous = ss->can_acquire;
+    ss->can_acquire = true;
+    sem_definition(ss, stmt->acquire_value.value);
+    ss->can_acquire = previous;
+
+    Expression* e = stmt->acquire_value.value->capsa.expression;
+    Bitmap bm = e->function_call->function_definition->function.qualifiers;
+    if (!(bm & FQ_ACQUIRE)) {
+        TODOERR(stmt->line,
+            "an acquire-value statement can only call acquire functions"
+        );
+    }
+
+    previous = ss->acquire_value;
+    ss->acquire_value = true;
+    sem_block(ss, stmt->acquire_value.block);
+    ss->acquire_value = previous;
+
+    symtable_leave_scope(ss->table);
 }
 
 static void sem_statement_block(SS* ss, Statement* stmt) {
@@ -1184,7 +1232,7 @@ static void semliteralarray(Expression* e) {
 // TODO: doc
 // TODO: currently checking only the first matching method
 // TODO: currently no overloading
-static Definition* findmethod(FunctionCall* call) {
+static Definition* findmethod(FunctionCall* call, Bitmap mask) {
     Definition* method_definition = NULL;
     Type* structure = call->instance->type;
 
@@ -1193,6 +1241,9 @@ static Definition* findmethod(FunctionCall* call) {
             if (d->function.id->name == call->id->name) {
                 if ((d->function.qualifiers & FQ_PRIVATE) == FQ_PRIVATE) {
                     err_function_call_private(call->line, call->id, structure);
+                }
+                if (d->function.qualifiers & FQ_RELEASE) {
+                    continue;
                 }
                 method_definition = d;
                 break;
@@ -1258,6 +1309,7 @@ static void sem_function_call(SS* state, FunctionCall* call) {
         break;
     case FUNCTION_CALL_METHOD:
         sem_expression(state, call->instance);
+        assert(call->instance->type);
         // TODO: interfaces and structures
         if (call->instance->type->tag == TYPE_VOID ||
             call->instance->type->tag == TYPE_ID ||
@@ -1267,9 +1319,10 @@ static void sem_function_call(SS* state, FunctionCall* call) {
         // OBS: instance type is already linked
 
         // finding the function definition in the monitor
-        call->function_definition = findmethod(call);
-        if (call->function_definition->function.qualifiers & FQ_ACQUIRE ||
-            call->function_definition->function.qualifiers & FQ_RELEASE) {
+        call->function_definition = findmethod(call, 0 /* TODO: this mask */);
+        if ((call->function_definition->function.qualifiers & FQ_ACQUIRE ||
+            call->function_definition->function.qualifiers & FQ_RELEASE) &&
+            !state->can_acquire) {
             TODOERR(call->line,
                 "an acquire function can't be called "
                 "without the acquire-value statement"

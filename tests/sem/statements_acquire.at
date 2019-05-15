@@ -1,0 +1,83 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    value m = M();
+    // TODO: should be type Unlocked M
+    acquire value m = m.f() {
+        // ...
+    }
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function acquire f(value self: M): M {
+    }
+    function release f(value self: M): Void {
+    }
+}
+function main: Void {
+    value m: M = (M(): M)
+    acquire value m: M = ((m: M).f((m: M)): M) {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+An acquire-value statement can only call "acquire" functions
+-- Input
+monitor M {
+    initializer {}
+    function f: M {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {}
+}
+-- Output
+line 7:
+    semantic error: an acquire-value statement can only call acquire functions
+--------------------------------------------------------------------------------
+-- Title
+Can't return from inside an acquire-value block
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {
+        return;
+    }
+}
+-- Output
+line 9:
+    semantic error: can't return inside an acquire-value block
+--------------------------------------------------------------------------------
+-- Title
+Can't return from nested acquire-value blocks
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {
+        acquire value m = m.f() {
+        }
+        return;
+    }
+}
+-- Output
+line 11:
+    semantic error: can't return inside an acquire-value block
