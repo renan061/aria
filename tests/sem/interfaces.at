@@ -48,24 +48,36 @@ interface Dog {
     function catch(ball: Integer);
     function bark: String;
 }
-monitor Monitor: Dog {
+monitor M: Dog {
     function catch(ball: Integer) {}
     function bark: String { return "Woof!"; }
     initializer {}
+}
+function main {
+    value m = M();
+    value dog = m as Dog;
+    dog.catch(5);
+    dog.bark();
 }
 -- Output
 interface Dog {
     function catch(value self: Dog, value ball: Integer): Void;
     function bark(value self: Dog): String;
 }
-monitor Monitor: Dog {
-    function catch(value self: Monitor, value ball: Integer): Void {
+monitor M: Dog {
+    function catch(value self: M, value ball: Integer): Void {
     }
-    function bark(value self: Monitor): String {
+    function bark(value self: M): String {
         return ("Woof!": String)
     }
-    function Monitor: Monitor {
+    function M: M {
     }
+}
+function main: Void {
+    value m: M = (M(): M)
+    value dog: Dog = ((m: M) as: Dog)
+    (dog: Dog).catch((dog: Dog), (5: Integer)): Void
+    (dog: Dog).bark((dog: Dog)): String
 }
 --------------------------------------------------------------------------------
 -- Title

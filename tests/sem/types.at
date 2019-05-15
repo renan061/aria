@@ -30,7 +30,7 @@ line 1:
     semantic error: unknown type 'T'
 --------------------------------------------------------------------------------
 -- Title
-Unknown type (structure constructor call)
+Unknown type (constructor call)
 -- Input
 function main {
     value a = T();
@@ -98,3 +98,23 @@ function main {
 -- Output
 line 2:
     semantic error: type error (expected '[String]', got 'Immutable [String]')
+--------------------------------------------------------------------------------
+-- Title
+ConditionQueue constructor has no parameters (1)
+-- Input
+function main {
+    value queue = ConditionQueue(1);
+}
+-- Output
+line 2:
+    semantic error: ConditionQueue constructor has no parameters
+--------------------------------------------------------------------------------
+-- Title
+ConditionQueue constructor has no parameters (2)
+-- Input
+function main {
+    value queue = ConditionQueue(false, "string");
+}
+-- Output
+line 2:
+    semantic error: ConditionQueue constructor has no parameters

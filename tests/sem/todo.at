@@ -1,5 +1,35 @@
 --------------------------------------------------------------------------------
 -- Title
+Calling an interface type (assertion fail)
+-- Input
+// interface I {}
+function main {
+    // value i = I();
+}
+-- Output
+function main: Void {
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor with more than one initializer (Segmentation Fault)
+-- Input
+monitor M {
+    initializer {}
+    // initializer {}
+}
+function main {
+    value m = M();
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+function main: Void {
+    value m: M = (M(): M)
+}
+--------------------------------------------------------------------------------
+-- Title
 Should detect lack of return statement
 -- Input
 function f: Boolean {

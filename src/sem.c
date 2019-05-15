@@ -95,9 +95,7 @@ static bool equatabletype(Type*);
 static bool safetype(Type*);
 
 // TODO
-// static void freetype(Type*);
 static void freetypeid(Type*);
-// static void freetypearray(Type*);
 
 // Auxiliary functions that deal with errors
 static void err_redeclaration(Id*);
@@ -252,6 +250,7 @@ static void semfunction(SS*, Definition*);
 static void semstructure(SS*, Definition*);
 static bool functionequals(Definition*, Definition*);
 static void interfacecheck(SS*, Type*, Type*);
+static void prependself(SS*, Definition*);
 static void acquirecheck(Definition*);
 static ListValue armatch(ListValue, ListValue);
 
@@ -317,17 +316,6 @@ static void sem_definition_capsa(SS* ss, Definition* def) {
             TODOERR(capsa->line, "global values must have safe types");
         }
     }
-}
-
-// TODO: move
-// auxiliary
-// adds <self> as the first parameter to the function
-static void prependself(SS* ss, Definition* def) {
-    Line line = def->function.id->line;
-    Capsa* self = astself(line);
-    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
-    Definition* self_definition = ast_definition_capsa(self, NULL);
-    PREPEND(Definition, def->function.parameters, self_definition);
 }
 
 static void sem_declaration_function(SS* ss, Definition* def) {
@@ -610,6 +598,15 @@ static void interfacecheck(SS* ss, Type* interface, Type* type) {
             TODOERR(type->structure.id->line, "interface not implemented");
         }
     }
+}
+
+// auxiliary - adds <self> as the first parameter to the function
+static void prependself(SS* ss, Definition* def) {
+    Line line = def->function.id->line;
+    Capsa* self = astself(line);
+    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
+    Definition* self_definition = ast_definition_capsa(self, NULL);
+    PREPEND(Definition, def->function.parameters, self_definition);
 }
 
 // checks if the acquire function returns a monitor type
@@ -1047,13 +1044,17 @@ static void sem_statement_block(SS* ss, Statement* stmt) {
 
 // ==================================================
 //
-//  TODO
+//  Expression
 //
 // ==================================================
 
 static void sem_expression_literal_array(SS*, Expression*);
+static void sem_expression_unary(SS*, Expression*);
+static void sem_expression_binary(SS*, Expression*);
+
 static void sem_expression_unary_minus(SS*, Expression*);
 static void sem_expression_unary_not(SS*, Expression*);
+
 static void sem_expression_binary_logic(SS*, Expression*);
 static void sem_expression_binary_equality(SS*, Expression*);
 static void sem_expression_binary_inequality(SS*, Expression*);
@@ -1087,37 +1088,10 @@ static void sem_expression(SS* ss, Expression* exp) {
         exp->type = exp->function_call->type;
         break;
     case EXPRESSION_UNARY:
-        sem_expression(ss, exp->unary.expression);
-        switch (exp->unary.token) {
-        case '-':
-            sem_expression_unary_minus(ss, exp);    
-            break;
-        case TK_NOT:
-            sem_expression_unary_not(ss, exp);
-            break;
-        default:
-            UNREACHABLE;
-        }
+        sem_expression_unary(ss, exp);
         break;
     case EXPRESSION_BINARY:
-        sem_expression(ss, exp->binary.left_expression);
-        sem_expression(ss, exp->binary.right_expression);
-        switch (exp->binary.token) {
-        case TK_OR: case TK_AND:
-            sem_expression_binary_logic(ss, exp);
-            break;
-        case TK_EQUAL: case TK_NEQUAL:
-            sem_expression_binary_equality(ss, exp);
-            break;
-        case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
-            sem_expression_binary_inequality(ss, exp);
-            break;
-        case '+': case '-': case '*': case '/':
-            sem_expression_binary_arithmetic(ss, exp);
-            break;
-        default:
-            UNREACHABLE;
-        }
+        sem_expression_binary(ss, exp);
         break;
     case EXPRESSION_CAST:
         sem_expression(ss, exp->cast);
@@ -1145,6 +1119,41 @@ static void sem_expression_literal_array(SS* ss, Expression* exp) {
         FOREACH(Expression, e, exp->literal.array) {
             semliteralarray(e);
         }
+    }
+}
+
+static void sem_expression_unary(SS* ss, Expression* exp) {
+    sem_expression(ss, exp->unary.expression);
+    switch (exp->unary.token) {
+    case '-':
+        sem_expression_unary_minus(ss, exp);    
+        break;
+    case TK_NOT:
+        sem_expression_unary_not(ss, exp);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+static void sem_expression_binary(SS* ss, Expression* exp) {
+    sem_expression(ss, exp->binary.left_expression);
+    sem_expression(ss, exp->binary.right_expression);
+    switch (exp->binary.token) {
+    case TK_OR: case TK_AND:
+        sem_expression_binary_logic(ss, exp);
+        break;
+    case TK_EQUAL: case TK_NEQUAL:
+        sem_expression_binary_equality(ss, exp);
+        break;
+    case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
+        sem_expression_binary_inequality(ss, exp);
+        break;
+    case '+': case '-': case '*': case '/':
+        sem_expression_binary_arithmetic(ss, exp);
+        break;
+    default:
+        UNREACHABLE;
     }
 }
 
@@ -1225,29 +1234,261 @@ static void semliteralarray(Expression* e) {
 
 // ==================================================
 //
-//  TODO
+//  FunctionCall
 //
 // ==================================================
 
-// TODO: doc
-// TODO: currently checking only the first matching method
-// TODO: currently no overloading
+static void sem_function_call_basic(SS*, FunctionCall*);
+static void sem_function_call_method(SS*, FunctionCall*);
+static void sem_function_call_constructor(SS*, FunctionCall*);
+
+static void sem_function_call_constructor_native(SS*, FunctionCall*);
+static void sem_function_call_constructor_array(SS*, FunctionCall*);
+static void sem_function_call_constructor_monitor(SS*, FunctionCall*);
+
+static bool nativefunction(SS*, FunctionCall*);
+static void checkarguments(SS*, FunctionCall*);
+static Definition* findmethod(FunctionCall*, Bitmap);
+
+#define countarguments(fc) do { \
+    fc->argument_count = 0; \
+    FOREACH(Expression, e, fc->arguments) { \
+        fc->argument_count++; \
+    } \
+} while (0); \
+
+static void sem_function_call(SS* ss, FunctionCall* call) {
+    switch (call->tag) {
+    case FUNCTION_CALL_BASIC:
+        sem_function_call_basic(ss, call);
+        break;
+    case FUNCTION_CALL_METHOD:
+        sem_function_call_method(ss, call);
+        break;
+    case FUNCTION_CALL_CONSTRUCTOR:
+        sem_function_call_constructor(ss, call);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+static void sem_function_call_basic(SS* ss, FunctionCall* call) {
+    if (nativefunction(ss, call)) {
+        return;
+    }
+
+    // looks for the function definition in the table of symbols
+    call->function_definition = symtable_find(ss->table, call->id);
+    if (!call->function_definition) {
+        err_function_call_unknown(call->id);
+    }
+    call->type = call->function_definition->function.type;
+
+    // checks for calls over types that are not functions
+    DefinitionTag tag = call->function_definition->tag;
+    if (tag != DEFINITION_FUNCTION && tag != DEFINITION_METHOD) {
+        err_function_call_misuse(call->id);
+    }
+
+    // prepends <self> for method calls inside monitors
+    if (call->function_definition->tag == DEFINITION_METHOD) {
+        assert(insidemonitor(ss));
+        PREPEND(Expression,
+            call->arguments,
+            ast_expression_capsa(astself(call->line))
+        );
+    }
+
+    // frees <call->id>
+    // <call->type> already contains the id with the function's name
+    free(call->id);
+    call->id = NULL;
+
+    // checks for non-safe function calls inside a monitor
+    if (insidemonitor(ss) && !safetype(call->type)) {
+        TODOERR(call->line,
+            "can't call a function that returns a "
+            "non-safe type from inside a monitor"
+        );
+    }
+
+    checkarguments(ss, call);
+}
+
+static void sem_function_call_method(SS* ss, FunctionCall* call) {
+    sem_expression(ss, call->instance);
+    assert(call->instance->type); // instance type should be linked already
+
+    // can only call methods over interfaces, records, and monitors
+    if (call->instance->type->tag == TYPE_VOID      ||
+        call->instance->type->tag == TYPE_ID        ||
+        call->instance->type->tag == TYPE_ARRAY     ||
+        call->instance->type->tag == TYPE_STRUCTURE) {
+        err_function_call_no_monitor(call->line);
+    }
+
+    // finds the function's definition in the monitor and sets the call's type
+    call->function_definition = findmethod(call, 0 /* TODO: this mask */);
+    call->type = call->function_definition->function.type;
+
+    // checks for calls to acquire functions
+    Bitmap bm = call->function_definition->function.qualifiers;
+    if (!ss->can_acquire && bm & FQ_ACQUIRE) {
+        TODOERR(call->line,
+            "an acquire function can't be called "
+            "without the acquire-value statement"
+        );
+    }
+
+    // prepends <self> to arguments
+    PREPEND(Expression, call->arguments, call->instance);
+    if (call->arguments->next) {
+        call->arguments->next->previous = call->instance;
+    }
+
+    // frees <call->id>
+    // <call->type> already contains the id with the function's name
+    free(call->id);
+    call->id = NULL;
+
+    checkarguments(ss, call);
+}
+
+static void sem_function_call_constructor(SS* ss, FunctionCall* call) {
+    linktype(ss->table, &call->type);
+
+    switch (call->type->tag) {
+    case TYPE_ID:
+        sem_function_call_constructor_native(ss, call);
+        break;
+    case TYPE_ARRAY:
+        sem_function_call_constructor_array(ss, call);
+        break;
+    case TYPE_MONITOR:
+        sem_function_call_constructor_monitor(ss, call);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}   
+
+static void sem_function_call_constructor_native(SS* ss, FunctionCall* call) {
+    if (call->type == __condition_queue) {
+        countarguments(call);
+        if (call->argument_count != 0) {
+            TODOERR(call->line, "ConditionQueue constructor has no parameters");
+        }
+    } else {
+        UNREACHABLE;
+    }
+}
+
+static void sem_function_call_constructor_array(SS* ss, FunctionCall* call) {
+    countarguments(call);
+    switch (call->argument_count) {
+    case 0:
+        // defaults to 8 (TODO: remove)
+        call->argument_count = 1;
+        call->arguments = ast_expression_literal_integer(call->line, 8);
+        call->arguments->type = __integer;
+        break;
+    case 1:
+        sem_expression(ss, call->arguments);
+        typecheck1(__integer, &call->arguments);
+        break;
+    default:
+        err_function_call_array_constructor(call->line, call->argument_count);
+    }
+}
+
+static void sem_function_call_constructor_monitor(SS* ss, FunctionCall* call) {
+    // finds the constructor inside the monitor (no overloading)
+    FOREACH(Definition, d, call->type->structure.definitions) {
+        if (d->tag == DEFINITION_CONSTRUCTOR) {
+            call->function_definition = d;
+            break;
+        }
+    }
+    
+    if (!call->function_definition) {
+        err_function_call_no_constructor(call->line, call->type->structure.id);
+    }
+
+    checkarguments(ss, call);
+}
+
+// -----------------------------------------------------------------------------
+
+// auxiliary - deals with native function calls
+static bool nativefunction(SS* ss, FunctionCall* call) {
+    // FIXME: compare pointer from the definition of print (from symtable)
+    if (!strcmp(call->id->name, "print")) {
+        call->argument_count = 0;
+        FOREACH(Expression, e, call->arguments) {
+            sem_expression(ss, e);
+            call->argument_count++;
+        }
+        call->type = __integer;
+        return true;
+    }
+    return false;
+}
+
+// auxiliary - compares parameters from the function's definition against
+// arguments from the function's call
+static void checkarguments(SS* ss, FunctionCall* call) {
+    assert(call->function_definition);
+
+    countarguments(call);
+
+    Definition* parameter = call->function_definition->function.parameters;
+    Expression* argument = call->arguments;
+    Expression** pointer = &call->arguments;
+
+    // skips comparing between the first parameter and argument of a method
+    if (call->tag == FUNCTION_CALL_METHOD) {
+        assert(parameter && argument);
+        parameter = parameter->next;
+        argument = (*pointer)->next;
+        pointer = &argument;
+    }
+
+    // compares arguments with parameters
+    while (parameter || argument) {
+        if (parameter && !argument) {
+            err_function_call_few_args(call->line);
+        }
+        if (!parameter && argument) {
+            err_function_call_excess_args(call->line);
+        }
+
+        sem_expression(ss, argument);
+        typecheck1(parameter->capsa.capsa->type, pointer);
+
+        parameter = parameter->next;
+        argument = (*pointer)->next;
+        pointer = &argument;
+    }
+}
+
+// auxiliary - finds a function's definition inside a monitor
 static Definition* findmethod(FunctionCall* call, Bitmap mask) {
+    // TODO: currently checking only the first matching method & no overloading
+
     Definition* method_definition = NULL;
     Type* structure = call->instance->type;
 
     FOREACH(Definition, d, structure->structure.definitions) {
-        if (d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) {
-            if (d->function.id->name == call->id->name) {
-                if ((d->function.qualifiers & FQ_PRIVATE) == FQ_PRIVATE) {
-                    err_function_call_private(call->line, call->id, structure);
-                }
-                if (d->function.qualifiers & FQ_RELEASE) {
-                    continue;
-                }
-                method_definition = d;
-                break;
+        if ((d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) &&
+             d->function.id->name == call->id->name &&
+             !(d->function.qualifiers & FQ_RELEASE)) {
+
+            if (d->function.qualifiers & FQ_PRIVATE) {
+                err_function_call_private(call->line, call->id, structure);
             }
+            method_definition = d;
+            break;
         }
     }
 
@@ -1258,196 +1499,11 @@ static Definition* findmethod(FunctionCall* call, Bitmap mask) {
     return method_definition;
 }
 
-static void sem_function_call(SS* state, FunctionCall* call) {
-    // TODO: calculate argument_count here
-
-    switch (call->tag) {
-    case FUNCTION_CALL_BASIC:
-        // MEGA TODO: fix this master gambiarra
-        // comparar o ponteiro da definição de print (que pegou na symtable)
-        if (!strcmp(call->id->name, "print")) {
-            call->argument_count = 0;
-            FOREACH(Expression, e, call->arguments) {
-                sem_expression(state, e);
-                call->argument_count++;
-            }
-            call->type = __integer;
-            return;
-        }
-
-        call->function_definition = symtable_find(state->table, call->id);
-        if (!call->function_definition) {
-            err_function_call_unknown(call->id);
-        }
-        if (call->function_definition->tag != DEFINITION_FUNCTION &&
-            call->function_definition->tag != DEFINITION_METHOD) {
-            // TODO: Can't call constructor from inside a Monitor
-            err_function_call_misuse(call->id);
-        }
-
-        // implicit self for method calls inside monitors
-        if (call->function_definition->tag == DEFINITION_METHOD) {
-            assert(insidemonitor(state));
-            PREPEND(Expression,
-                call->arguments,
-                ast_expression_capsa(astself(call->line))
-            );
-        }
-
-        call->type = call->function_definition->function.type;
-        free(call->id);
-        call->id = NULL;
-
-        // can't call non-safe functions from inside a monitor
-        if (insidemonitor(state) && !safetype(call->type)) {
-            TODOERR(call->line,
-                "can't call a function that returns a "
-                "non-safe type from inside a monitor"
-            );
-        }
-
-        break;
-    case FUNCTION_CALL_METHOD:
-        sem_expression(state, call->instance);
-        assert(call->instance->type);
-        // TODO: interfaces and structures
-        if (call->instance->type->tag == TYPE_VOID ||
-            call->instance->type->tag == TYPE_ID ||
-            call->instance->type->tag == TYPE_ARRAY) {
-            err_function_call_no_monitor(call->line);
-        }
-        // OBS: instance type is already linked
-
-        // finding the function definition in the monitor
-        call->function_definition = findmethod(call, 0 /* TODO: this mask */);
-        if ((call->function_definition->function.qualifiers & FQ_ACQUIRE ||
-            call->function_definition->function.qualifiers & FQ_RELEASE) &&
-            !state->can_acquire) {
-            TODOERR(call->line,
-                "an acquire function can't be called "
-                "without the acquire-value statement"
-            );
-        }
-
-        // prepending self to arguments
-        PREPEND(Expression, call->arguments, call->instance);
-        if (call->arguments->next) {
-            call->arguments->next->previous = call->instance;
-        }
-
-        call->type = call->function_definition->function.type;
-        free(call->id);
-        call->id = NULL;
-        break;
-    case FUNCTION_CALL_CONSTRUCTOR: // initializers and arrays
-        linktype(state->table, &call->type);
-
-        if (call->type->tag == TYPE_ID) {
-            if (call->type != __condition_queue) {
-                // TODO: Create test cases for this
-                TODOERR(call->line, "type has no known initializer");
-            }
-            // TODO: Check number of arguments passed (must be zero)
-            call->argument_count = 0;
-            return;
-        }
-
-        // Array constructors must have no arguments or one numeric argument
-        if (call->type->tag == TYPE_ARRAY) {
-            call->argument_count = 0;
-            FOREACH(Expression, e, call->arguments) {
-                call->argument_count++;
-            }
-            if (call->argument_count == 0) { // defaults to 8
-                call->argument_count = 1;
-                call->arguments = ast_expression_literal_integer(
-                    call->line, 8
-                );
-                call->arguments->type = __integer;
-            } else if (call->argument_count == 1) {
-                sem_expression(state, call->arguments);
-                typecheck1(__integer, &call->arguments);
-            } else {
-                err_function_call_array_constructor(
-                    call->line,
-                    call->argument_count
-                );
-            }
-            return;
-        }
-
-        // finding the monitor's constructor parameters
-        FOREACH(Definition, d, call->type->structure.definitions) {
-            if (d->tag == DEFINITION_CONSTRUCTOR) {
-                // TODO: Currently checking only the first matching constructor
-                // TODO: Currently no overloading
-                call->function_definition = d;
-                break;
-            }
-        }
-        
-        if (!call->function_definition) {
-            err_function_call_no_constructor(
-                call->line, call->type->structure.id
-            );
-        }
-        break;
-    default:
-        UNREACHABLE;
-    }
-
-    assert(call->function_definition);
-    Definition* parameter = call->function_definition->function.parameters;
-    Expression* argument = call->arguments;
-    Expression** pointer = &call->arguments;
-    call->argument_count = 0;
-
-    // Skips comparing between the first parameter and argument of a method
-    if (call->tag == FUNCTION_CALL_METHOD) {
-        assert(parameter && argument);
-        call->argument_count++;
-        parameter = parameter->next;
-        argument = (*pointer)->next;
-        pointer = &argument;
-    }
-
-    // Comparing arguments with parameters
-    while (parameter || argument) {
-        if (parameter && !argument) {
-            err_function_call_few_args(call->line);
-        }
-        if (!parameter && argument) {
-            err_function_call_excess_args(call->line);
-        }
-
-        call->argument_count++;
-
-        sem_expression(state, argument);
-        typecheck1(parameter->capsa.capsa->type, pointer);
-        parameter = parameter->next;
-        argument = (*pointer)->next;
-        pointer = &argument;
-    }
-}
-
 // ==================================================
 //
-//  Auxiliary
+//  Auxiliary TODO
 //
 // ==================================================
-
-// static void freetype(Type* type) {
-//  switch (type->tag) {
-//  case TYPE_ID:
-//      freetypeid(type);
-//      break;
-//  case TYPE_ARRAY:
-//      freetypearray(type);
-//      break;
-//  default:
-//      UNREACHABLE;
-//  }
-// }
 
 static void freetypeid(Type* type) {
     assert(type->tag == TYPE_ID);
@@ -1457,17 +1513,6 @@ static void freetypeid(Type* type) {
     free(type->id);
     free(type);
 }
-
-// static void freetypearray(Type* type) {
-//  if (type->tag == TYPE_ID) {
-//      freetypeid(type);
-//      return;
-//  }
-
-//  assert(type->tag == TYPE_ARRAY);
-//  freetypearray(type->array);
-//  free(type);
-// }
 
 /*
  * Replaces an id-type for its declaration equivalent using the symbol table.
