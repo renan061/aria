@@ -45,7 +45,7 @@ function main {
 }
 -- Output
 line 7:
-    semantic error: an acquire-value statement can only call acquire functions
+    semantic error: monitor 'M' has no defined method 'acquire f'
 --------------------------------------------------------------------------------
 -- Title
 Can't return from inside an acquire-value block
@@ -84,3 +84,55 @@ function main {
 -- Output
 line 11:
     semantic error: can't return inside an acquire-value block
+--------------------------------------------------------------------------------
+-- Title
+Monitors natively provide an acquire-release pair of functions called unlocked
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    acquire value m = M().unlocked() {}
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+function main: Void {
+    acquire value m: M! = ((M(): M).unlocked((M(): M)): M) {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Can't redeclare the <unlocked> acquire-release pair of functions
+-- Input
+monitor M {
+    initializer {}
+    function acquire unlocked: M {}
+    function release unlocked {}
+}
+-- Output
+line 3:
+    semantic error: redeclaration of name 'unlocked'
+--------------------------------------------------------------------------------
+-- Title
+Can define and call a non-acquire-release function called <unlocked>
+-- Input
+monitor M {
+    initializer {}
+    function unlocked {}
+}
+function main {
+    M().unlocked();
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function unlocked(value self: M): Void {
+    }
+}
+function main: Void {
+    (M(): M).unlocked((M(): M)): Void
+}

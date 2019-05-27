@@ -44,33 +44,22 @@ static const char* definitionstring(Definition* definition) {
     case DEFINITION_CAPSA:
         assert(definition->capsa.capsa->tag == CAPSA_ID);
         return definition->capsa.capsa->id->name;
-    case DECLARATION_FUNCTION:
-        // fallthrough
-    case DEFINITION_FUNCTION:
-        // fallthrough
-    case DEFINITION_METHOD:
-        // fallthrough
+    case DECLARATION_FUNCTION: // fallthrough
+    case DEFINITION_FUNCTION:  // fallthrough
+    case DEFINITION_METHOD:    // fallthrough
     case DEFINITION_CONSTRUCTOR:
         assert(definition->function.id);
         return definition->function.id->name;
     case DEFINITION_TYPE:
         switch (definition->type->tag) {
-        case TYPE_VOID:
-            UNREACHABLE;
-        case TYPE_ID:
-            return definition->type->id->name;
-        case TYPE_UNLOCKED:
-            // fallthrough
-        case TYPE_ARRAY:
-            UNREACHABLE;
-        case TYPE_INTERFACE:
-            // fallthrough
-        case TYPE_STRUCTURE:
-            // fallthrough
-        case TYPE_MONITOR:
-            return definition->type->structure.id->name;
-        default:
-            UNREACHABLE;
+        case TYPE_VOID:      UNREACHABLE;
+        case TYPE_ID:        return definition->type->id->name;
+        case TYPE_UNLOCKED:  UNREACHABLE;
+        case TYPE_ARRAY:     UNREACHABLE;
+        case TYPE_INTERFACE: // fallthrough
+        case TYPE_STRUCTURE: // fallthrough
+        case TYPE_MONITOR:   return definition->type->structure.id->name;
+        default:             UNREACHABLE;
         }
     default:
         UNREACHABLE;
@@ -157,15 +146,6 @@ Definition* symtable_find(SymbolTable* table, Id* id) {
     }
     return found;
 }
-
-// // TODO: remove
-// static void printbits(Bitmap n) {
-//     while (n) {
-//         printf((n & 1) ? "1" : "0");
-//         n >>= 1;
-//     }
-//     printf("\n");
-// }
 
 bool symtable_insert(SymbolTable* table, Definition* definition) {
     Definition* found = finddefinition(

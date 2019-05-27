@@ -37,6 +37,7 @@ Lex (Flex), Yacc (Bison), LLVM (LLVM C API) & POSIX Threads.
 
     10. Monitors in Aria natively provide an acquire-release pair of functions
        called unlocked.
+        - Ensured by the semantic analysis.
 
 Notes:
     

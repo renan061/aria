@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <strings.h>
 
 #include "ast.h"
 #include "errs.h"
@@ -130,13 +131,21 @@ static void print_ast_definition(Definition* definition) {
 
         printf(" {\n");
         tabs++;
-        for (Definition* d = definition->type->structure.definitions; d;) {
+        for (Definition* d = definition->type->structure.definitions;
+                d; d = d->next) {
+            // does not print <unlocked> acquire-release pair
+            if (d->tag == DEFINITION_METHOD &&
+                (d->function.qualifiers & FQ_ACQUIRE ||
+                d->function.qualifiers & FQ_RELEASE) &&
+                !strcmp(d->function.id->name, "unlocked")) {
+                continue;
+            }
+
             identation();
             print_ast_definition(d);
             if (d->tag == DEFINITION_CAPSA) {
                 printf("\n");
             }
-            d = d->next;
         }
         tabs--;
         printf("}\n");

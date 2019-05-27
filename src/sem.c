@@ -16,8 +16,10 @@
 #include "errs.h"
 #include "list.h"
 #include "parser.h" // for the tokens
-#include "scanner.h" // because of scanner_native[self]
+#include "scanner.h" // because of scanner_native
 #include "symtable.h"
+
+#define iff(a, b) (((a) && (b)) || (!(a) && !(b)))
 
 // TODO: move this somewhere else
 #define structuretype(t) (t->tag == TYPE_STRUCTURE || t->tag == TYPE_MONITOR)
@@ -118,7 +120,7 @@ static void err_function_call_few_args(Line);
 static void err_function_call_excess_args(Line);
 static void err_function_call_no_monitor(Line);
 static void err_function_call_private(Line, Id*, Type*);
-static void err_function_call_no_method(Line, Type*, Id*);
+static void err_function_call_no_method(Line, Type*, Id*, bool);
 static void err_monitor_statements(Line, const char*);
 static void err_monitor_statements_constructor(Line, const char*);
 static void err_monitor_function_type(Line);
@@ -250,6 +252,7 @@ static void semfunction(SS*, Definition*);
 static void semstructure(SS*, Definition*);
 static bool functionequals(Definition*, Definition*);
 static void interfacecheck(SS*, Type*, Type*);
+static void prependunlocked(Definition*, FunctionQualifier);
 static void prependself(SS*, Definition*);
 static void acquirecheck(Definition*);
 static ListValue armatch(ListValue, ListValue);
@@ -393,6 +396,12 @@ static void sem_definition_structure(SS* ss, Definition* def) {
 }
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
+    // prepending the <unlocked> acquire-release
+    // pair of functions to the monitor
+    prependunlocked(def, FQ_RELEASE);
+    prependunlocked(def, FQ_ACQUIRE);
+
+    // generic interface/record/monitor analysis
     semstructure(ss, def);
 
     // checks interface implementation
@@ -400,6 +409,8 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
         linktype(ss->table, &def->type->structure.interface);
         interfacecheck(ss, def->type->structure.interface, def->type);
     }
+
+
 }
 
 // -----------------------------------------------------------------------------
@@ -598,6 +609,22 @@ static void interfacecheck(SS* ss, Type* interface, Type* type) {
             TODOERR(type->structure.id->line, "interface not implemented");
         }
     }
+}
+
+// auxiliary - adds <unlocked> as functions of the monitor
+static void prependunlocked(Definition* m, FunctionQualifier fq) {
+    Line ln = m->type->structure.id->line;
+    Type* return_type = (fq == FQ_ACQUIRE)
+        ? ast_type_id(ast_id(ln, m->type->structure.id->name))
+        : __void
+        ;
+    Definition* unlocked = ast_declaration_function(
+        ast_id(ln, scanner_native[SCANNER_NATIVE_UNLOCKED]), NULL, return_type
+    );
+    unlocked = ast_definition_function(unlocked, ast_block(ln, NULL));
+    unlocked->tag = DEFINITION_METHOD;
+    unlocked->function.qualifiers |= fq;
+    PREPEND(Definition, m->type->structure.definitions, unlocked);
 }
 
 // auxiliary - adds <self> as the first parameter to the function
@@ -1024,14 +1051,6 @@ static void sem_statement_acquire_value(SS* ss, Statement* stmt) {
     unlocked = ast_type_unlocked(unlocked);
     stmt->acquire_value.value->capsa.capsa->type = unlocked;
 
-    Expression* e = stmt->acquire_value.value->capsa.expression;
-    Bitmap bm = e->function_call->function_definition->function.qualifiers;
-    if (!(bm & FQ_ACQUIRE)) {
-        TODOERR(stmt->line,
-            "an acquire-value statement can only call acquire functions"
-        );
-    }
-
     previous = ss->acquire_value;
     ss->acquire_value = true;
     sem_block(ss, stmt->acquire_value.block);
@@ -1253,7 +1272,7 @@ static void sem_function_call_constructor_monitor(SS*, FunctionCall*);
 
 static bool nativefunction(SS*, FunctionCall*);
 static void checkarguments(SS*, FunctionCall*);
-static Definition* findmethod(FunctionCall*, Bitmap);
+static Definition* findmethod(FunctionCall*, bool);
 
 #define countarguments(fc) do { \
     fc->argument_count = 0; \
@@ -1334,17 +1353,8 @@ static void sem_function_call_method(SS* ss, FunctionCall* call) {
     }
 
     // finds the function's definition in the monitor and sets the call's type
-    call->function_definition = findmethod(call, 0 /* TODO: this mask */);
+    call->function_definition = findmethod(call, ss->can_acquire);
     call->type = call->function_definition->function.type;
-
-    // checks for calls to acquire functions
-    Bitmap bm = call->function_definition->function.qualifiers;
-    if (!ss->can_acquire && bm & FQ_ACQUIRE) {
-        TODOERR(call->line,
-            "an acquire function can't be called "
-            "without the acquire-value statement"
-        );
-    }
 
     // prepends <self> to arguments
     PREPEND(Expression, call->arguments, call->instance);
@@ -1485,7 +1495,7 @@ static void checkarguments(SS* ss, FunctionCall* call) {
 }
 
 // auxiliary - finds a function's definition inside a monitor
-static Definition* findmethod(FunctionCall* call, Bitmap mask) {
+static Definition* findmethod(FunctionCall* call, bool acquire) {
     // TODO: currently checking only the first matching method & no overloading
 
     Definition* method_definition = NULL;
@@ -1497,7 +1507,8 @@ static Definition* findmethod(FunctionCall* call, Bitmap mask) {
     FOREACH(Definition, d, structure->structure.definitions) {
         if ((d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) &&
              d->function.id->name == call->id->name &&
-             !(d->function.qualifiers & FQ_RELEASE)) {
+             !(d->function.qualifiers & FQ_RELEASE) &&
+             iff(acquire, d->function.qualifiers & FQ_ACQUIRE)) {
 
             if (d->function.qualifiers & FQ_PRIVATE) {
                 err_function_call_private(call->line, call->id, structure);
@@ -1508,7 +1519,7 @@ static Definition* findmethod(FunctionCall* call, Bitmap mask) {
     }
 
     if (!method_definition) {
-        err_function_call_no_method(call->line, structure, call->id);
+        err_function_call_no_method(call->line, structure, call->id, acquire);
     }
 
     return method_definition;
@@ -1918,10 +1929,12 @@ static void err_function_call_private(Line line, Id* id, Type* type) {
     sem_error(line, err);
 }
 
-static void err_function_call_no_method(Line line, Type* type, Id* id) {
-    const char* err = err2("monitor '%s' has no defined method '%s'",
-        typestring(type), id->name);
-    sem_error(line, err);
+static void err_function_call_no_method(Line line, Type* type, Id* id, bool a) {
+    char *str =  a // acquire
+        ? "monitor '%s' has no defined method 'acquire %s'"
+        : "monitor '%s' has no defined method '%s'"
+        ;
+    sem_error(line, err2(str, typestring(type), id->name));
 }
 
 static void err_monitor_statements(Line line, const char* statement) {

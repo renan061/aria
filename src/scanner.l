@@ -167,20 +167,22 @@ void scanner_setup(const char* file) {
     strs = vector_new();
 
     scanner_native[SCANNER_NATIVE_BOOLEAN] = "Boolean";
-    scanner_native[SCANNER_NATIVE_INTEGER] = "Integer";
-    scanner_native[SCANNER_NATIVE_FLOAT] = "Float";
-    scanner_native[SCANNER_NATIVE_STRING] = "String";
     scanner_native[SCANNER_NATIVE_CONDITION_QUEUE] = "ConditionQueue";
-    scanner_native[SCANNER_NATIVE_SELF] = "self";
+    scanner_native[SCANNER_NATIVE_FLOAT] = "Float";
+    scanner_native[SCANNER_NATIVE_INTEGER] = "Integer";
     scanner_native[SCANNER_NATIVE_MAIN] = "main";
+    scanner_native[SCANNER_NATIVE_SELF] = "self";
+    scanner_native[SCANNER_NATIVE_STRING] = "String";
+    scanner_native[SCANNER_NATIVE_UNLOCKED] = "unlocked";
 
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_BOOLEAN]);
-    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_INTEGER]);
-    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_FLOAT]);
-    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_STRING]);
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_CONDITION_QUEUE]);
-    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_SELF]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_FLOAT]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_INTEGER]);
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_MAIN]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_SELF]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_STRING]);
+    vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_UNLOCKED]);
 }
 
 // frees strs vector and closes yyin
@@ -195,8 +197,8 @@ void scanner_clean(void) {
 //
 // ==================================================
 
-// TODO: Using a vector to deal with ids and strings is very inefficient.
-// Another data structure should be used instead.
+// TODO: using a vector to deal with ids and strings is very inefficient
+//       another data structure should be used instead
 
 // used by lower-id and upper-id
 static void idaction() {
@@ -231,9 +233,9 @@ static const char* copystr(const char* str, size_t len) {
     return newstr;
 }
 
-// TODO: Not working with LLVM constant definition "\\\\\ examples"
+// TODO: not working with LLVM constant definition "\\\\\ examples"
 static const char* convertescapes(const char* str, size_t len) {
-    // Calculating malloc size
+    // calculating malloc size
     size_t size = 0;
     for (int i = 1; i < yyleng - 1; i++) {
         if (yytext[i] == '\\') {
@@ -245,13 +247,13 @@ static const char* convertescapes(const char* str, size_t len) {
     char* newstr;
     MALLOC_ARRAY(newstr, char, ++size);
 
-    // Copying to the new string
+    // copying to the new string
     int k = 0;
     for (int i = 1; i < yyleng - 1; i++) {
         switch (yytext[i]) {
         case '\n':
             scanner_error(line, ERR_STRING_LINE);
-            break; /* unnecessary */
+            break; // unnecessary
         case '\\':
             switch (yytext[++i]) {
                 case '"':   newstr[k++] = '"';  break;
