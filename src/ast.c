@@ -197,6 +197,17 @@ Type* ast_type_id(Id* id) {
     return type;
 }
 
+Type* ast_type_unlocked(Type* type) {
+    Type* t;
+    MALLOC(t, Type);
+    t->tag = TYPE_UNLOCKED;
+    t->primitive = false;
+    t->immutable = false;
+    t->llvm_type = NULL;
+    t->unlocked = type;
+    return t;
+}
+
 Type* ast_type_array(Type* type) {
     Type* arrayType;
     MALLOC(arrayType, Type);

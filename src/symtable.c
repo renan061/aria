@@ -59,6 +59,8 @@ static const char* definitionstring(Definition* definition) {
             UNREACHABLE;
         case TYPE_ID:
             return definition->type->id->name;
+        case TYPE_UNLOCKED:
+            // fallthrough
         case TYPE_ARRAY:
             UNREACHABLE;
         case TYPE_INTERFACE:

@@ -294,7 +294,7 @@ static void sem_definition(SS* ss, Definition* def) {
 static void sem_definition_capsa(SS* ss, Definition* def) {
     Capsa* capsa = def->capsa.capsa;
 
-    // checkes if it's a definition
+    // checkes if it's a definition (not a declaration)
     if (def->capsa.expression) {
         sem_expression(ss, def->capsa.expression);
     }
@@ -1020,6 +1020,10 @@ static void sem_statement_acquire_value(SS* ss, Statement* stmt) {
     sem_definition(ss, stmt->acquire_value.value);
     ss->can_acquire = previous;
 
+    Type* unlocked = stmt->acquire_value.value->capsa.capsa->type;
+    unlocked = ast_type_unlocked(unlocked);
+    stmt->acquire_value.value->capsa.capsa->type = unlocked;
+
     Expression* e = stmt->acquire_value.value->capsa.expression;
     Bitmap bm = e->function_call->function_definition->function.qualifiers;
     if (!(bm & FQ_ACQUIRE)) {
@@ -1243,6 +1247,7 @@ static void sem_function_call_method(SS*, FunctionCall*);
 static void sem_function_call_constructor(SS*, FunctionCall*);
 
 static void sem_function_call_constructor_native(SS*, FunctionCall*);
+static void sem_function_call_constructor_unlocked(SS*, FunctionCall*);
 static void sem_function_call_constructor_array(SS*, FunctionCall*);
 static void sem_function_call_constructor_monitor(SS*, FunctionCall*);
 
@@ -1362,6 +1367,9 @@ static void sem_function_call_constructor(SS* ss, FunctionCall* call) {
     case TYPE_ID:
         sem_function_call_constructor_native(ss, call);
         break;
+    case TYPE_UNLOCKED:
+        sem_function_call_constructor_unlocked(ss, call);
+        break;
     case TYPE_ARRAY:
         sem_function_call_constructor_array(ss, call);
         break;
@@ -1382,6 +1390,10 @@ static void sem_function_call_constructor_native(SS* ss, FunctionCall* call) {
     } else {
         UNREACHABLE;
     }
+}
+
+static void sem_function_call_constructor_unlocked(SS* ss, FunctionCall* call) {
+    TODOERR(call->line, "unlocked types don't have constructors");
 }
 
 static void sem_function_call_constructor_array(SS* ss, FunctionCall* call) {
@@ -1478,6 +1490,9 @@ static Definition* findmethod(FunctionCall* call, Bitmap mask) {
 
     Definition* method_definition = NULL;
     Type* structure = call->instance->type;
+    if (structure->tag == TYPE_UNLOCKED) {
+        structure = structure->unlocked;
+    }
 
     FOREACH(Definition, d, structure->structure.definitions) {
         if ((d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) &&
@@ -1536,6 +1551,15 @@ static void linktype(SymbolTable* table, Type** pointer) {
         *pointer = definition->type;
         break;
     }
+    case TYPE_UNLOCKED:
+        linktype(table, &(*pointer)->unlocked);
+        if (!((*pointer)->unlocked->tag == TYPE_MONITOR ||
+            (*pointer)->unlocked->tag == TYPE_INTERFACE )) {
+            TODOERR(-1,
+                "a unlocked type must be an interface or a monitor"
+            );
+        }
+        break;
     case TYPE_ARRAY:
         for (; (*pointer)->tag == TYPE_ARRAY; pointer = &(*pointer)->array);
         linktype(table, pointer);
@@ -1649,6 +1673,8 @@ static bool safetype(Type *type) {
             // fallthrough
         case TYPE_ID:
             return type->immutable;
+        case TYPE_UNLOCKED:
+            return false;
         case TYPE_ARRAY:
             return type->immutable && safetype(type->array);
         case TYPE_INTERFACE:
@@ -1669,7 +1695,7 @@ static bool safetype(Type *type) {
 //
 // ==================================================
 
-// Returns the string corresponding to the type
+// returns the string corresponding to the type
 static const char* typestring(Type* type) {
     assert(type);
     char* str;
@@ -1681,6 +1707,13 @@ static const char* typestring(Type* type) {
     case TYPE_ID:
         str = (char*) type->id->name;
         break;
+    case TYPE_UNLOCKED: {
+        const char* aux = typestring(type->unlocked);
+        MALLOC_ARRAY(str, char, strlen(aux) + 2);
+        strcpy(str, aux);
+        strcat(str, "!");
+        break;
+    }
     case TYPE_ARRAY: {
         unsigned int counter = 0;
         Type* t = type;

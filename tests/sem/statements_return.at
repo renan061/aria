@@ -138,7 +138,7 @@ function g: Void {
 }
 function main: Void {
     value m: M = (M(): M)
-    acquire value m: M = ((m: M).f((m: M)): M) {
+    acquire value m: M! = ((m: M).f((m: M)): M) {
         g(): Void
     }
 }

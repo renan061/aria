@@ -1,10 +1,24 @@
 --------------------------------------------------------------------------------
 -- Title
+Bang types
+-- Input
+function main {
+    // bang's semantics is checked at sem.c
+    variable a: Type!;
+    variable a: [Type]!;
+    variable a: Integer!;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
 Types
 -- Input
 function main(a, b: [Array]) {
     // upper ID type
     variable a: Type;
+    // bang (!) type
+    variable a: M!;
     // arrays
     variable a: [Integer];
     variable a: [[Integer]];

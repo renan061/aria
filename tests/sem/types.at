@@ -1,5 +1,55 @@
 --------------------------------------------------------------------------------
 -- Title
+Unlocked type
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    variable m: M!;
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+function main: Void {
+    variable m: M!
+}
+--------------------------------------------------------------------------------
+-- Title
+Unlocked types are not safe
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    acquire value m = M().f() {
+        spawn {
+            print(m);
+        }
+    }
+}
+-- Output
+line 9:
+    semantic error: can't access a value of unsafe type inside a spawn block (only immutables and monitors)
+--------------------------------------------------------------------------------
+-- Title
+Unlocked types don't have constructors
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    variable m = M!();
+}
+-- Output
+line 5:
+    semantic error: unlocked types don't have constructors
+--------------------------------------------------------------------------------
+-- Title
 Unknown type (variable declaration)
 -- Input
 function main {
@@ -34,6 +84,16 @@ Unknown type (constructor call)
 -- Input
 function main {
     value a = T();
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (unlocked)
+-- Input
+function main {
+    value a = T!();
 }
 -- Output
 line 2:
@@ -80,7 +140,17 @@ line 2:
     semantic error: unknown type 'T'
 --------------------------------------------------------------------------------
 -- Title
-Normal types can't be used as immutable types
+Unknown type for array (unlocked)
+-- Input
+function main {
+    value a = [T!](10);
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Normal types can't be used as their immutable types
 -- Input
 function main {
     variable a: Immutable [String] = ["invalid"];
@@ -90,7 +160,7 @@ line 2:
     semantic error: type error (expected 'Immutable [String]', got '[String]')
 --------------------------------------------------------------------------------
 -- Title
-Immutable types can't be used as normal types
+Immutable types can't be used as their normal types
 -- Input
 function main {
     variable a: [String] = Immutable ["invalid"];

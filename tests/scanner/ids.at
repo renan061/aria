@@ -1,5 +1,28 @@
 --------------------------------------------------------------------------------
 -- Title
+IDs with bangs (!)
+-- Input
+Id! !AnotherId !Surrounded! lowerOk! !surrounded! !!doubles!!
+-- Output
+TK_UPPER_ID - Id
+!
+!
+TK_UPPER_ID - AnotherId
+!
+TK_UPPER_ID - Surrounded
+!
+TK_LOWER_ID - lowerOk
+!
+!
+TK_LOWER_ID - surrounded
+!
+!
+!
+TK_LOWER_ID - doubles
+!
+!
+--------------------------------------------------------------------------------
+-- Title
 Uppercase IDs
 -- Input
 Id AnotherId Underscore_id IdWithNum3er5 WithNums19_AndUndersc0r3

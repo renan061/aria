@@ -32,7 +32,8 @@ Lex (Flex), Yacc (Bison), LLVM (LLVM C API) & POSIX Threads.
     8. An acquire-value statement can only call `acquire` functions.
         - Ensured by the semantic analysis.
 
-    9. The scoped value is of type `Unlocked A`.
+    9. The scoped value is of type `A!` (Unlocked A).
+        - Ensured by the semantic analysis.
 
     10. Monitors in Aria natively provide an acquire-release pair of functions
        called unlocked.

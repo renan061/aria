@@ -21,6 +21,21 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
+Type Unlocked
+-- Input
+function main {
+    variable type: Void!;
+    variable type: Id!;
+    variable type: [Array]!;
+}
+-- Output
+function main: Void {
+    variable type: Void!
+    variable type: Id!
+    variable type: [Array]!
+}
+--------------------------------------------------------------------------------
+-- Title
 Type Array
 -- Input
 function main {

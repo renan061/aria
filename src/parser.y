@@ -53,7 +53,7 @@
 
 // tokens
 %token <ival>
-    '{' '}' '[' ']' '(' ')' '=' ';'
+    '{' '}' '[' ']' '(' ')' '=' ';' '!'
     TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_WHILE TK_WAIT
     TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
     TK_FALSE TK_STRUCTURE TK_MONITOR TK_PRIVATE TK_INITIALIZER
@@ -331,7 +331,7 @@ type
         {
             $$ = ast_type_array($3);
 
-            // TODO: Recursive immutability
+            // TODO: recursive immutability
             Type* type = $$;
             while (type) {
                 switch (type->tag) {
@@ -352,6 +352,10 @@ type
                     assert(0); // TODO
                 }
             }
+        }
+    | type '!'
+        {
+            $$ = ast_type_unlocked($1);
         }
     ;
 

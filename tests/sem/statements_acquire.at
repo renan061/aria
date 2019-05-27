@@ -6,12 +6,12 @@ monitor M {
     initializer {}
     function acquire f: M {}
     function release f {}
+    function g {}
 }
 function main {
     value m = M();
-    // TODO: should be type Unlocked M
     acquire value m = m.f() {
-        // ...
+        m.g();
     }
 }
 -- Output
@@ -22,10 +22,13 @@ monitor M {
     }
     function release f(value self: M): Void {
     }
+    function g(value self: M): Void {
+    }
 }
 function main: Void {
     value m: M = (M(): M)
-    acquire value m: M = ((m: M).f((m: M)): M) {
+    acquire value m: M! = ((m: M).f((m: M)): M) {
+        (m: M!).g((m: M!)): Void
     }
 }
 --------------------------------------------------------------------------------

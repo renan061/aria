@@ -158,6 +158,10 @@ static void print_ast_type(Type* type) {
     case TYPE_ID:
         print_ast_id(type->id);
         break;
+    case TYPE_UNLOCKED:
+        print_ast_type(type->unlocked);
+        printf("!");
+        break;
     case TYPE_ARRAY:
         printf("[");
         print_ast_type(type->array);

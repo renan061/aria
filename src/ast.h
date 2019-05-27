@@ -42,6 +42,7 @@ typedef enum TypeTag {
     TYPE_VOID,
     TYPE_ID,
     TYPE_ARRAY,
+    TYPE_UNLOCKED,
     TYPE_INTERFACE,
     TYPE_STRUCTURE,
     TYPE_MONITOR
@@ -158,6 +159,8 @@ struct Type {
         Id* id;
         // TypeArray
         Type* array;
+        // TypeUnlocked
+        Type* unlocked;
         // TypeInterface
         // TypeStructure
         // TypeMonitor
@@ -165,7 +168,7 @@ struct Type {
             Id* id;
             Type* interface;
             Definition* definitions;
-            // after semantics analysis
+            // after semantic analysis
             Definition** attributes;
             size_t attributes_size;
             Definition** methods;
@@ -357,6 +360,7 @@ extern Type* ast_type_float(void);
 extern Type* ast_type_string(void);
 extern Type* ast_type_condition_queue(void);
 extern Type* ast_type_id(Id*);
+extern Type* ast_type_unlocked(Type*);
 extern Type* ast_type_array(Type*);
 extern Type* ast_type_structure(Id*, TypeTag, Definition*, Type*);
 
