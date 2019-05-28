@@ -3,7 +3,7 @@
 
 #include "ast.h"
 
-// TODO: Doc
-extern LLVMModuleRef backend_compile(AST*);
+// TODO: doc
+extern LLVMModuleRef compile(AST*);
 
 #endif

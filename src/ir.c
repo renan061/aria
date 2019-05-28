@@ -44,7 +44,6 @@ void ir_state_done(IRState* irs) {
     if (error) {
         LLVMDisposeMessage(error);
     }
-
     LLVMDisposeBuilder(irs->B);
 }
 

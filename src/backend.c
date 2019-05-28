@@ -20,24 +20,20 @@
  *  - free and destroy the mutex one day
  */
 
-// TODO: move this elsewhere
+// TODO: move
 #define FOREACH(Type, e, e0) for (Type* e = e0; e; e = e->next)
 
-#define UNREACHABLE assert(NULL)    // TODO: Move this and look for assert(NULL)
-#define TODO assert(NULL)           // TODO: Remove
+// TODO: move / other names
+#define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
+#define NAME_SPAWN_FUNCTION             "_spawn_block"
+
+#define UNREACHABLE assert(NULL) // TODO: move this and look for assert(NULL)
 
 #define STRUCTURE_MUTEX             (0)
 #define STRUCTURE_VMT               (1)
 #define STRUCTURE_ATTRIBUTE_START   (STRUCTURE_VMT + 1)
 
-// TODO: Move
-// Other names
-#define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
-#define NAME_SPAWN_FUNCTION             "_spawn_block"
-
-#define LLVM_GLOBAL_STRING "_global_string"
-
-#define LABEL                   "label_"
+#define LABEL                   "l_"
 #define LABEL_FUNCTION_ENTRY    LABEL "function_entry"
 #define LABEL_IF_TRUE           LABEL "if_true"
 #define LABEL_IF_END            LABEL "if_end"
@@ -53,39 +49,28 @@
 #define LABEL_FOR_INC           LABEL "for_inc"
 #define LABEL_FOR_END           LABEL "for_end"
 
-// Native types
+// primitive types
 static Type* __boolean;
 static Type* __integer;
 static Type* __float;
 static Type* __string;
 static Type* __condition_queue;
 
-// TODO: Move / rename -> see position_builder
+// auxiliary
+static LLVMValueRef stringliteral(IRState*, const char*);
+static LLVMValueRef zerovalue(IRState*, Type*);
+
+// TODO: move / rename -> see position_builder
 static void state_close_block(IRState* irs) {
     assert(irs->block);
     irs->block = NULL;
 }
 
-// LLVM (TODO: New Module?)
+// LLVM (TODO: new module?)
 static LLVMTypeRef llvm_type(Type* type);
 static LLVMTypeRef llvm_function_type(Definition*, size_t);
 static void llvm_return(IRState*, LLVMValueRef);
 static LLVMTypeRef llvm_structure(LLVMTypeRef[], size_t, const char*);
-
-// Auxiliary
-static LLVMValueRef stringliteral(IRState*, const char*);
-static LLVMValueRef zerovalue(IRState*, Type*);
-
-// TODO
-static void backend_definition(IRState*, Definition*);
-static void backend_block(IRState*, Block*);
-static void backend_statement(IRState*, Statement*);
-static void backend_capsa(IRState*, Capsa*);
-static void backend_expression(IRState*, Expression*);
-static void backend_condition(
-    IRState*, Expression*, LLVMBasicBlockRef, LLVMBasicBlockRef
-);
-static LLVMValueRef backend_function_call(IRState*, FunctionCall*);
 
 // ==================================================
 //
@@ -142,115 +127,60 @@ static LLVMValueRef monitormutex(LLVMBuilderRef B, LLVMValueRef monitor) {
     return x;
 }
 
+static void todospawn(IRState*, FunctionCall*);
+
 // ==================================================
 //
-//  Implementation
+//  backend.c
 //
 // ==================================================
 
-// TODO: move / rename / fix
-static void todospawn(IRState* irs, FunctionCall* call) {
-    // Defining the structure to be used for argument passing
-    LLVMTypeRef fields[call->argument_count];
-    unsigned int n = 0;
-    for (Expression* e = call->arguments; e; e = e->next, n++) {
-        fields[n] = llvm_type(e->type);
+typedef LLVMModuleRef     LLVMM  ;
+typedef LLVMBasicBlockRef LLVMBB ;
+typedef LLVMValueRef      LLVMV  ;
+
+static void backend_definition(IRState*, Definition*);
+static void backend_block(IRState*, Block*);
+static void backend_statement(IRState*, Statement*);
+static void backend_capsa(IRState*, Capsa*);
+static void backend_expression(IRState*, Expression*);
+static void backend_condition(IRState*, Expression*, LLVMBB, LLVMBB);
+static LLVMV backend_function_call(IRState*, FunctionCall*);
+
+static IRState* setup(void);
+static LLVMM teardown(IRState*);
+
+LLVMM compile(AST* ast) {
+    IRState* irs = setup();
+    for (Definition* d = ast->definitions; d; d = d->next) {
+        backend_definition(irs, d);
     }
-    LLVMTypeRef type_structure = llvm_structure(
-        fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
-    );
-
-    // Allocating memory for the structure
-    LLVMValueRef structure = LLVMBuildMalloc(
-        irs->B, type_structure, LLVM_TEMPORARY
-    );
-
-    // Filling the structure with values from the arguments
-    n = 0;
-    for (Expression* e = call->arguments; e; e = e->next, n++) {
-        backend_expression(irs, e);
-        LLVMBuildStore(irs->B, e->llvm_value, LLVMBuildStructGEP(
-            irs->B, structure, n, LLVM_TEMPORARY_NONE
-        ));
-    }
-
-    // Defining the spawn function
-    IRState* spawn_irs = ir_state_new(irs->M, irs->B);
-
-    spawn_irs->function = LLVMAddFunction(
-        spawn_irs->M, NAME_SPAWN_FUNCTION, ir_spawn_t
-    );
-    spawn_irs->block = LLVMAppendBasicBlock(
-        spawn_irs->function, LABEL "spawn_function_entry"
-    );
-    LLVMPositionBuilderAtEnd(spawn_irs->B, spawn_irs->block);
-
-    // Parameters
-    LLVMValueRef parameter = LLVMBuildBitCast(
-        spawn_irs->B,
-        LLVMGetParam(spawn_irs->function, 0),
-        LLVM_TYPE_POINTER(type_structure),
-        LLVM_TEMPORARY
-    );
-    Definition* p = call->function_definition->function.parameters;
-    for (unsigned int n = 0; p; p = p->next, n++) {
-        p->capsa.capsa->llvm_value = LLVMBuildLoad(
-            spawn_irs->B,
-            LLVMBuildStructGEP(
-                spawn_irs->B, parameter, n, LLVM_TEMPORARY
-            ),
-            LLVM_TEMPORARY
-        );
-    }
-
-    // Block
-    backend_block(spawn_irs, call->function_definition->function.block);
-
-    // TODO: Should free, but weird error (not this...)
-    // LLVMBuildFree(irs->B, parameter);
-    LLVMBuildRet(
-        spawn_irs->B, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
-    );
-
-    // Going back to the original irs builder position
-    LLVMPositionBuilderAtEnd(irs->B, irs->block);
-
-    // Calling pthread_create
-    ir_pthread_create(
-        irs->B,
-        spawn_irs->function,
-            LLVMBuildBitCast(
-            irs->B, structure, LLVM_TYPE_POINTER_VOID, LLVM_TEMPORARY
-        )
-    );
-
-    ir_state_free(spawn_irs);
+    LLVMM M = teardown(irs);
+    return M;
 }
 
-LLVMModuleRef backend_compile(AST* ast) {
-    // setup
+// -----------------------------------------------------------------------------
+
+static IRState* setup(void) {
+    // primitive types
     __boolean = ast_type_boolean();
     __integer = ast_type_integer();
     __float = ast_type_float();
     __string = ast_type_string();
     __condition_queue = ast_type_condition_queue();
 
-    // LLVM setup
+    // ir
     IRState* irs = ir_state_new(
         LLVMModuleCreateWithName("main.aria"),
         LLVMCreateBuilder()
     );
-
-    // includes
     ir_setup(irs->M);
     ir_pthread_setup(irs->M);
 
-    // IR
-    for (Definition* d = ast->definitions; d; d = d->next) {
-        backend_definition(irs, d);
-    }
+    return irs;
+}
 
-    // teardown
+static LLVMModuleRef teardown(IRState* irs) {
     ir_state_done(irs);
     LLVMModuleRef M = irs->M;
     ir_state_free(irs);
@@ -1410,7 +1340,7 @@ static LLVMValueRef stringliteral(IRState* irs, const char* string) {
     );
 }
 
-// TODO: Doc
+// TODO: doc
 static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], size_t size,
     const char* name) {
 
@@ -1455,4 +1385,89 @@ static LLVMValueRef zerovalue(IRState* irs, Type* type) {
     default:
         UNREACHABLE;
     }
+}
+
+// ==================================================
+//
+//  TODO
+//
+// ==================================================
+
+// TODO: rename / fix
+static void todospawn(IRState* irs, FunctionCall* call) {
+    // Defining the structure to be used for argument passing
+    LLVMTypeRef fields[call->argument_count];
+    unsigned int n = 0;
+    for (Expression* e = call->arguments; e; e = e->next, n++) {
+        fields[n] = llvm_type(e->type);
+    }
+    LLVMTypeRef type_structure = llvm_structure(
+        fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
+    );
+
+    // Allocating memory for the structure
+    LLVMValueRef structure = LLVMBuildMalloc(
+        irs->B, type_structure, LLVM_TEMPORARY
+    );
+
+    // Filling the structure with values from the arguments
+    n = 0;
+    for (Expression* e = call->arguments; e; e = e->next, n++) {
+        backend_expression(irs, e);
+        LLVMBuildStore(irs->B, e->llvm_value, LLVMBuildStructGEP(
+            irs->B, structure, n, LLVM_TEMPORARY_NONE
+        ));
+    }
+
+    // Defining the spawn function
+    IRState* spawn_irs = ir_state_new(irs->M, irs->B);
+
+    spawn_irs->function = LLVMAddFunction(
+        spawn_irs->M, NAME_SPAWN_FUNCTION, ir_spawn_t
+    );
+    spawn_irs->block = LLVMAppendBasicBlock(
+        spawn_irs->function, LABEL "spawn_function_entry"
+    );
+    LLVMPositionBuilderAtEnd(spawn_irs->B, spawn_irs->block);
+
+    // Parameters
+    LLVMValueRef parameter = LLVMBuildBitCast(
+        spawn_irs->B,
+        LLVMGetParam(spawn_irs->function, 0),
+        LLVM_TYPE_POINTER(type_structure),
+        LLVM_TEMPORARY
+    );
+    Definition* p = call->function_definition->function.parameters;
+    for (unsigned int n = 0; p; p = p->next, n++) {
+        p->capsa.capsa->llvm_value = LLVMBuildLoad(
+            spawn_irs->B,
+            LLVMBuildStructGEP(
+                spawn_irs->B, parameter, n, LLVM_TEMPORARY
+            ),
+            LLVM_TEMPORARY
+        );
+    }
+
+    // Block
+    backend_block(spawn_irs, call->function_definition->function.block);
+
+    // TODO: Should free, but weird error (not this...)
+    // LLVMBuildFree(irs->B, parameter);
+    LLVMBuildRet(
+        spawn_irs->B, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
+    );
+
+    // Going back to the original irs builder position
+    LLVMPositionBuilderAtEnd(irs->B, irs->block);
+
+    // Calling pthread_create
+    ir_pthread_create(
+        irs->B,
+        spawn_irs->function,
+            LLVMBuildBitCast(
+            irs->B, structure, LLVM_TYPE_POINTER_VOID, LLVM_TEMPORARY
+        )
+    );
+
+    ir_state_free(spawn_irs);
 }

@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     yyparse();
     scanner_clean();
     sem_analyse(ast);
-    LLVMModuleRef module = backend_compile(ast);
+    LLVMModuleRef module = compile(ast);
 
     if (build) {
         if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {

@@ -1,0 +1,13 @@
+--------------------------------------------------------------------------------
+-- Title
+Testing stuff
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    value m = M();
+    print("Ok\n");
+}
+-- Output
+Ok

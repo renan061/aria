@@ -18,7 +18,7 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
-Unlocked types are not safe
+Unlocked types are unsafe
 -- Input
 monitor M {
     initializer {}

@@ -33,7 +33,7 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
-An acquire-value statement can only call "acquire" functions
+An acquire-value statement can only call <acquire> functions
 -- Input
 monitor M {
     initializer {}
@@ -109,7 +109,7 @@ Can't redeclare the <unlocked> acquire-release pair of functions
 -- Input
 monitor M {
     initializer {}
-    function acquire unlocked: M {}
+    function acquire unlocked {}
     function release unlocked {}
 }
 -- Output
@@ -117,7 +117,7 @@ line 3:
     semantic error: redeclaration of name 'unlocked'
 --------------------------------------------------------------------------------
 -- Title
-Can define and call a non-acquire-release function called <unlocked>
+Can define and call a non-acquire-release function named <unlocked>
 -- Input
 monitor M {
     initializer {}

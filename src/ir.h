@@ -10,14 +10,17 @@
 
 #define LLVM_DEFAULT_ADDRESS_SPACE 0
 
-// Temporary Names
+// global names
+#define LLVM_GLOBAL_STRING "_global_string"
+
+// temporary names
 #define LLVM_TEMPORARY              "_t_"
 #define LLVM_TEMPORARY_NONE         ""
 #define LLVM_TEMPORARY_MONITOR_LOCK LLVM_TEMPORARY "monitor_lock"
 #define LLVM_TEMPORARY_PHI          LLVM_TEMPORARY "phi"
 #define LLVM_TEMPORARY_VMT          LLVM_TEMPORARY "vmt"
 
-// Types
+// types
 #define LLVM_TYPE_POINTER(t)    (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))
 #define LLVM_TYPE_POINTER_VOID  (LLVM_TYPE_POINTER(LLVMInt8Type()))
 #define LLVM_TYPE_VOID          (LLVMVoidType())
@@ -25,7 +28,7 @@
 #define LLVM_TYPE_INTEGER       (LLVMInt32Type())
 #define LLVM_TYPE_DOUBLE        (LLVMDoubleType())
 
-// Aria Types
+// aria types
 #define LLVM_ARIA_TYPE_VOID             LLVM_TYPE_VOID
 #define LLVM_ARIA_TYPE_BOOLEAN          LLVM_TYPE_BOOLEAN
 #define LLVM_ARIA_TYPE_INTEGER          LLVM_TYPE_INTEGER
