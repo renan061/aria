@@ -1232,6 +1232,9 @@ static LLVMValueRef backend_fc_method(IRState* irs, FunctionCall* fc) {
     ir_pthread_mutex_lock(irs->B, mutex);
 
     int vmt_index = fc->function_definition->function.vmt_index;
+    if (fc->instance->type->tag == TYPE_INTERFACE) { // FIXME: gambiarra
+        vmt_index += 2; // accounting for the <unlocked> pair
+    }
 
     // VMT function call
     LLVMValueRef vmt = ir_structure_vmt(irs->B, instance);
