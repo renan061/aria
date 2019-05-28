@@ -409,8 +409,6 @@ static void sem_definition_monitor(SS* ss, Definition* def) {
         linktype(ss->table, &def->type->structure.interface);
         interfacecheck(ss, def->type->structure.interface, def->type);
     }
-
-
 }
 
 // -----------------------------------------------------------------------------

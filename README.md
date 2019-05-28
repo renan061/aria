@@ -1,7 +1,7 @@
 # Aria
 
 A programming language with built-in monitors as the only way to share mutable
-data between multiple threads.
+data between threads.
 
 Lex (Flex), Yacc (Bison), LLVM (LLVM C API) & POSIX Threads.
 
