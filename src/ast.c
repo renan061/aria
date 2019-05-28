@@ -4,7 +4,7 @@
 
 #include "alloc.h"
 #include "ast.h"
-#include "errs.h"
+#include "macros.h"
 #include "parser.h" // for the tokens
 #include "scanner.h" // for native_types
 

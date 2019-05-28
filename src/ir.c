@@ -8,6 +8,7 @@
 
 #include "alloc.h"
 #include "ir.h"
+#include "macros.h"
 
 #define NAME_PRINTF "printf"
 #define NAME_MALLOC "malloc"

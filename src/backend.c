@@ -6,9 +6,10 @@
 #include <llvm-c/Core.h>
 
 #include "alloc.h"
+#include "ast.h"
 #include "athreads.h"
 #include "ir.h"
-#include "ast.h"
+#include "macros.h"
 #include "parser.h" // for the tokens
 
 /*
@@ -20,14 +21,14 @@
  *  - free and destroy the mutex one day
  */
 
-// TODO: move
-#define FOREACH(Type, e, e0) for (Type* e = e0; e; e = e->next)
+typedef LLVMModuleRef     LLVMM  ;
+typedef LLVMTypeRef       LLVMT  ;
+typedef LLVMBasicBlockRef LLVMBB ;
+typedef LLVMValueRef      LLVMV  ;
 
 // TODO: move / other names
 #define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
 #define NAME_SPAWN_FUNCTION             "_spawn_block"
-
-#define UNREACHABLE assert(NULL) // TODO: move this and look for assert(NULL)
 
 #define STRUCTURE_MUTEX             (0)
 #define STRUCTURE_VMT               (1)
@@ -57,8 +58,8 @@ static Type* __string;
 static Type* __condition_queue;
 
 // auxiliary
-static LLVMValueRef stringliteral(IRState*, const char*);
-static LLVMValueRef zerovalue(IRState*, Type*);
+static LLVMV stringliteral(IRState*, const char*);
+static LLVMV zerovalue(IRState*, Type*);
 
 // TODO: move / rename -> see position_builder
 static void state_close_block(IRState* irs) {
@@ -67,16 +68,18 @@ static void state_close_block(IRState* irs) {
 }
 
 // LLVM (TODO: new module?)
-static LLVMTypeRef llvm_type(Type* type);
-static LLVMTypeRef llvm_function_type(Definition*, size_t);
-static void llvm_return(IRState*, LLVMValueRef);
-static LLVMTypeRef llvm_structure(LLVMTypeRef[], size_t, const char*);
+static LLVMT llvm_type(Type*);
+static LLVMT llvm_function_type(Definition*, size_t);
+static void llvm_return(IRState*, LLVMV);
+static LLVMT llvm_structure(LLVMT[], size_t, const char*);
 
 // ==================================================
 //
 //  Globals
 //
 // ==================================================
+
+// TODO: move / refactor
 
 typedef struct Global Global;
 struct Global {
@@ -117,7 +120,7 @@ static void position_builder(IRState* irs, LLVMBasicBlockRef block) {
     irs->block = block;
 }
 
-// TODO: Move to auxiliary area
+// TODO: move to auxiliary area
 // returns the mutex lock from a monitor
 static LLVMValueRef monitormutex(LLVMBuilderRef B, LLVMValueRef monitor) {
     LLVMValueRef x = LLVMBuildLoad(B,
@@ -134,10 +137,6 @@ static void todospawn(IRState*, FunctionCall*);
 //  backend.c
 //
 // ==================================================
-
-typedef LLVMModuleRef     LLVMM  ;
-typedef LLVMBasicBlockRef LLVMBB ;
-typedef LLVMValueRef      LLVMV  ;
 
 static void backend_definition(IRState*, Definition*);
 static void backend_block(IRState*, Block*);
@@ -180,9 +179,9 @@ static IRState* setup(void) {
     return irs;
 }
 
-static LLVMModuleRef teardown(IRState* irs) {
+static LLVMM teardown(IRState* irs) {
     ir_state_done(irs);
-    LLVMModuleRef M = irs->M;
+    LLVMM M = irs->M;
     ir_state_free(irs);
     return M;
 }
@@ -205,33 +204,18 @@ static void initializefunction(IRState*, Definition*);
 static void initializeglobals(IRState*);
 static void initializevmt(IRState*, Definition*);
 
-static void backend_definition(IRState* irs, Definition* def) {
-    switch (def->tag) {
-    case DEFINITION_CAPSA:
-        backend_definition_capsa(irs, def);
-        break;
-    case DEFINITION_FUNCTION:
-        backend_definition_function(irs, def);
-        break;
-    case DEFINITION_METHOD:
-        backend_definition_method(irs, def);
-        break;
-    case DEFINITION_CONSTRUCTOR:
-        backend_definition_constructor(irs, def);
-        break;
+static void backend_definition(IRState* irs, Definition* d) {
+    switch (d->tag) {
+    case DEFINITION_CAPSA:       backend_definition_capsa(irs, d);       break;
+    case DEFINITION_FUNCTION:    backend_definition_function(irs, d);    break;
+    case DEFINITION_METHOD:      backend_definition_method(irs, d);      break;
+    case DEFINITION_CONSTRUCTOR: backend_definition_constructor(irs, d); break;
     case DEFINITION_TYPE:
-        switch (def->type->tag) {
-        case TYPE_INTERFACE:
-            backend_definition_interface(irs, def);
-            break;
-        case TYPE_STRUCTURE:
-            backend_definition_structure(irs, def);
-            break;
-        case TYPE_MONITOR:
-            backend_definition_monitor(irs, def);
-            break;
-        default:
-            UNREACHABLE;
+        switch (d->type->tag) {
+        case TYPE_INTERFACE: backend_definition_interface(irs, d); break;
+        case TYPE_STRUCTURE: backend_definition_structure(irs, d); break;
+        case TYPE_MONITOR:   backend_definition_monitor(irs, d);   break;
+        default:             UNREACHABLE;
         }
         break;
     default:
@@ -351,7 +335,7 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
 
     backend_block(irs, def->function.block);
 
-    // TODO: why is this IF here? Should check the tests.
+    // TODO: why is this IF here? should check the tests
     if (irs->block) {
         llvm_return(irs, generic_pointer(irs->B, irs->self));
     }
@@ -519,6 +503,60 @@ static void backend_block(IRState* irs, Block* block) {
         }
     }
 }
+
+// ==================================================
+//
+//  Statement
+//
+// ==================================================
+
+/*
+static void backend_statement(IRState* irs, Statement* stmt) {
+    switch (stmt->tag) {
+    case STATEMENT_ASSIGNMENT:
+        UNREACHABLE;
+        break;
+    case STATEMENT_FUNCTION_CALL:
+        UNREACHABLE;
+        break;
+    case STATEMENT_WAIT_FOR_IN:
+        UNREACHABLE;
+        break;
+    case STATEMENT_SIGNAL:
+        UNREACHABLE;
+        break;
+    case STATEMENT_BROADCAST:
+        UNREACHABLE;
+        break;
+    case STATEMENT_RETURN:
+        UNREACHABLE;
+        break;
+    case STATEMENT_IF:
+        UNREACHABLE;
+        break;
+    case STATEMENT_IF_ELSE:
+        UNREACHABLE;
+        break;
+    case STATEMENT_WHILE:
+        UNREACHABLE;
+        break;
+    case STATEMENT_FOR:
+        UNREACHABLE;
+        break;
+    case STATEMENT_SPAWN:
+        UNREACHABLE;
+        break;
+    case STATEMENT_ACQUIRE_VALUE:
+        UNREACHABLE;
+        break;
+    case STATEMENT_BLOCK:
+        UNREACHABLE;
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+*/
 
 // ==================================================
 //

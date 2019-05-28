@@ -11,6 +11,7 @@
 #include <stdio.h> // TODO: Remove
 #include <string.h>
 
+#include "macros.h"
 #include "alloc.h"
 #include "ast.h"
 #include "errs.h"
@@ -19,26 +20,14 @@
 #include "scanner.h" // because of scanner_native
 #include "symtable.h"
 
-#define iff(a, b) (((a) && (b)) || (!(a) && !(b)))
-
 // TODO: move this somewhere else
 #define structuretype(t) (t->tag == TYPE_STRUCTURE || t->tag == TYPE_MONITOR)
 #define insidestructure(s) (s->structure && structuretype(s->structure))
 #define insidemonitor(s) (s->structure && s->structure->tag == TYPE_MONITOR)
-#define FOREACH(Type, e, e0) for (Type* e = e0; e; e = e->next)
-
-// TODO: Look for assert(NULL) in the code
 
 // TODO: Also check if TODOERR errors have matching tests
 #define TODOERR(line, err) \
     printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
-
-// TODO
-#define PREPEND(Type, head, element) do { \
-    Type* _temporary = head; \
-    head = element; \
-    head->next = _temporary; \
-} while (0); \
 
 // stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
@@ -68,7 +57,7 @@ typedef struct SemanticState {
     } spawn;
 } SS;
 
-// Native types
+// primitive types
 static Type* __void;
 static Type* __boolean;
 static Type* __integer;
@@ -76,7 +65,7 @@ static Type* __float;
 static Type* __string;
 static Type* __condition_queue;
 
-// Functions that analyse the abstract syntax tree recursively
+// functions that analyse the abstract syntax tree recursively
 static void sem_definition(SS*, Definition*);
 static void sem_block(SS*, Block*);
 static void sem_statement(SS*, Statement*);
@@ -84,7 +73,7 @@ static void sem_capsa(SS*, Capsa**);
 static void sem_expression(SS*, Expression*);
 static void sem_function_call(SS*, FunctionCall*);
 
-// Auxiliary functions that deal with type analysis
+// auxiliary functions that deal with type analysis
 static void linktype(SymbolTable*, Type**);
 static void assignment(Capsa*, Expression**);
 static bool typeequals(Type*, Type*);
@@ -99,7 +88,7 @@ static bool safetype(Type*);
 // TODO
 static void freetypeid(Type*);
 
-// Auxiliary functions that deal with errors
+// auxiliary functions that deal with errors
 static void err_redeclaration(Id*);
 static void err_unknown_type(Id*);
 static void err_invalid_condition_type(Expression*);
@@ -1506,7 +1495,7 @@ static Definition* findmethod(FunctionCall* call, bool acquire) {
         if ((d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) &&
              d->function.id->name == call->id->name &&
              !(d->function.qualifiers & FQ_RELEASE) &&
-             iff(acquire, d->function.qualifiers & FQ_ACQUIRE)) {
+             IFF(acquire, d->function.qualifiers & FQ_ACQUIRE)) {
 
             if (d->function.qualifiers & FQ_PRIVATE) {
                 err_function_call_private(call->line, call->id, structure);
