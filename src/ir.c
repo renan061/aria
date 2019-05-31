@@ -96,12 +96,12 @@ void ir_setup(LLVMModuleRef module) {
 // ==================================================
 
 LLVMValueRef ir_printf(LLVMBuilderRef B, LLVMValueRef* args, int n) {
-    return LLVMBuildCall(B, ir_printf_t, args, n, LLVM_TEMPORARY_NONE);
+    return LLVMBuildCall(B, ir_printf_t, args, n, LLVM_TMP_NONE);
 }
 
 LLVMValueRef ir_malloc(LLVMBuilderRef B, size_t size) {
     LLVMValueRef args[1] = {LLVM_CONSTANT_INTEGER(size)};
-    return LLVMBuildCall(B, ir_malloc_t, args, 1, LLVM_TEMPORARY_NONE);
+    return LLVMBuildCall(B, ir_malloc_t, args, 1, LLVM_TMP_NONE);
 }
 
 LLVMValueRef ir_cmp(LLVMBuilderRef B,
@@ -114,15 +114,15 @@ LLVMValueRef ir_cmp(LLVMBuilderRef B,
 
     if (lhs->type == __boolean) {
         return LLVMBuildICmp(
-            B, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
+            B, iop, lhs->V, rhs->V, LLVM_TMP
         );
     } else if (lhs->type == __integer) {
         return LLVMBuildICmp(
-            B, iop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
+            B, iop, lhs->V, rhs->V, LLVM_TMP
         );
     } else if (lhs->type == __float) {
         return LLVMBuildFCmp(
-            B, fop, lhs->llvm_value, rhs->llvm_value, LLVM_TEMPORARY
+            B, fop, lhs->V, rhs->V, LLVM_TMP
         );
     } else {
         UNREACHABLE;

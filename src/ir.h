@@ -14,15 +14,15 @@
 #define LLVM_GLOBAL_STRING "_global_string"
 
 // temporary names
-#define LLVM_TEMPORARY              "_t_"
-#define LLVM_TEMPORARY_NONE         ""
-#define LLVM_TEMPORARY_MONITOR_LOCK LLVM_TEMPORARY "monitor_lock"
-#define LLVM_TEMPORARY_PHI          LLVM_TEMPORARY "phi"
-#define LLVM_TEMPORARY_VMT          LLVM_TEMPORARY "vmt"
+#define LLVM_TMP                    "_t_"
+#define LLVM_TMP_NONE               ""
+#define LLVM_TEMPORARY_MONITOR_LOCK LLVM_TMP "monitor_lock"
+#define LLVM_TEMPORARY_PHI          LLVM_TMP "phi"
+#define LLVM_TEMPORARY_VMT          LLVM_TMP "vmt"
 
 // types
-#define LLVM_TYPE_POINTER(t)    (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))
-#define LLVM_TYPE_POINTER_VOID  (LLVM_TYPE_POINTER(LLVMInt8Type()))
+#define LLVMT_PTR(t)            (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))
+#define LLVM_TYPE_POINTER_VOID  (LLVMT_PTR(LLVMInt8Type()))
 #define LLVM_TYPE_VOID          (LLVMVoidType())
 #define LLVM_TYPE_BOOLEAN       (LLVMIntType(1))
 #define LLVM_TYPE_INTEGER       (LLVMInt32Type())
@@ -33,16 +33,18 @@
 #define LLVM_ARIA_TYPE_BOOLEAN          LLVM_TYPE_BOOLEAN
 #define LLVM_ARIA_TYPE_INTEGER          LLVM_TYPE_INTEGER
 #define LLVM_ARIA_TYPE_FLOAT            LLVM_TYPE_DOUBLE
-#define LLVM_ARIA_TYPE_STRING           LLVM_TYPE_POINTER(LLVMInt8Type())
-#define LLVM_ARIA_TYPE_ARRAY(t)         LLVM_TYPE_POINTER(t)
+#define LLVM_ARIA_TYPE_STRING           LLVMT_PTR(LLVMInt8Type())
+#define LLVM_ARIA_TYPE_ARRAY(t)         LLVMT_PTR(t)
 #define LLVM_ARIA_TYPE_INTERFACE        LLVM_TYPE_POINTER_VOID
 #define LLVM_ARIA_TYPE_MONITOR          LLVM_TYPE_POINTER_VOID
 #define LLVM_ARIA_TYPE_CONDITION_QUEUE  LLVM_TYPE_POINTER_PTHREAD_COND_T
 
-// ASK: Should SignExtend?
-// TODO: Not necessarily LLVM_ARIA_TYPES
+#define LLVMT_AOBJ                      LLVM_TYPE_POINTER_VOID
 
-// Constants
+// ASK: should SignExtend?
+// TODO: not necessarily LLVM_ARIA_TYPES
+
+// constants
 #define LLVM_CONSTANT_BOOLEAN(b)    LLVMConstInt(LLVM_ARIA_TYPE_BOOLEAN, b, 0)
 #define LLVM_CONSTANT_INTEGER(i)    LLVMConstInt(LLVM_ARIA_TYPE_INTEGER, i, 0)
 #define LLVM_CONSTANT_FLOAT(f)      LLVMConstReal(LLVM_ARIA_TYPE_FLOAT, f)

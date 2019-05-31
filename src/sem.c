@@ -708,7 +708,7 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
     // TODO: this is messy [and wrong] (define lambdas someday)
     if (from_outside_spawn_scope && !capsa->global) {
         FunctionCall* call = state->spawn.function_call;
-        Definition* function = call->function_definition;
+        Definition* function = call->fn;
         Type* type = definition->capsa.capsa->type;
 
         Capsa* parameter_capsa = ast_capsa_id(
@@ -727,14 +727,14 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
         );
         argument->type = type;
 
-        if (call->argument_count == -1) {
+        if (call->argc == -1) {
             call->arguments = argument;
-            call->argument_count = 1;
+            call->argc = 1;
             function->function.parameters = parameter;
-        } else if (call->argument_count > 0) {
+        } else if (call->argc > 0) {
             argument->next = call->arguments;
             call->arguments = argument;
-            call->argument_count++;
+            call->argc++;
             parameter->next = function->function.parameters;
             function->function.parameters = parameter;
         } else {
@@ -1017,7 +1017,7 @@ static void sem_statement_spawn(SS* ss, Statement* stmt) {
 
     ss->spawn.scope = symtable_enter_scope(ss->table);
     ss->spawn.function_call = stmt->spawn;
-    sem_block(ss, stmt->spawn->function_definition->function.block);
+    sem_block(ss, stmt->spawn->fn->function.block);
     symtable_leave_scope(ss->table);
 
     ss->spawn.scope = previous_spawn_scope;
@@ -1262,9 +1262,9 @@ static void checkarguments(SS*, FunctionCall*);
 static Definition* findmethod(FunctionCall*, bool);
 
 #define countarguments(fc) do { \
-    fc->argument_count = 0; \
+    fc->argc = 0; \
     FOREACH(Expression, e, fc->arguments) { \
-        fc->argument_count++; \
+        fc->argc++; \
     } \
 } while (0); \
 
@@ -1290,20 +1290,20 @@ static void sem_function_call_basic(SS* ss, FunctionCall* call) {
     }
 
     // looks for the function definition in the table of symbols
-    call->function_definition = symtable_find(ss->table, call->id);
-    if (!call->function_definition) {
+    call->fn = symtable_find(ss->table, call->id);
+    if (!call->fn) {
         err_function_call_unknown(call->id);
     }
-    call->type = call->function_definition->function.type;
+    call->type = call->fn->function.type;
 
     // checks for calls over types that are not functions
-    DefinitionTag tag = call->function_definition->tag;
+    DefinitionTag tag = call->fn->tag;
     if (tag != DEFINITION_FUNCTION && tag != DEFINITION_METHOD) {
         err_function_call_misuse(call->id);
     }
 
     // prepends <self> for method calls inside monitors
-    if (call->function_definition->tag == DEFINITION_METHOD) {
+    if (call->fn->tag == DEFINITION_METHOD) {
         assert(insidemonitor(ss));
         PREPEND(Expression,
             call->arguments,
@@ -1328,25 +1328,25 @@ static void sem_function_call_basic(SS* ss, FunctionCall* call) {
 }
 
 static void sem_function_call_method(SS* ss, FunctionCall* call) {
-    sem_expression(ss, call->instance);
-    assert(call->instance->type); // instance type should be linked already
+    sem_expression(ss, call->obj);
+    assert(call->obj->type); // instance type should be linked already
 
     // can only call methods over interfaces, records, and monitors
-    if (call->instance->type->tag == TYPE_VOID      ||
-        call->instance->type->tag == TYPE_ID        ||
-        call->instance->type->tag == TYPE_ARRAY     ||
-        call->instance->type->tag == TYPE_STRUCTURE) {
+    if (call->obj->type->tag == TYPE_VOID      ||
+        call->obj->type->tag == TYPE_ID        ||
+        call->obj->type->tag == TYPE_ARRAY     ||
+        call->obj->type->tag == TYPE_STRUCTURE) {
         err_function_call_no_monitor(call->line);
     }
 
     // finds the function's definition in the monitor and sets the call's type
-    call->function_definition = findmethod(call, ss->can_acquire);
-    call->type = call->function_definition->function.type;
+    call->fn = findmethod(call, ss->can_acquire);
+    call->type = call->fn->function.type;
 
     // prepends <self> to arguments
-    PREPEND(Expression, call->arguments, call->instance);
+    PREPEND(Expression, call->arguments, call->obj);
     if (call->arguments->next) {
-        call->arguments->next->previous = call->instance;
+        call->arguments->next->previous = call->obj;
     }
 
     // frees <call->id>
@@ -1381,7 +1381,7 @@ static void sem_function_call_constructor(SS* ss, FunctionCall* call) {
 static void sem_function_call_constructor_native(SS* ss, FunctionCall* call) {
     if (call->type == __condition_queue) {
         countarguments(call);
-        if (call->argument_count != 0) {
+        if (call->argc != 0) {
             TODOERR(call->line, "ConditionQueue constructor has no parameters");
         }
     } else {
@@ -1395,10 +1395,10 @@ static void sem_function_call_constructor_unlocked(SS* ss, FunctionCall* call) {
 
 static void sem_function_call_constructor_array(SS* ss, FunctionCall* call) {
     countarguments(call);
-    switch (call->argument_count) {
+    switch (call->argc) {
     case 0:
         // defaults to 8 (TODO: remove)
-        call->argument_count = 1;
+        call->argc = 1;
         call->arguments = ast_expression_literal_integer(call->line, 8);
         call->arguments->type = __integer;
         break;
@@ -1407,7 +1407,7 @@ static void sem_function_call_constructor_array(SS* ss, FunctionCall* call) {
         typecheck1(__integer, &call->arguments);
         break;
     default:
-        err_function_call_array_constructor(call->line, call->argument_count);
+        err_function_call_array_constructor(call->line, call->argc);
     }
 }
 
@@ -1415,12 +1415,12 @@ static void sem_function_call_constructor_monitor(SS* ss, FunctionCall* call) {
     // finds the constructor inside the monitor (no overloading)
     FOREACH(Definition, d, call->type->structure.definitions) {
         if (d->tag == DEFINITION_CONSTRUCTOR) {
-            call->function_definition = d;
+            call->fn = d;
             break;
         }
     }
     
-    if (!call->function_definition) {
+    if (!call->fn) {
         err_function_call_no_constructor(call->line, call->type->structure.id);
     }
 
@@ -1433,10 +1433,10 @@ static void sem_function_call_constructor_monitor(SS* ss, FunctionCall* call) {
 static bool nativefunction(SS* ss, FunctionCall* call) {
     // FIXME: compare pointer from the definition of print (from symtable)
     if (!strcmp(call->id->name, "print")) {
-        call->argument_count = 0;
+        call->argc = 0;
         FOREACH(Expression, e, call->arguments) {
             sem_expression(ss, e);
-            call->argument_count++;
+            call->argc++;
         }
         call->type = __integer;
         return true;
@@ -1447,11 +1447,11 @@ static bool nativefunction(SS* ss, FunctionCall* call) {
 // auxiliary - compares parameters from the function's definition against
 // arguments from the function's call
 static void checkarguments(SS* ss, FunctionCall* call) {
-    assert(call->function_definition);
+    assert(call->fn);
 
     countarguments(call);
 
-    Definition* parameter = call->function_definition->function.parameters;
+    Definition* parameter = call->fn->function.parameters;
     Expression* argument = call->arguments;
     Expression** pointer = &call->arguments;
 
@@ -1486,7 +1486,7 @@ static Definition* findmethod(FunctionCall* call, bool acquire) {
     // TODO: currently checking only the first matching method & no overloading
 
     Definition* method_definition = NULL;
-    Type* structure = call->instance->type;
+    Type* structure = call->obj->type;
     if (structure->tag == TYPE_UNLOCKED) {
         structure = structure->unlocked;
     }

@@ -118,7 +118,7 @@ struct AST {
 struct Definition {
     DefinitionTag tag;
     Definition* next;
-    LLVMValueRef llvm_value;
+    LLVMValueRef V;
     
     union {
         // DefinitionCapsa
@@ -152,7 +152,7 @@ struct Type {
     bool primitive;
     bool immutable; // default false
 
-    LLVMTypeRef llvm_type; // TODO: always set
+    LLVMTypeRef T; // TODO: always set
 
     union {
         // TypeID
@@ -254,7 +254,7 @@ struct Capsa {
     Type* type; // default NULL
     bool global; // default false
     bool value; // default false
-    LLVMValueRef llvm_value; // default NULL
+    LLVMValueRef V; // default NULL
     int llvm_structure_index; // default -1
 
     union {
@@ -278,7 +278,7 @@ struct Expression {
     Line line;
     Expression *previous, *next;
     Type* type;
-    LLVMValueRef llvm_value;
+    LLVMValueRef V;
     
     union {
         struct {
@@ -320,19 +320,14 @@ struct FunctionCall {
     FunctionCallTag tag;
     Line line;
 
-    // used by constructor calls before semantic analysis
-    Type* type;
-    // only used by methods (NULL for other types of calls)
-    Expression* instance;
-    // name of the function being called (NULL for constructors)
-    Id* id;
-    // list of function arguments
-    Expression* arguments;
-    // initialized with -1
-    int argument_count;
+    Type* type;      // used by constructor calls before semantic analysis
+    Expression* obj; // only used by methods (NULL for other types of calls)
 
-    // used in the backend module
-    Definition* function_definition;
+    Id* id; // name of the function being called (NULL for constructors)
+    
+    Expression* arguments; // list of function arguments
+    int argc;              // initialized with -1
+    Definition* fn;        // function definition used in the backend module
 };
 
 // ==================================================

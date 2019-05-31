@@ -290,7 +290,7 @@ static void print_ast_statement(Statement* statement) {
         print_ast_block(statement->for_.block);
         break;
     case STATEMENT_SPAWN: {
-        Definition* function = statement->spawn->function_definition;
+        Definition* function = statement->spawn->fn;
         
         printf("spawn function");
         if (function->function.parameters) {
@@ -421,28 +421,22 @@ static void print_ast_expression(Expression* expression) {
     printf(")");
 }
 
-static void print_ast_function_call(FunctionCall* function_call) {
-    switch (function_call->tag) {
+static void print_ast_function_call(FunctionCall* fc) {
+    switch (fc->tag) {
     case FUNCTION_CALL_BASIC:
-        print_ast_id((function_call->id)
-            ? function_call->id
-            : function_call->function_definition->function.id
-        );
+        print_ast_id((fc->id) ? fc->id : fc->fn->function.id);
         break;
     case FUNCTION_CALL_METHOD:
-        print_ast_expression(function_call->instance);
+        print_ast_expression(fc->obj);
         printf(".");
-        print_ast_id((function_call->id)
-            ? function_call->id
-            : function_call->function_definition->function.id
-        );
+        print_ast_id((fc->id) ? fc->id : fc->fn->function.id);
         break;
     case FUNCTION_CALL_CONSTRUCTOR:
-        print_ast_type(function_call->type);
+        print_ast_type(fc->type);
     }
 
     printf("(");
-    for (Expression* e = function_call->arguments; e;) {
+    for (Expression* e = fc->arguments; e;) {
         print_ast_expression(e);
         if ((e = e->next)) {
             printf(", ");
