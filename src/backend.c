@@ -347,7 +347,7 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
 
 static void backend_definition_interface(IRState* irs, Definition* def) {
     size_t vmt_size = def->type->structure.methods_size;
-    LLVMTypeRef fields[2] = {
+    LLVMT fields[] = {
         LLVM_TYPE_POINTER_PTHREAD_MUTEX_T,
         LLVMT_PTR(LLVMArrayType(LLVM_TYPE_POINTER_VOID, vmt_size))
     };
@@ -361,7 +361,7 @@ static void backend_definition_structure(IRState* irs, Definition* def) {
 
 static void backend_definition_monitor(IRState* irs, Definition* def) {
     size_t attributes_size = def->type->structure.attributes_size;
-    LLVMTypeRef attributes[STRUCTURE_ATTRIBUTE_START + attributes_size];
+    LLVMT attributes[STRUCTURE_ATTRIBUTE_START + attributes_size];
 
     // mutex & VMT
     attributes[STRUCTURE_MUTEX] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
@@ -431,9 +431,9 @@ static void initializeglobals(IRState* irs) {
     FOREACH(Global, global, globals) {
         Capsa* capsa = global->value->capsa.capsa;
         Expression* expression = global->value->capsa.expression;
-        LLVMTypeRef type = llvm_type(capsa->type);
-        capsa->V = LLVMAddGlobal(irs->M, type, capsa->id->name);
-        LLVMSetInitializer(capsa->V, LLVMGetUndef(type));
+        LLVMT T = llvm_type(capsa->type);
+        capsa->V = LLVMAddGlobal(irs->M, T, capsa->id->name);
+        LLVMSetInitializer(capsa->V, LLVMGetUndef(T));
         backend_expression(irs, expression);
         LLVMBuildStore(irs->B, expression->V, capsa->V);
     }
@@ -445,16 +445,15 @@ static void initializevmt(IRState* irs, Definition* def) {
     size_t methods_size = def->function.type->structure.methods_size;
 
     // allocates memory for the VMT
-    LLVMTypeRef vmt_type = LLVMArrayType(LLVM_TYPE_POINTER_VOID, methods_size);
-    LLVMV vmt = LLVMBuildBitCast(
-        irs->B,
+    LLVMT T = LLVMArrayType(LLVM_TYPE_POINTER_VOID, methods_size); // VMT type
+    LLVMV vmt = LLVMBuildBitCast(irs->B,
         LLVMBuildArrayMalloc(
             irs->B,
             LLVM_TYPE_POINTER_VOID,
             LLVM_CONSTANT_INTEGER(methods_size),
             LLVM_TEMPORARY_VMT
         ),
-        LLVMT_PTR(vmt_type),
+        LLVMT_PTR(T),
         LLVM_TEMPORARY_VMT
     );
 
@@ -1185,14 +1184,14 @@ static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
         T = LLVMFunctionType(T, params, fc->argc, false);
     }
 
-    int vmtindex = fc->fn->function.vmt_index;
+    int vmti = fc->fn->function.vmt_index;
     if (fc->obj->type->tag == TYPE_INTERFACE) { // FIXME: gambiarra
-        vmtindex += 2; // accounting for the <unlocked> pair
+        vmti += 2; // accounting for the <unlocked> pair
     }
 
     // VMT function call
     LLVMV vmt = getvmt(irs->B, obj);
-    LLVMV fn = ir_array_get(irs->B, vmt, vmtindex);
+    LLVMV fn = ir_array_get(irs->B, vmt, vmti);
     fn = LLVMBuildBitCast(irs->B, fn, LLVMT_PTR(T), LLVM_TMP);
     LLVMV V = LLVMBuildCall(irs->B, fn, args, fc->argc, LLVM_TMP_NONE);
 
@@ -1274,7 +1273,7 @@ static LLVMV ir_array_get(LLVMB B, LLVMV ptr, int i) {
 //
 // ==================================================
 
-static LLVMTypeRef llvm_type(Type* type) {
+static LLVMT llvm_type(Type* type) {
     assert(type);
 
     switch (type->tag) {
@@ -1309,14 +1308,14 @@ static LLVMTypeRef llvm_type(Type* type) {
 }
 
 // given a function definition, returns its LLVM type
-static LLVMTypeRef llvm_function_type(Definition* f, size_t psize) {
+static LLVMT llvm_function_type(Definition* fn, size_t psize) {
     int i = 0;
-    LLVMTypeRef ptypes[psize];
-    FOREACH(Definition, p, f->function.parameters) {
-        ptypes[i++] = llvm_type(p->capsa.capsa->type);
+    LLVMT params[psize];
+    FOREACH(Definition, p, fn->function.parameters) {
+        params[i++] = llvm_type(p->capsa.capsa->type);
     }
-    LLVMTypeRef returntype = llvm_type(f->function.type);
-    return LLVMFunctionType(returntype, ptypes, psize, false);
+    LLVMT T = llvm_type(fn->function.type);
+    return LLVMFunctionType(T, params, psize, false);
 }
 
 // TODO: Rename this: backend_return?
@@ -1369,10 +1368,10 @@ static LLVMV stringliteral(IRState* irs, const char* string) {
 }
 
 // TODO: doc
-static LLVMTypeRef llvm_structure(LLVMTypeRef fields[], size_t size,
+static LLVMT llvm_structure(LLVMT fields[], size_t size,
     const char* name) {
 
-    LLVMTypeRef type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
+    LLVMT type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
     LLVMStructSetBody(type, fields, size, false); // TODO: Packed?
     return type;
 }
@@ -1424,12 +1423,12 @@ static LLVMV zerovalue(IRState* irs, Type* type) {
 // TODO: rename / fix
 static void todospawn(IRState* irs, FunctionCall* call) {
     // Defining the structure to be used for argument passing
-    LLVMTypeRef fields[call->argc];
+    LLVMT fields[call->argc];
     unsigned int n = 0;
     for (Expression* e = call->arguments; e; e = e->next, n++) {
         fields[n] = llvm_type(e->type);
     }
-    LLVMTypeRef type_structure = llvm_structure(
+    LLVMT type_structure = llvm_structure(
         fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
     );
 
