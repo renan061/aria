@@ -84,7 +84,7 @@ void ir_setup(LLVMModuleRef module) {
         ir_malloc_t = LLVMAddFunction(
             module,
             NAME_MALLOC,
-            LLVMFunctionType(LLVM_TYPE_POINTER_VOID, paramtypes, 1, false)
+            LLVMFunctionType(LLVMT_PTR_VOID, paramtypes, 1, false)
         );
     }
 }
@@ -100,7 +100,7 @@ LLVMValueRef ir_printf(LLVMBuilderRef B, LLVMValueRef* args, int n) {
 }
 
 LLVMValueRef ir_malloc(LLVMBuilderRef B, size_t size) {
-    LLVMValueRef args[1] = {LLVM_CONSTANT_INTEGER(size)};
+    LLVMValueRef args[1] = {LLVM_CONST_INT(size)};
     return LLVMBuildCall(B, ir_malloc_t, args, 1, LLVM_TMP_NONE);
 }
 

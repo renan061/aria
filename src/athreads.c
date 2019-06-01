@@ -6,7 +6,7 @@
 #include "athreads.h"
 #include "ir.h"
 
-#define LLVM_TYPE_POINTER_PTHREAD_T LLVM_TYPE_POINTER_VOID
+#define LLVM_TYPE_POINTER_PTHREAD_T LLVMT_PTR_VOID
 
 #define NAME_PTHREAD_CREATE         "pthread_create"
 #define NAME_PTHREAD_EXIT           "pthread_exit"
@@ -42,9 +42,9 @@ LLVMValueRef
 
 void ir_pthread_setup(LLVMModuleRef module) {
     { // ir_spawn_t
-        LLVMTypeRef paramtypes[1] = {LLVM_TYPE_POINTER_VOID};
+        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_VOID};
         ir_spawn_t = LLVMFunctionType(
-            LLVM_TYPE_POINTER_VOID,
+            LLVMT_PTR_VOID,
             paramtypes,
             1,
             false
@@ -54,9 +54,9 @@ void ir_pthread_setup(LLVMModuleRef module) {
     { // pthread_create
         LLVMTypeRef paramtypes[4] = {
             LLVM_TYPE_POINTER_PTHREAD_T,
-            LLVM_TYPE_POINTER_VOID,
+            LLVMT_PTR_VOID,
             LLVMT_PTR(ir_spawn_t),
-            LLVM_TYPE_POINTER_VOID
+            LLVMT_PTR_VOID
         };
         ir_pthread_create_t = LLVMAddFunction(
             module,
@@ -66,7 +66,7 @@ void ir_pthread_setup(LLVMModuleRef module) {
     }
 
     { // pthread_exit
-        LLVMTypeRef paramtypes[1] = {LLVM_TYPE_POINTER_VOID};
+        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_VOID};
         ir_pthread_exit_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_EXIT,
@@ -77,7 +77,7 @@ void ir_pthread_setup(LLVMModuleRef module) {
     { // pthread_mutex_init
         LLVMTypeRef paramtypes[2] = {
             LLVM_TYPE_POINTER_PTHREAD_MUTEX_T,
-            LLVM_TYPE_POINTER_VOID
+            LLVMT_PTR_VOID
         };
         ir_pthread_mutex_init_t = LLVMAddFunction(
             module,
@@ -107,7 +107,7 @@ void ir_pthread_setup(LLVMModuleRef module) {
     { // pthread_cond_init
         LLVMTypeRef paramtypes[2] = {
             LLVM_TYPE_POINTER_PTHREAD_COND_T,
-            LLVM_TYPE_POINTER_VOID
+            LLVMT_PTR_VOID
         };
         ir_pthread_cond_init_t = LLVMAddFunction(
             module,
@@ -157,7 +157,7 @@ void ir_pthread_setup(LLVMModuleRef module) {
 void ir_pthread_create(LLVMBuilderRef B, LLVMValueRef fn, LLVMValueRef args) {
     LLVMValueRef arguments[] = {
         ir_malloc(B, sizeof(pthread_t)),
-        LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID),
+        LLVMConstPointerNull(LLVMT_PTR_VOID),
         fn,
         args
     };
@@ -165,12 +165,12 @@ void ir_pthread_create(LLVMBuilderRef B, LLVMValueRef fn, LLVMValueRef args) {
 }
 
 void ir_pthread_exit(LLVMBuilderRef builder) {
-    LLVMValueRef args[1] = {LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)};
+    LLVMValueRef args[1] = {LLVMConstPointerNull(LLVMT_PTR_VOID)};
     LLVMBuildCall(builder, ir_pthread_exit_t, args, 1, LLVM_TMP_NONE);
 }
 
 void ir_pthread_mutex_init(LLVMBuilderRef builder, LLVMValueRef mutex) {
-    LLVMValueRef args[] = {mutex, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)};
+    LLVMValueRef args[] = {mutex, LLVMConstPointerNull(LLVMT_PTR_VOID)};
     LLVMBuildCall(builder, ir_pthread_mutex_init_t, args, 2, LLVM_TMP_NONE);
 }
 
@@ -185,7 +185,7 @@ void ir_pthread_mutex_unlock(LLVMBuilderRef builder, LLVMValueRef mutex) {
 }
 
 void ir_pthread_cond_init(LLVMBuilderRef builder, LLVMValueRef cond) {
-    LLVMValueRef args[2] = {cond, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)};
+    LLVMValueRef args[2] = {cond, LLVMConstPointerNull(LLVMT_PTR_VOID)};
     LLVMBuildCall(builder, ir_pthread_cond_init_t, args, 2, LLVM_TMP_NONE);
 }
 
