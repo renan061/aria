@@ -154,20 +154,14 @@ void ir_pthread_setup(LLVMModuleRef module) {
 // ==================================================
 
 // ASK: Should the p_thread_t really be allocated with malloc?
-void ir_pthread_create(
-    LLVMBuilderRef builder,
-    LLVMValueRef function,
-    LLVMValueRef argument) {
-    
-    LLVMValueRef arguments[4] = {
-        ir_malloc(builder, sizeof(pthread_t)),
+void ir_pthread_create(LLVMBuilderRef B, LLVMValueRef fn, LLVMValueRef args) {
+    LLVMValueRef arguments[] = {
+        ir_malloc(B, sizeof(pthread_t)),
         LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID),
-        function,
-        argument
+        fn,
+        args
     };
-    LLVMBuildCall(
-        builder, ir_pthread_create_t, arguments, 4, LLVM_TMP_NONE
-    );
+    LLVMBuildCall(B, ir_pthread_create_t, arguments, 4, LLVM_TMP_NONE);
 }
 
 void ir_pthread_exit(LLVMBuilderRef builder) {
@@ -176,57 +170,36 @@ void ir_pthread_exit(LLVMBuilderRef builder) {
 }
 
 void ir_pthread_mutex_init(LLVMBuilderRef builder, LLVMValueRef mutex) {
-    LLVMValueRef args[2] = {
-        mutex, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)
-    };
-    LLVMBuildCall(
-        builder, ir_pthread_mutex_init_t, args, 2, LLVM_TMP_NONE
-    );
+    LLVMValueRef args[] = {mutex, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)};
+    LLVMBuildCall(builder, ir_pthread_mutex_init_t, args, 2, LLVM_TMP_NONE);
 }
 
 void ir_pthread_mutex_lock(LLVMBuilderRef builder, LLVMValueRef mutex) {
     LLVMValueRef args[1] = {mutex};
-    LLVMBuildCall(
-        builder, ir_pthread_mutex_lock_t, args, 1, LLVM_TMP_NONE
-    );
+    LLVMBuildCall(builder, ir_pthread_mutex_lock_t, args, 1, LLVM_TMP_NONE);
 }
 
 void ir_pthread_mutex_unlock(LLVMBuilderRef builder, LLVMValueRef mutex) {
     LLVMValueRef args[1] = {mutex};
-    LLVMBuildCall(
-        builder, ir_pthread_mutex_unlock_t, args, 1, LLVM_TMP_NONE
-    );
+    LLVMBuildCall(builder, ir_pthread_mutex_unlock_t, args, 1, LLVM_TMP_NONE);
 }
 
 void ir_pthread_cond_init(LLVMBuilderRef builder, LLVMValueRef cond) {
     LLVMValueRef args[2] = {cond, LLVMConstPointerNull(LLVM_TYPE_POINTER_VOID)};
-    LLVMBuildCall(
-        builder, ir_pthread_cond_init_t, args, 2, LLVM_TMP_NONE
-    );
+    LLVMBuildCall(builder, ir_pthread_cond_init_t, args, 2, LLVM_TMP_NONE);
 }
 
-void ir_pthread_cond_wait(
-    LLVMBuilderRef builder,
-    LLVMValueRef cond,
-    LLVMValueRef mutex) {
-
-    LLVMValueRef args[2] = {cond, mutex};
-    LLVMBuildCall(
-        builder, ir_pthread_cond_wait_t, args, 2, LLVM_TMP_NONE
-    );
+void ir_pthread_cond_wait(LLVMBuilderRef B, LLVMValueRef cd, LLVMValueRef mtx) {
+    LLVMValueRef args[2] = {cd, mtx}; // {cond, mutex}
+    LLVMBuildCall(B, ir_pthread_cond_wait_t, args, 2, LLVM_TMP_NONE);
 }
 
 void ir_pthread_cond_signal(LLVMBuilderRef builder, LLVMValueRef cond) {
     LLVMValueRef args[1] = {cond};
-    LLVMBuildCall(
-        builder, ir_pthread_cond_signal_t, args, 1, LLVM_TMP_NONE
-    );
+    LLVMBuildCall(builder, ir_pthread_cond_signal_t, args, 1, LLVM_TMP_NONE);
 }
 
 void ir_pthread_cond_broadcast(LLVMBuilderRef builder, LLVMValueRef cond) {
     LLVMValueRef args[1] = {cond};
-    LLVMBuildCall(
-        builder, ir_pthread_cond_broadcast_t, args, 1, LLVM_TMP_NONE
-    );
-
+    LLVMBuildCall(builder, ir_pthread_cond_broadcast_t, args, 1, LLVM_TMP_NONE);
 }

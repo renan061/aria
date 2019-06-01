@@ -27,6 +27,9 @@ typedef LLVMTypeRef       LLVMT  ;
 typedef LLVMBasicBlockRef LLVMBB ;
 typedef LLVMValueRef      LLVMV  ;
 
+// string malloc that accounts for '\0'
+#define SMALLOC(str, len) MALLOC_ARRAY(str, char, (len + 1))
+
 // TODO: move / other names
 #define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
 #define NAME_SPAWN_FUNCTION             "_spawn_block"
@@ -35,8 +38,8 @@ typedef LLVMValueRef      LLVMV  ;
 #define STRUCTURE_VMT               (1)
 #define STRUCTURE_ATTRIBUTE_START   (STRUCTURE_VMT + 1)
 
-#define LABEL                   "l_"
-#define LABEL_FUNCTION_ENTRY    LABEL "function_entry"
+#define LABEL                   ""
+#define LABEL_ENTRY             LABEL "entry"
 #define LABEL_IF_TRUE           LABEL "if_true"
 #define LABEL_IF_END            LABEL "if_end"
 #define LABEL_IF_ELSE_TRUE      LABEL "if_else_true"
@@ -52,6 +55,7 @@ typedef LLVMValueRef      LLVMV  ;
 #define LABEL_FOR_END           LABEL "for_end"
 
 // primitive types
+static Type* __void;
 static Type* __boolean;
 static Type* __integer;
 static Type* __float;
@@ -70,7 +74,7 @@ static void state_close_block(IRState* irs) {
 
 // LLVM (TODO: new module?)
 static LLVMT llvm_type(Type*);
-static LLVMT llvm_function_type(Definition*, size_t);
+static LLVMT llvm_fn_type(Definition*, size_t);
 static void llvm_return(IRState*, LLVMV);
 static LLVMT llvm_structure(LLVMT[], size_t, const char*);
 
@@ -125,9 +129,8 @@ static void position_builder(IRState* irs, LLVMBasicBlockRef block) {
 // returns the mutex lock from a monitor
 static LLVMV monitormutex(LLVMB B, LLVMV monitor) {
     LLVMV x = LLVMBuildLoad(B,
-        LLVMBuildStructGEP(B, monitor, STRUCTURE_MUTEX, LLVM_TMP),
-        LLVM_TMP
-    );
+        LLVMBuildStructGEP(B, monitor, STRUCTURE_MUTEX, "mutexPtr"), "mutex"
+    ); // TODO: temps
     return x;
 }
 
@@ -163,6 +166,7 @@ LLVMM compile(AST* ast) {
 
 static IRState* setup(void) {
     // primitive types
+    __void = ast_type_void();
     __boolean = ast_type_boolean();
     __integer = ast_type_integer();
     __float = ast_type_float();
@@ -273,26 +277,138 @@ static void backend_definition_function(IRState* irs, Definition* def) {
     irs->main = false;
 }
 
-static void backend_definition_method(IRState* irs, Definition* def) {
-    initializefunction(irs, def);
+/*
+// declares a function in LLVM
+static LLVMV declarefunction(IRState* irs, Definition* fn) {
+    // counts the number of parameters
+    int paramc = 0;
+    FOREACH(Definition, p, fn->function.parameters) {
+        paramc++;
+    }
 
-    // <self> is the first parameter
-    irs->self = def->function.parameters->capsa.capsa->V;
-    irs->self = LLVMBuildBitCast(
-        irs->B,
-        irs->self,
-        LLVMT_PTR(irs->structure_type),
-        LLVM_TMP
+    // adds the function's prototype to the module
+    LLVMV V = LLVMAddFunction(irs->M,
+        fn->function.id->name, llvm_fn_type(fn, paramc)
     );
 
-    backend_block(irs, def->function.block);
+    return V;
+}
+*/
+
+// nll = [ 0 => non-locking ; 1 => locking ]
+static const char* fname(Definition* fn, int nll) {
+    char* s;
+    int len;
+    if (fn->function.qualifiers & FQ_ACQUIRE) {
+        len = strlen(fn->function.id->name) + 8;
+        SMALLOC(s, len);
+        strcpy(s, "acquire-");
+    } else if (fn->function.qualifiers & FQ_RELEASE) {
+        len = strlen(fn->function.id->name) + 8;
+        SMALLOC(s, len);
+        strcpy(s, "release-");
+    } else {
+        len = strlen(fn->function.id->name);
+        SMALLOC(s, len);
+        s[0] = '\0';
+    }
+    strcat(s, fn->function.id->name);
+
+    char* name;
+    switch (nll) {
+    case 0: // non-locking
+        SMALLOC(name, len + 3);
+        strcpy(name, s);
+        strcat(name, "-NL");
+        break;
+    case 1: // locking
+        SMALLOC(name, len + 2);
+        strcpy(name, s);
+        strcat(name, "-L");
+        break;
+    default:
+        UNREACHABLE;
+    }
+    free(s);
+
+    return name;
+}
+
+// TODO: move
+#define LLVM_TMP_SELF   "self"
+#define LLVM_TMP_RETURN "ret"
+
+// TODO: ...
+static void fnNL(IRState* irs, Definition* fn) {
+    // counts the number of parameters
+    int n = 0;
+    COUNT(Definition, fn->function.parameters, n);
+
+    // adds the non-locking-function's prototype to the module
+    const char* name = fname(fn, 0);
+    fn->V = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, n));
+    free((void*)name);
+
+    // assigns LLVM values to each parameter
+    n = 0;
+    FOREACH(Definition, p, fn->function.parameters) {
+        p->capsa.capsa->V = LLVMGetParam(fn->V, n++);
+    }
+
+    position_builder(irs, LLVMAppendBasicBlock(fn->V, LABEL_ENTRY));
+    irs->function = fn->V;
+
+    // <self> is the first parameter
+    LLVMV selfV = fn->function.parameters->capsa.capsa->V;
+    LLVMT selfT = LLVMT_PTR(irs->structure_type);
+    irs->self = LLVMBuildBitCast(irs->B, selfV, selfT, LLVM_TMP_SELF);
+
+    backend_block(irs, fn->function.block);
 
     // implicit return
     if (irs->block) {
-        llvm_return(irs, zerovalue(irs, def->function.type));
+        llvm_return(irs, zerovalue(irs, fn->function.type));
     }
 
     irs->self = NULL;
+}
+
+// TODO: ...
+static void fnL(IRState* irs, Definition* fn) {
+    assert(fn->V);
+
+    // adds the locking-function's prototype to the module
+    int argc = LLVMCountParams(fn->V);
+    const char* name = fname(fn, 1);
+    LLVMV fnL = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, argc));
+    free((void*)name);
+
+    position_builder(irs, LLVMAppendBasicBlock(fnL, LABEL_ENTRY));
+
+    // gets the monitor's mutex from <self>
+    LLVMV selfV = LLVMGetParam(fnL, 0);
+    LLVMT selfT = LLVMT_PTR(irs->structure_type);
+    selfV = LLVMBuildBitCast(irs->B, selfV, selfT, LLVM_TMP_SELF);
+    LLVMV mutex = monitormutex(irs->B, selfV);
+
+    ir_pthread_mutex_lock(irs->B, mutex);
+
+    // calls the NL function
+    LLVMV argv[argc];
+    LLVMGetParams(fnL, argv);
+    LLVMV ret = (fn->function.type != __void)
+        ? LLVMBuildCall(irs->B, fn->V, argv, argc, LLVM_TMP_RETURN)
+        : (LLVMBuildCall(irs->B, fn->V, argv, argc, LLVM_TMP_NONE), NULL)
+        ;
+
+    ir_pthread_mutex_unlock(irs->B, mutex);
+
+    llvm_return(irs, (ret) ? ret : zerovalue(irs, fn->function.type));
+}
+
+static void backend_definition_method(IRState* irs, Definition* def) {
+    fnNL(irs, def);
+    fnL(irs, def);
 }
 
 // TODO: move
@@ -397,33 +513,32 @@ static void backend_definition_monitor(IRState* irs, Definition* def) {
 // declares a function in LLVM
 // links parameters' LLVM values inside the AST
 // creates the ENTRY blocks and positions the instruction builder
-// defines (f->V) and (irs->function)
-static void initializefunction(IRState* irs, Definition* f) {
-    assert(f->function.id);
-    assert(f->function.type);
+// defines (fn->V) and (irs->function)
+static void initializefunction(IRState* irs, Definition* fn) {
+    assert(fn->function.id);
+    assert(fn->function.type);
 
     // counts the number of parameters
-    size_t parameters_size = 0;
-    FOREACH(Definition, p, f->function.parameters) {
-        parameters_size++;
+    int params = 0;
+    FOREACH(Definition, p, fn->function.parameters) {
+        params++;
     }
 
     // creates the function prototype 
-    LLVMV fn = LLVMAddFunction(irs->M,
-        f->function.id->name, llvm_function_type(f, parameters_size)
+    fn->V = LLVMAddFunction(irs->M,
+        fn->function.id->name, llvm_fn_type(fn, params)
     );
 
     { // assigns LLVM values to each parameter
         int i = 0;
-        FOREACH(Definition, p, f->function.parameters) {
-            p->capsa.capsa->V = LLVMGetParam(fn, i++);
+        FOREACH(Definition, p, fn->function.parameters) {
+            p->capsa.capsa->V = LLVMGetParam(fn->V, i++);
         }
     }
 
-    position_builder(irs, LLVMAppendBasicBlock(fn, LABEL_FUNCTION_ENTRY));
+    position_builder(irs, LLVMAppendBasicBlock(fn->V, LABEL_ENTRY));
 
-    f->V = fn;
-    irs->function = fn;
+    irs->function = fn->V;
 }
 
 // auxiliary - initializes all global values
@@ -1167,11 +1282,8 @@ static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
         args[0], LLVMT_PTR(fc->obj->type->T), LLVM_TMP
     );
 
-    LLVMV mutex = monitormutex(irs->B, obj);
-    ir_pthread_mutex_lock(irs->B, mutex);
-
     // bitcast from i8* to (T)*
-    // FIXME: LLVMT T = llvm_function_type(fc->fn, fc->argc);
+    // FIXME: LLVMT T = llvm_fn_type(fc->fn, fc->argc);
     LLVMT T; // function type
     {
         int i = 1;
@@ -1195,7 +1307,6 @@ static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
     fn = LLVMBuildBitCast(irs->B, fn, LLVMT_PTR(T), LLVM_TMP);
     LLVMV V = LLVMBuildCall(irs->B, fn, args, fc->argc, LLVM_TMP_NONE);
 
-    ir_pthread_mutex_unlock(irs->B, mutex);
     free(args);
     return V;
 }
@@ -1308,7 +1419,7 @@ static LLVMT llvm_type(Type* type) {
 }
 
 // given a function definition, returns its LLVM type
-static LLVMT llvm_function_type(Definition* fn, size_t psize) {
+static LLVMT llvm_fn_type(Definition* fn, size_t psize) {
     int i = 0;
     LLVMT params[psize];
     FOREACH(Definition, p, fn->function.parameters) {

@@ -118,7 +118,7 @@ struct AST {
 struct Definition {
     DefinitionTag tag;
     Definition* next;
-    LLVMValueRef V;
+    LLVMValueRef V, lV; // TODO: lV is for locking versions of methods
     
     union {
         // DefinitionCapsa
