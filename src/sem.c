@@ -503,7 +503,8 @@ static void semstructure(SS* ss, Definition* def) {
         case DECLARATION_FUNCTION:
             // fallthrough
         case DEFINITION_FUNCTION:
-            def->type->structure.methods[i_methods++] = d;
+            def->type->structure.methods[i_methods] = d;
+            d->function.vmt_index = i_methods++; // TODO: backend.c
             break;
         case DEFINITION_CONSTRUCTOR:
             break;
