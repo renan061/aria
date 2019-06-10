@@ -174,6 +174,8 @@ struct Type {
             Definition** methods;
             size_t methods_size;
             Definition* constructor;
+            // backend
+            LLVMValueRef gL, gNL; // VMTs
         } structure;
     };
 };

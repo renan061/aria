@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
-#include <stdio.h> // TODO: Remove
-#include <strings.h> // TODO: Remove
+#include <stdio.h> // TODO: remove
+#include <strings.h> // TODO: remove
 
 #include <llvm-c/Core.h>
 
@@ -9,6 +9,7 @@
 #include "ast.h"
 #include "athreads.h"
 #include "ir.h"
+#include "list.h"
 #include "macros.h"
 #include "parser.h" // for the tokens
 
@@ -78,13 +79,16 @@ static LLVMT llvm_fn_type(Definition*, size_t);
 static void llvm_return(IRState*, LLVMV);
 static LLVMT llvm_structure(LLVMT[], size_t, const char*);
 
+// structures' static initializers
+List* inits = NULL;
+
 // ==================================================
 //
 //  Globals
 //
 // ==================================================
 
-// TODO: move / refactor
+// TODO: move / refactor => use List.h
 
 typedef struct Global Global;
 struct Global {
@@ -175,11 +179,12 @@ static IRState* setup(void) {
 
     // ir
     IRState* irs = ir_state_new(
-        LLVMModuleCreateWithName("main.aria"),
-        LLVMCreateBuilder()
+        LLVMModuleCreateWithName("main.aria"), LLVMCreateBuilder()
     );
     ir_setup(irs->M);
     ir_pthread_setup(irs->M);
+
+    inits = list_new();
 
     return irs;
 }
@@ -188,6 +193,7 @@ static LLVMM teardown(IRState* irs) {
     ir_state_done(irs);
     LLVMM M = irs->M;
     ir_state_free(irs);
+    list_destroy(inits);
     return M;
 }
 
@@ -276,6 +282,10 @@ static void backend_definition_function(IRState* irs, Definition* def) {
     if (def->function.id->name == scanner_native[SCANNER_NATIVE_MAIN]) {
         irs->main = true;
         initializeglobals(irs);
+        // calling all structures' initializers
+        FOREACH(ListNode, n, inits->first) {
+            LLVMBuildCall(irs->B, (LLVMV)n->value, NULL, 0, LLVM_TMP_NONE);
+        }
     }
 
     backend_block(irs, def->function.block);
@@ -313,8 +323,13 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
         irs->B, irs->self, STRUCTURE_MUTEX, LLVM_TMP
     ));
 
-    // creates the structure's VMT
-    vmtinit(irs, def);
+    // stores the VMT-L inside the <self> instance
+    LLVMV gL = def->function.type->structure.gL;
+    assert(gL);
+    LLVMV vmt = LLVMBuildLoad(irs->B, gL, LLVM_TMP);
+    LLVMBuildStore(irs->B, vmt, LLVMBuildStructGEP(
+        irs->B, irs->self, STRUCTURE_VMT, LLVM_TMP_VMT
+    ));
 
     // initializes attributes
     FOREACH(Definition, d, def->function.type->structure.definitions) {
@@ -380,11 +395,17 @@ static void backend_definition_monitor(IRState* irs, Definition* def) {
         def->type->structure.id->name
     );
 
+    // methods
     irs->structure_type = def->type->T;
     for (int i = 0; i < def->type->structure.methods_size; i++) {
         Definition* fn = def->type->structure.methods[i]; // FIXME: ?
         backend_definition(irs, fn);
     }
+
+    // VMT
+    vmtinit(irs, def);
+
+    // constructor
     backend_definition(irs, def->type->structure.constructor);
     irs->structure_type = NULL;
 }
@@ -593,24 +614,57 @@ static void vmtNL(LLVMB B, LLVMV vmt, Definition** methods, int n) {
     }
 }
 
-// auxiliary - creates the structure's VMT
-static void vmtinit(IRState* irs, Definition* def) {
-    Definition** methods = def->function.type->structure.methods;
-    int n = def->function.type->structure.methods_size;
+// TODO: move
+static char* concat(char* a, char* b) {
+    char* s;
+    SMALLOC(s, strlen(a) + strlen(b));
+    strcpy(s, a); 
+    strcat(s, b);
+    return s;
+}
 
+// auxiliary - creates the structure's static initializer and its global VMT(s)
+static void vmtinit(IRState* irs, Definition* m) {
+    Definition** methods = m->type->structure.methods;
+    int n = m->type->structure.methods_size;
     // TODO: n only for NL, count privates
 
-    // creates and fills the VMT with the monitor's methods
-    LLVMV vmt = vmtnew(irs->B, n);
-    vmtL(irs->B, vmt, methods, n);
-    if (false) {
-        vmtNL(irs->B, vmt, methods, n);
-    }
+    // creates the static constructor function for the monitor
+    LLVMT T = LLVMFunctionType(LLVMVoidType(), NULL, 0, false);
+    LLVMV init = LLVMAddFunction(irs->M, "static-constructor", T);
+    LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(init, LABEL_ENTRY));
 
-    // stores the VMT inside the <self> instance
-    LLVMBuildStore(irs->B, vmt, LLVMBuildStructGEP(
-        irs->B, irs->self, STRUCTURE_VMT, LLVM_TMP_VMT
-    ));
+    // creates and fills the VMT with the monitor's methods
+    LLVMV L = vmtnew(irs->B, n);
+    vmtL(irs->B, L, methods, n);
+    LLVMV NL = vmtnew(irs->B, n);
+    vmtNL(irs->B, NL, methods, n);
+
+    // TODO: change VMTs to remove malloc and set global
+    //       type as [N x i8*] instead of [N x i8*]*
+
+    // stores the VMTs in global variables
+    T = LLVMT_PTR(LLVMArrayType(LLVMT_PTR_VOID, n));
+
+    char* s;
+
+    s = concat((char*)m->type->structure.id->name, "-vmt-L");
+    LLVMV gL = LLVMAddGlobal(irs->M, T, s);
+    free(s);
+    LLVMSetInitializer(gL, LLVMGetUndef(T));
+    LLVMBuildStore(irs->B, L, gL);
+
+    s = concat((char*)m->type->structure.id->name, "-vmt-NL");
+    LLVMV gNL = LLVMAddGlobal(irs->M, T, s);
+    free(s);
+    LLVMSetInitializer(gNL, LLVMGetUndef(T));
+    LLVMBuildStore(irs->B, NL, gNL);
+
+    LLVMBuildRetVoid(irs->B);
+
+    m->type->structure.gL = gL;
+    m->type->structure.gNL = gNL;
+    list_append(inits, (ListValue) init);
 }
 
 // ==================================================

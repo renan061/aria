@@ -113,7 +113,11 @@ void list_dump(List* list, ListValuePrint print) {
     ListNode* n = list->first;
     while (n) {
         printf("\t");
-        print(n->value);
+        if (print) {
+            print(n->value);
+        } else {
+            printf("%p", n->value);
+        }
         if (!n->next) {
             break;
         }
