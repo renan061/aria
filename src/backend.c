@@ -67,6 +67,15 @@ static Type* __condition_queue;
 static LLVMV stringliteral(IRState*, const char*);
 static LLVMV zerovalue(IRState*, Type*);
 
+// concatanates two strings (the returned string must be freed)
+static char* concat(char* a, char* b) {
+    char* s;
+    SMALLOC(s, strlen(a) + strlen(b));
+    strcpy(s, a); 
+    strcat(s, b);
+    return s;
+}
+
 // TODO: move / rename -> see position_builder
 static void state_close_block(IRState* irs) {
     assert(irs->block);
@@ -214,17 +223,16 @@ static void backend_definition_monitor(IRState*, Definition*);
 static void initializefunction(IRState*, Definition*);
 static void initializeglobals(IRState*);
 
-static const char* fname(Definition*, int);
+static const char* fname(Definition*, bool);
 static void fnL(IRState*, Definition*);
 static void fnNL(IRState*, Definition*);
 
 #define ISPRIVATE(fn) (fn->function.qualifiers & FQ_PRIVATE)
 
-static LLVMV vmtnew(LLVMB, int);
-static void vmtstore(LLVMB, LLVMV, LLVMV, int);
-static void vmtL(LLVMB, LLVMV, Definition**, int);
-static void vmtNL(LLVMB, LLVMV, Definition**, int);
-static void vmtinit(IRState*, Definition*);
+static void vmt_store(LLVMB, LLVMV, LLVMV, int);
+static void vmt_fillL(LLVMB, Definition*, LLVMV);
+static void vmt_fillNL(LLVMB, Definition*, LLVMV);
+static void vmt_init(IRState*, Definition*);
 
 static void backend_definition(IRState* irs, Definition* d) {
     switch (d->tag) {
@@ -300,7 +308,9 @@ static void backend_definition_function(IRState* irs, Definition* def) {
 
 static void backend_definition_method(IRState* irs, Definition* def) {
     fnNL(irs, def);
-    fnL(irs, def);
+    if (!ISPRIVATE(def)) {
+        fnL(irs, def);
+    }
 }
 
 // TODO: move
@@ -324,10 +334,8 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
     ));
 
     // stores the VMT-L inside the <self> instance
-    LLVMV gL = def->function.type->structure.gL;
-    assert(gL);
-    LLVMV vmt = LLVMBuildLoad(irs->B, gL, LLVM_TMP);
-    LLVMBuildStore(irs->B, vmt, LLVMBuildStructGEP(
+    assert(def->function.type->structure.gL);
+    LLVMBuildStore(irs->B, def->function.type->structure.gL, LLVMBuildStructGEP(
         irs->B, irs->self, STRUCTURE_VMT, LLVM_TMP_VMT
     ));
 
@@ -403,7 +411,7 @@ static void backend_definition_monitor(IRState* irs, Definition* def) {
     }
 
     // VMT
-    vmtinit(irs, def);
+    vmt_init(irs, def);
 
     // constructor
     backend_definition(irs, def->type->structure.constructor);
@@ -457,40 +465,25 @@ static void initializeglobals(IRState* irs) {
     }
 }
 
-// nll = [ 0 => non-locking ; 1 => locking ]
-static const char* fname(Definition* fn, int nll) {
+// auxiliary - creates readable names for functions
+static const char* fname(Definition* fn, bool islocking) {
     char* s;
-    int len;
+    int len = strlen(fn->function.id->name);
     if (fn->function.qualifiers & FQ_ACQUIRE) {
-        len = strlen(fn->function.id->name) + 8;
+        len += 8;
         SMALLOC(s, len);
         strcpy(s, "acquire-");
     } else if (fn->function.qualifiers & FQ_RELEASE) {
-        len = strlen(fn->function.id->name) + 8;
+        len += 8;
         SMALLOC(s, len);
         strcpy(s, "release-");
     } else {
-        len = strlen(fn->function.id->name);
         SMALLOC(s, len);
         s[0] = '\0';
     }
-    strcat(s, fn->function.id->name);
 
-    char* name;
-    switch (nll) {
-    case 0: // non-locking
-        SMALLOC(name, len + 3);
-        strcpy(name, s);
-        strcat(name, "-NL");
-        break;
-    case 1: // locking
-        SMALLOC(name, len + 2);
-        strcpy(name, s);
-        strcat(name, "-L");
-        break;
-    default:
-        UNREACHABLE;
-    }
+    strcat(s, fn->function.id->name);
+    char* name = concat(s, islocking ? "-L" : "-NL");
     free(s);
 
     return name;
@@ -503,7 +496,7 @@ static void fnNL(IRState* irs, Definition* fn) {
     COUNT(Definition, fn->function.parameters, n);
 
     // adds the non-locking-function's prototype to the module
-    const char* name = fname(fn, 0);
+    const char* name = fname(fn, false);
     fn->V = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, n));
     free((void*)name);
 
@@ -537,7 +530,7 @@ static void fnL(IRState* irs, Definition* fn) {
 
     // adds the locking-function's prototype to the module
     int argc = LLVMCountParams(fn->V);
-    const char* name = fname(fn, 1);
+    const char* name = fname(fn, true);
     LLVMV fnL = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, argc));
     free((void*)name);
 
@@ -566,21 +559,13 @@ static void fnL(IRState* irs, Definition* fn) {
 
     llvm_return(irs, (ret) ? ret : zerovalue(irs, fn->function.type));
 
-    fn->lV = fnL;
+    fn->LV = fnL;
 }
 
 // -----------------------------------------------------------------------------
 
-// allocates memory for the VMT
-static LLVMV vmtnew(LLVMB B, int n) {
-    LLVMT T = LLVMArrayType(LLVMT_PTR_VOID, n);
-    LLVMV V = LLVM_CONST_INT(n);
-    V = LLVMBuildArrayMalloc(B, LLVMT_PTR_VOID, V , LLVM_TMP_VMT);
-    return LLVMBuildBitCast(B, V, LLVMT_PTR(T), LLVM_TMP_VMT);
-}
-
-// stores a function in a give position of the VMT
-static void vmtstore(LLVMB B, LLVMV vmt, LLVMV fn, int n) {
+// auxiliary - stores a function in a given position of the VMT
+static void vmt_store(LLVMB B, LLVMV vmt, LLVMV fn, int n) {
     assert(vmt && fn);
     LLVMV indices[] = {LLVM_CONST_INT(0), LLVM_CONST_INT(n)};
     LLVMV P = LLVMBuildGEP(B, vmt, indices, 2, LLVM_TMP);
@@ -588,83 +573,63 @@ static void vmtstore(LLVMB B, LLVMV vmt, LLVMV fn, int n) {
     LLVMBuildStore(B, V, P);
 }
 
-// fills a locking VMT with methods
-static void vmtL(LLVMB B, LLVMV vmt, Definition** methods, int n) {
+// auxiliary - fills a VMT-L with methods
+static void vmt_fillL(LLVMB B, Definition* m, LLVMV vmt) {
+    Definition** methods = m->type->structure.methods;
     int j = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < m->type->structure.methods_size; i++) {
         if (ISPRIVATE(methods[i])) { continue; }
-        vmtstore(B, vmt, methods[i]->lV, j);
+        vmt_store(B, vmt, methods[i]->LV, j);
         methods[i]->function.vmt_index = j++;
         // TODO: vmt_index should only be set in vmtNL
     }
 }
 
-// fills a non-locking VMT with methods
-static void vmtNL(LLVMB B, LLVMV vmt, Definition** methods, int n) {
+// auxiliary - fills a VMT-NL with methods
+static void vmt_fillNL(LLVMB B, Definition* m, LLVMV vmt) {
+    Definition** methods = m->type->structure.methods;
     int j = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < m->type->structure.methods_size; i++) {
         if (ISPRIVATE(methods[i])) { continue; }
-        vmtstore(B, vmt, methods[i]->V, j);
+        vmt_store(B, vmt, methods[i]->V, j);
         methods[i]->function.vmt_index = j++;
     }
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < m->type->structure.methods_size; i++) {
         if (!ISPRIVATE(methods[i])) { continue; }
-        vmtstore(B, vmt, methods[i]->V, j);
+        vmt_store(B, vmt, methods[i]->V, j);
         methods[i]->function.vmt_index = j++;
     }
 }
 
-// TODO: move
-static char* concat(char* a, char* b) {
-    char* s;
-    SMALLOC(s, strlen(a) + strlen(b));
-    strcpy(s, a); 
-    strcat(s, b);
-    return s;
+// auxiliary - creates a new global variable for a VMT
+static LLVMV vmt_new(IRState* irs, Definition* m, char* name) {
+    // FIXME: L and NL have the same array size (despite the private functions)
+    int n = m->type->structure.methods_size;
+    LLVMT T = LLVMArrayType(LLVMT_PTR_VOID, n);
+    char* s = concat((char*)m->type->structure.id->name, name);
+    LLVMV V = LLVMAddGlobal(irs->M, T, s);
+    free(s);
+    LLVMSetInitializer(V, LLVMGetUndef(T));
+    return V;
 }
 
 // auxiliary - creates the structure's static initializer and its global VMT(s)
-static void vmtinit(IRState* irs, Definition* m) {
-    Definition** methods = m->type->structure.methods;
-    int n = m->type->structure.methods_size;
-    // TODO: n only for NL, count privates
-
+static void vmt_init(IRState* irs, Definition* m) {
     // creates the static constructor function for the monitor
     LLVMT T = LLVMFunctionType(LLVMVoidType(), NULL, 0, false);
     LLVMV init = LLVMAddFunction(irs->M, "static-constructor", T);
     LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(init, LABEL_ENTRY));
+    list_append(inits, (ListValue)init);
 
-    // creates and fills the VMT with the monitor's methods
-    LLVMV L = vmtnew(irs->B, n);
-    vmtL(irs->B, L, methods, n);
-    LLVMV NL = vmtnew(irs->B, n);
-    vmtNL(irs->B, NL, methods, n);
+    // VMT-L
+    m->type->structure.gL = vmt_new(irs, m, "-vmt-L");
+    vmt_fillL(irs->B, m, m->type->structure.gL);
 
-    // TODO: change VMTs to remove malloc and set global
-    //       type as [N x i8*] instead of [N x i8*]*
-
-    // stores the VMTs in global variables
-    T = LLVMT_PTR(LLVMArrayType(LLVMT_PTR_VOID, n));
-
-    char* s;
-
-    s = concat((char*)m->type->structure.id->name, "-vmt-L");
-    LLVMV gL = LLVMAddGlobal(irs->M, T, s);
-    free(s);
-    LLVMSetInitializer(gL, LLVMGetUndef(T));
-    LLVMBuildStore(irs->B, L, gL);
-
-    s = concat((char*)m->type->structure.id->name, "-vmt-NL");
-    LLVMV gNL = LLVMAddGlobal(irs->M, T, s);
-    free(s);
-    LLVMSetInitializer(gNL, LLVMGetUndef(T));
-    LLVMBuildStore(irs->B, NL, gNL);
+    // VMT-NL
+    m->type->structure.gNL = vmt_new(irs, m, "-vmt-NL");
+    vmt_fillNL(irs->B, m, m->type->structure.gNL);
 
     LLVMBuildRetVoid(irs->B);
-
-    m->type->structure.gL = gL;
-    m->type->structure.gNL = gNL;
-    list_append(inits, (ListValue) init);
 }
 
 // ==================================================
