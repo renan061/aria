@@ -535,7 +535,7 @@ static const char* fname(Definition* fn, int kind) {
     char* name = concat(s,
           kind == 0 ? "-NL"
         : kind == 1 ? "-L"
-        : kind == 2 ? "-proxy"
+        : kind == 2 ? "-P"
         : (INVALID  , "-error")
     );
     free(s);
@@ -725,13 +725,13 @@ static LLVMV vmt_new(IRState* irs, Definition* m, char* name) {
 
 // TODO: doc
 static void proxy_structure(Definition* m) {
-    char* name = concat((char*)m->type->structure.id->name, "-proxy");
+    char* name = concat((char*)m->type->structure.id->name, "-P");
     m->type->PT = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
     free(name);
     assert(m->type->structure.gL);
     LLVMT vmtT = LLVMTypeOf(m->type->structure.gL);
     LLVMT fields[] = {LLVMT_PTR_VOID, vmtT, vmtT, LLVMT_BOOLEAN};
-    // {self, vmt-proxy, vmt-L, ok}
+    // {self, vmt-P, vmt-L, ok}
     LLVMStructSetBody(m->type->PT, fields, 4, false);
 }
 
