@@ -154,7 +154,7 @@ struct Type {
     bool primitive;
     bool immutable; // default false
 
-    LLVMTypeRef T, PT; // type & proxy type
+    LLVMTypeRef T; // type
 
     union {
         // TypeID
