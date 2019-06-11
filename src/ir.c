@@ -12,11 +12,13 @@
 
 #define NAME_PRINTF "printf"
 #define NAME_MALLOC "malloc"
+#define NAME_EXIT   "exit"
 
 // Internal
 static LLVMValueRef
     ir_malloc_t = NULL,
-    ir_printf_t = NULL
+    ir_printf_t = NULL,
+    ir_exit_t   = NULL
 ;
 
 // ==================================================
@@ -32,7 +34,7 @@ IRState* ir_state_new(LLVMModuleRef M, LLVMBuilderRef B) {
     irs->B = B;
     irs->function = NULL;
     irs->block = NULL;
-    irs->self = NULL;
+    irs->structure = NULL;
     irs->self = NULL;
     irs->main = false;
     irs->initializer = false;
@@ -87,6 +89,15 @@ void ir_setup(LLVMModuleRef module) {
             LLVMFunctionType(LLVMT_PTR_VOID, paramtypes, 1, false)
         );
     }
+
+    { // exit
+        LLVMTypeRef paramtypes[1] = {LLVM_TYPE_INTEGER};
+        ir_exit_t = LLVMAddFunction(
+            module,
+            NAME_EXIT,
+            LLVMFunctionType(LLVM_TYPE_VOID, paramtypes, 1, false)
+        );
+    }
 }
 
 // ==================================================
@@ -102,6 +113,11 @@ LLVMValueRef ir_printf(LLVMBuilderRef B, LLVMValueRef* args, int n) {
 LLVMValueRef ir_malloc(LLVMBuilderRef B, size_t size) {
     LLVMValueRef args[1] = {LLVM_CONST_INT(size)};
     return LLVMBuildCall(B, ir_malloc_t, args, 1, LLVM_TMP_NONE);
+}
+
+LLVMValueRef ir_exit(LLVMBuilderRef B) {
+    LLVMValueRef args[1] = {LLVM_CONST_INT(1)};
+    return LLVMBuildCall(B, ir_exit_t, args, 1, LLVM_TMP_NONE);
 }
 
 LLVMValueRef ir_cmp(LLVMBuilderRef B,

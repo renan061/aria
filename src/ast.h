@@ -118,7 +118,9 @@ struct AST {
 struct Definition {
     DefinitionTag tag;
     Definition* next;
-    LLVMValueRef V, LV; // TODO: LV is for locking versions of methods
+    LLVMValueRef V, LV, PV;
+    // TODO: LV is for locking versions of methods
+    //       PV is for proxy versions of methods => TODO: atc.c !!!
     
     union {
         // DefinitionCapsa
@@ -152,7 +154,7 @@ struct Type {
     bool primitive;
     bool immutable; // default false
 
-    LLVMTypeRef T; // TODO: always set
+    LLVMTypeRef T, PT; // type & proxy type
 
     union {
         // TypeID
@@ -175,7 +177,7 @@ struct Type {
             size_t methods_size;
             Definition* constructor;
             // backend
-            LLVMValueRef gL, gNL; // VMTs
+            LLVMValueRef gL, gNL, gP; // VMTs => TODO: atc.c !!!
         } structure;
     };
 };

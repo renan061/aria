@@ -4,6 +4,9 @@
 // forces statement behavior
 #define STMT(x) do { x } while(0)
 
+// marks invalid expressions
+#define INVALID (assert(0))
+
 // marks unreachable code
 #define UNREACHABLE STMT(assert(0);)
 

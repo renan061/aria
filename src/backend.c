@@ -35,6 +35,12 @@ typedef LLVMValueRef      LLVMV  ;
 #define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
 #define NAME_SPAWN_FUNCTION             "_spawn_block"
 
+#define PROXY_IDX_SELF  (0)
+#define PROXY_IDX_VMTP  (1) // same as STRUCTURE_VMT
+#define PROXY_IDX_VMTNL (2)
+#define PROXY_IDX_OK    (3)
+
+// TODO: rename like proxy
 #define STRUCTURE_MUTEX             (0)
 #define STRUCTURE_VMT               (1)
 #define STRUCTURE_ATTRIBUTE_START   (STRUCTURE_VMT + 1)
@@ -223,16 +229,21 @@ static void backend_definition_monitor(IRState*, Definition*);
 static void initializefunction(IRState*, Definition*);
 static void initializeglobals(IRState*);
 
-static const char* fname(Definition*, bool);
+static const char* fname(Definition*, int);
 static void fnL(IRState*, Definition*);
 static void fnNL(IRState*, Definition*);
+static void fnProxy(IRState*, Definition*);
 
 #define ISPRIVATE(fn) (fn->function.qualifiers & FQ_PRIVATE)
 
 static void vmt_store(LLVMB, LLVMV, LLVMV, int);
 static void vmt_fillL(LLVMB, Definition*, LLVMV);
 static void vmt_fillNL(LLVMB, Definition*, LLVMV);
+static void vmt_fillP(LLVMB, Definition*, LLVMV);
+static LLVMV vmt_new(IRState*, Definition*, char*);
 static void vmt_init(IRState*, Definition*);
+
+static void proxy_structure(Definition*);
 
 static void backend_definition(IRState* irs, Definition* d) {
     switch (d->tag) {
@@ -324,7 +335,7 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
     initializefunction(irs, def);
 
     // creates the <self> instance
-    irs->self = LLVMBuildMalloc(irs->B, irs->structure_type, LLVM_TMP);
+    irs->self = LLVMBuildMalloc(irs->B, irs->structure->type->T, LLVM_TMP);
 
     // creates the monitor's mutex
     LLVMV mutex = ir_malloc(irs->B, sizeof(pthread_mutex_t));
@@ -403,19 +414,56 @@ static void backend_definition_monitor(IRState* irs, Definition* def) {
         def->type->structure.id->name
     );
 
-    // methods
-    irs->structure_type = def->type->T;
+    // methods (L & NL)
+    irs->structure = def;
     for (int i = 0; i < def->type->structure.methods_size; i++) {
         Definition* fn = def->type->structure.methods[i]; // FIXME: ?
         backend_definition(irs, fn);
     }
 
     // VMT
-    vmt_init(irs, def);
+    vmt_init(irs, def); // TODO
+
+    { // TODO: refactor
+
+        // REFACTOR: call a function named <staticinit>
+
+        Definition* m = def;
+
+        // creates the static constructor function for the monitor
+        LLVMT T = LLVMFunctionType(LLVMVoidType(), NULL, 0, false);
+        LLVMV init = LLVMAddFunction(irs->M, "static-constructor", T);
+        LLVMBB bbsc = LLVMAppendBasicBlock(init, LABEL_ENTRY);
+        LLVMPositionBuilderAtEnd(irs->B, bbsc);
+        list_append(inits, (ListValue)init);
+
+        // VMT-L
+        m->type->structure.gL = vmt_new(irs, m, "-vmt-L");
+        vmt_fillL(irs->B, m, m->type->structure.gL);
+
+        // VMT-NL
+        m->type->structure.gNL = vmt_new(irs, m, "-vmt-NL");
+        vmt_fillNL(irs->B, m, m->type->structure.gNL);
+
+        // methods (proxy)
+        proxy_structure(def);
+        for (int i = 0; i < def->type->structure.methods_size; i++) {
+            Definition* fn = def->type->structure.methods[i]; // FIXME: ?
+            if (!ISPRIVATE(fn)) {
+                fnProxy(irs, fn);
+            }
+        }
+
+        // VMT-P
+        LLVMPositionBuilderAtEnd(irs->B, bbsc);
+        m->type->structure.gP = vmt_new(irs, m, "-vmt-P");
+        vmt_fillP(irs->B, m, m->type->structure.gP);
+        LLVMBuildRetVoid(irs->B);
+    }
 
     // constructor
     backend_definition(irs, def->type->structure.constructor);
-    irs->structure_type = NULL;
+    irs->structure = NULL;
 }
 
 // -----------------------------------------------------------------------------
@@ -466,7 +514,8 @@ static void initializeglobals(IRState* irs) {
 }
 
 // auxiliary - creates readable names for functions
-static const char* fname(Definition* fn, bool islocking) {
+// kind => {0 : non-locking, 1 : locking, 2 : proxy}
+static const char* fname(Definition* fn, int kind) {
     char* s;
     int len = strlen(fn->function.id->name);
     if (fn->function.qualifiers & FQ_ACQUIRE) {
@@ -483,7 +532,12 @@ static const char* fname(Definition* fn, bool islocking) {
     }
 
     strcat(s, fn->function.id->name);
-    char* name = concat(s, islocking ? "-L" : "-NL");
+    char* name = concat(s,
+          kind == 0 ? "-NL"
+        : kind == 1 ? "-L"
+        : kind == 2 ? "-proxy"
+        : (INVALID  , "-error")
+    );
     free(s);
 
     return name;
@@ -496,7 +550,7 @@ static void fnNL(IRState* irs, Definition* fn) {
     COUNT(Definition, fn->function.parameters, n);
 
     // adds the non-locking-function's prototype to the module
-    const char* name = fname(fn, false);
+    const char* name = fname(fn, 0);
     fn->V = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, n));
     free((void*)name);
 
@@ -511,7 +565,7 @@ static void fnNL(IRState* irs, Definition* fn) {
 
     // <self> is the first parameter
     LLVMV selfV = fn->function.parameters->capsa.capsa->V;
-    LLVMT selfT = LLVMT_PTR(irs->structure_type);
+    LLVMT selfT = LLVMT_PTR(irs->structure->type->T);
     irs->self = LLVMBuildBitCast(irs->B, selfV, selfT, LLVM_TMP_SELF);
 
     backend_block(irs, fn->function.block);
@@ -530,7 +584,7 @@ static void fnL(IRState* irs, Definition* fn) {
 
     // adds the locking-function's prototype to the module
     int argc = LLVMCountParams(fn->V);
-    const char* name = fname(fn, true);
+    const char* name = fname(fn, 1);
     LLVMV fnL = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, argc));
     free((void*)name);
 
@@ -538,7 +592,7 @@ static void fnL(IRState* irs, Definition* fn) {
 
     // gets the monitor's mutex from <self>
     LLVMV selfV = LLVMGetParam(fnL, 0);
-    LLVMT selfT = LLVMT_PTR(irs->structure_type);
+    LLVMT selfT = LLVMT_PTR(irs->structure->type->T);
     selfV = LLVMBuildBitCast(irs->B, selfV, selfT, LLVM_TMP_SELF);
     LLVMV mutex = monitormutex(irs->B, selfV);
 
@@ -557,9 +611,57 @@ static void fnL(IRState* irs, Definition* fn) {
 
     ir_pthread_mutex_unlock(irs->B, mutex);
 
-    llvm_return(irs, (ret) ? ret : zerovalue(irs, fn->function.type));
+    llvm_return(irs, ret ? ret : zerovalue(irs, fn->function.type));
 
     fn->LV = fnL;
+}
+
+// TODO: test generic function proxy with variadic parameters
+static void fnProxy(IRState* irs, Definition* fn) {
+    // adds the proxy function's prototype to the module
+    int argc = LLVMCountParams(fn->V);
+    const char* name = fname(fn, 2);
+    LLVMV fnP = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, argc));
+    free((void*)name);
+
+    LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(fnP, LABEL_ENTRY));
+
+    LLVMV V;
+    LLVMT T;
+
+    // gets the <proxy> from the first argument
+    V = LLVMGetParam(fnP, 0);
+    T = LLVMT_PTR(irs->structure->type->PT);
+    LLVMV proxy = LLVMBuildBitCast(irs->B, V, T, LLVM_TMP_PROXY);
+
+    // checks if <proxy.ok> is true
+    LLVMBB bberr = LLVMAppendBasicBlock(fnP, "error");
+    LLVMBB bbok = LLVMAppendBasicBlock(fnP, "ok");
+    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OK, LLVM_TMP_OK);
+    V = LLVMBuildLoad(irs->B, V, LLVM_TMP_OK);
+    V = LLVMBuildICmp(irs->B, LLVMIntEQ, V, LLVM_CONSTANT_BOOLEAN(1), LLVM_TMP);
+    LLVMBuildCondBr(irs->B, V, bbok, bberr);
+    LLVMPositionBuilderAtEnd(irs->B, bberr);
+    // TODO: printf error message
+    ir_exit(irs->B);
+    LLVMBuildUnreachable(irs->B);
+    LLVMPositionBuilderAtEnd(irs->B, bbok);
+
+    // calls the function from the regular VMT
+    LLVMV argv[argc];
+    LLVMGetParams(fnP, argv);
+    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_SELF, LLVM_TMP_SELF);
+    V = LLVMBuildLoad(irs->B, V, LLVM_TMP_SELF);
+    argv[0] = V;
+    if (fn->function.type != __void) { // TODO: direct calls not using the VMT
+        V = LLVMBuildCall(irs->B, fn->V, argv, argc, LLVM_TMP_RETURN);
+        LLVMBuildRet(irs->B, V);
+    } else {
+        LLVMBuildCall(irs->B, fn->V, argv, argc, LLVM_TMP_NONE);
+        LLVMBuildRetVoid(irs->B);
+    }
+
+    fn->PV = fnP;
 }
 
 // -----------------------------------------------------------------------------
@@ -581,7 +683,6 @@ static void vmt_fillL(LLVMB B, Definition* m, LLVMV vmt) {
         if (ISPRIVATE(methods[i])) { continue; }
         vmt_store(B, vmt, methods[i]->LV, j);
         methods[i]->function.vmt_index = j++;
-        // TODO: vmt_index should only be set in vmtNL
     }
 }
 
@@ -601,6 +702,15 @@ static void vmt_fillNL(LLVMB B, Definition* m, LLVMV vmt) {
     }
 }
 
+static void vmt_fillP(LLVMB B, Definition* m, LLVMV vmt) {
+    Definition** methods = m->type->structure.methods;
+    int j = 0;
+    for (int i = 0; i < m->type->structure.methods_size; i++) {
+        if (ISPRIVATE(methods[i])) { continue; }
+        vmt_store(B, vmt, methods[i]->PV, j++);
+    }
+}
+
 // auxiliary - creates a new global variable for a VMT
 static LLVMV vmt_new(IRState* irs, Definition* m, char* name) {
     // FIXME: L and NL have the same array size (despite the private functions)
@@ -613,23 +723,48 @@ static LLVMV vmt_new(IRState* irs, Definition* m, char* name) {
     return V;
 }
 
+// TODO: doc
+static void proxy_structure(Definition* m) {
+    char* name = concat((char*)m->type->structure.id->name, "-proxy");
+    m->type->PT = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
+    free(name);
+    assert(m->type->structure.gL);
+    LLVMT vmtT = LLVMTypeOf(m->type->structure.gL);
+    LLVMT fields[] = {LLVMT_PTR_VOID, vmtT, vmtT, LLVMT_BOOLEAN};
+    // {self, vmt-proxy, vmt-L, ok}
+    LLVMStructSetBody(m->type->PT, fields, 4, false);
+}
+
+// static LLVMV proxy_new(IRState* irs, Definition* m) {
+//     LLVMT T = proxy_structure(m);
+//     LLVMV V = LLVMBuildMalloc(irs->B, T, LLVM_TMP);
+
+//     // capsa->V = LLVMBuildStructGEP(
+//     //     B, irs->self, capsa->llvm_structure_index, LLVM_TMP
+//     // );
+// }
+
 // auxiliary - creates the structure's static initializer and its global VMT(s)
 static void vmt_init(IRState* irs, Definition* m) {
-    // creates the static constructor function for the monitor
-    LLVMT T = LLVMFunctionType(LLVMVoidType(), NULL, 0, false);
-    LLVMV init = LLVMAddFunction(irs->M, "static-constructor", T);
-    LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(init, LABEL_ENTRY));
-    list_append(inits, (ListValue)init);
+    // // creates the static constructor function for the monitor
+    // LLVMT T = LLVMFunctionType(LLVMVoidType(), NULL, 0, false);
+    // LLVMV init = LLVMAddFunction(irs->M, "static-constructor", T);
+    // LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(init, LABEL_ENTRY));
+    // list_append(inits, (ListValue)init);
 
-    // VMT-L
-    m->type->structure.gL = vmt_new(irs, m, "-vmt-L");
-    vmt_fillL(irs->B, m, m->type->structure.gL);
+    // // VMT-L
+    // m->type->structure.gL = vmt_new(irs, m, "-vmt-L");
+    // vmt_fillL(irs->B, m, m->type->structure.gL);
 
-    // VMT-NL
-    m->type->structure.gNL = vmt_new(irs, m, "-vmt-NL");
-    vmt_fillNL(irs->B, m, m->type->structure.gNL);
+    // // VMT-NL
+    // m->type->structure.gNL = vmt_new(irs, m, "-vmt-NL");
+    // vmt_fillNL(irs->B, m, m->type->structure.gNL);
 
-    LLVMBuildRetVoid(irs->B);
+    // // VMT-P
+    // m->type->structure.gP = vmt_new(irs, m, "-vmt-P");
+    // vmt_fillP(irs->B, m, m->type->structure.gP);
+
+    // LLVMBuildRetVoid(irs->B);
 }
 
 // ==================================================
@@ -1042,6 +1177,8 @@ static void backend_expression(IRState* irs, Expression* expression) {
         case '>':
             goto CONDITION_EXPRESSION;
 
+        // TODO: undefine macro
+
         // Macro to be used by the [+, -, *, /] operations
         #define BINARY_ARITHMETICS(e, s, ifunc, ffunc) \
             if (e->type == __integer) { \
@@ -1133,9 +1270,7 @@ static void backend_expression(IRState* irs, Expression* expression) {
         position_builder(irs, block_phi);
 
         LLVMV
-            phi = LLVMBuildPhi(
-                irs->B, LLVM_TYPE_BOOLEAN, LLVM_TEMPORARY_PHI
-            ),
+            phi = LLVMBuildPhi(irs->B, LLVMT_BOOLEAN, LLVM_TEMPORARY_PHI),
             incoming_values[2] = {LLVM_CONSTANT_TRUE, LLVM_CONSTANT_FALSE}
         ;
         LLVMBasicBlockRef incoming_blocks[2] = {block_true, block_false};
@@ -1518,9 +1653,7 @@ static LLVMV stringliteral(IRState* irs, const char* string) {
 }
 
 // TODO: doc
-static LLVMT llvm_structure(LLVMT fields[], size_t size,
-    const char* name) {
-
+static LLVMT llvm_structure(LLVMT fields[], size_t size, const char* name) {
     LLVMT type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
     LLVMStructSetBody(type, fields, size, false); // TODO: Packed?
     return type;
