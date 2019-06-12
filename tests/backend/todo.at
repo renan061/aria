@@ -1,13 +1,9 @@
 --------------------------------------------------------------------------------
 -- Title
-Testing stuff
+Spawn is a broken mess
 -- Input
-monitor M {
-    initializer {}
-}
 function main {
-    value m = M();
-    print("Ok\n");
+    spawn {
+    }
 }
 -- Output
-Ok

@@ -1563,6 +1563,8 @@ static LLVMT llvm_type(Type* type) {
         UNREACHABLE;
     case TYPE_ARRAY:
         return LLVM_ARIA_TYPE_ARRAY(llvm_type(type->array));
+    case TYPE_UNLOCKED:
+        return llvm_type(type->unlocked);
     case TYPE_INTERFACE:
         return LLVM_ARIA_TYPE_INTERFACE;
     case TYPE_MONITOR:

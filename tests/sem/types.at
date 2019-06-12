@@ -18,6 +18,34 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
+Normal types can't be used as their unlocked types
+-- Input
+monitor M {
+    initializer {}
+}
+function main(m: M!) {
+    main(M());
+}
+-- Output
+line 5:
+    semantic error: type error (expected 'M!', got 'M')
+--------------------------------------------------------------------------------
+-- Title
+Unlocked types can't be used as their normal types
+-- Input
+monitor M {
+    initializer {}
+}
+function main(m: M) {
+    acquire value u = M().unlocked() {
+        main(u);
+    }
+}
+-- Output
+line 6:
+    semantic error: type error (expected 'M', got 'M!')
+--------------------------------------------------------------------------------
+-- Title
 Unlocked types are unsafe
 -- Input
 monitor M {

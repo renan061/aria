@@ -1587,6 +1587,11 @@ static void assignment(Capsa* capsa, Expression** expression) {
  * Checks for type equality between two types.
  */
 static bool typeequals(Type* type1, Type* type2) {
+    if (type1->tag == TYPE_UNLOCKED && type2->tag == TYPE_UNLOCKED) {
+        return typeequals(type1->unlocked, type2->unlocked);
+    } else if (type1->tag == TYPE_UNLOCKED || type2->tag == TYPE_UNLOCKED) {
+        return false;
+    }
     if (type1->immutable != type2->immutable) {
         return false;
     }
