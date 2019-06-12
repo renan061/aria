@@ -119,8 +119,10 @@ struct Definition {
     DefinitionTag tag;
     Definition* next;
     LLVMValueRef V, LV, PV;
-    // TODO: LV is for locking versions of methods
-    //       PV is for proxy versions of methods => TODO: atc.c !!!
+    // TODO: V is for nonlocking versions of methods
+    //       LV is for locking versions of methods
+    //       PV is for proxy versions of methods
+    //       (move this inside definition->function)
     
     union {
         // DefinitionCapsa
@@ -178,6 +180,7 @@ struct Type {
             Definition* constructor;
             // backend
             LLVMValueRef gL, gNL, gP; // VMTs => TODO: atc.c !!!
+            LLVMTypeRef proxyT; // TODO: atc.c !!!
         } structure;
     };
 };

@@ -34,6 +34,7 @@ Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
     d->next = NULL;
     d->V = NULL;
     d->LV = NULL;
+    d->PV = NULL;
     d->function.qualifiers = 0; // bitmap zero
     d->function.id = id;
     d->function.parameters = parameters;
@@ -50,6 +51,7 @@ Definition* ast_definition_capsa(Capsa* capsa, Expression* expression) {
     definition->next = NULL;
     definition->V = NULL;
     definition->LV = NULL;
+    definition->PV = NULL;
     definition->capsa.capsa = capsa;
     definition->capsa.expression = expression;
     return definition;
@@ -70,6 +72,7 @@ Definition* ast_definition_constructor(Definition* parameters, Block* block) {
     definition->next = NULL;
     definition->V = NULL;
     definition->LV = NULL;
+    definition->PV = NULL;
     definition->function.qualifiers = 0; // bitmap zero
     definition->function.id = NULL;
     definition->function.parameters = parameters;
@@ -91,6 +94,7 @@ Definition* ast_definition_type(Type* type) {
     definition->next = NULL;
     definition->V = NULL;
     definition->LV = NULL;
+    definition->PV = NULL;
     definition->type = type;
     return definition;
 }

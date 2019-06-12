@@ -147,10 +147,8 @@ static void position_builder(IRState* irs, LLVMBasicBlockRef block) {
 // TODO: move to auxiliary area
 // returns the mutex lock from a monitor
 static LLVMV monitormutex(LLVMB B, LLVMV monitor) {
-    LLVMV x = LLVMBuildLoad(B,
-        LLVMBuildStructGEP(B, monitor, STRUCTURE_MUTEX, "mutex-ptr"), "mutex"
-    ); // TODO: temps
-    return x;
+    LLVMV V = LLVMBuildStructGEP(B, monitor, STRUCTURE_MUTEX, "mutex-ptr");
+    return LLVMBuildLoad(B, V, "mutex"); // TODO: temps
 }
 
 static void todospawn(IRState*, FunctionCall*);
@@ -239,7 +237,7 @@ static LLVMV vmtadd(LLVMM, Definition*, char*);
 static void vmtset(LLVMB, LLVMV, LLVMV, int);
 static void vmtfill(LLVMB, LLVMV, LLVMV[], int);
 
-static LLVMT ir_proxytype(const char*, int);
+static LLVMT proxytype(const char*, int);
 
 static void backend_definition(IRState* irs, Definition* d) {
     switch (d->tag) {
@@ -383,11 +381,11 @@ static void backend_definition_structure(IRState* irs, Definition* def) {
 // TODO: function or not?
 // auxiliary - returns the type for proxy structures
 // type { self: i8*, vmt-P: [4 x i8*]*, vmt-NL: [4 x i8*]*, ok: i1 }
-static LLVMT ir_proxytype(const char* name, int n) {
+static LLVMT proxytype(const char* name, int n) {
     char* s = concat((char*)name, "-P");
     LLVMT T = LLVMStructCreateNamed(LLVMGetGlobalContext(), s);
     free(s);
-    LLVMT vmt = LLVMArrayType(LLVMT_PTR_VOID, n);
+    LLVMT vmt = LLVMT_PTR(LLVMArrayType(LLVMT_PTR_VOID, n));
     LLVMT fields[] = {LLVMT_PTR_VOID, vmt, vmt, LLVMT_BOOLEAN};
     LLVMStructSetBody(T, fields, 4, false);
     return T;
@@ -409,7 +407,7 @@ static void templateinit(IRState* irs, Definition* m) {
     { // backend for methods (L, NL & P)
         int j, k;
         LLVMT selfT = m->type->T;
-        LLVMT proxyT = ir_proxytype(m->type->structure.id->name, all);
+        LLVMT proxyT = proxytype(m->type->structure.id->name, all);
         for (int i = j = (k = public, 0); i < all; i++) {
             if (!ISPRIVATE(methods[i])) {
                 NLs[j] = fnNL(irs, methods[i], selfT);
@@ -421,6 +419,7 @@ static void templateinit(IRState* irs, Definition* m) {
                 methods[i]->function.vmt_index = k++;
             }
         }
+        m->type->structure.proxyT = proxyT;
     }
 
     { // adds the template initializer function to the module
@@ -655,7 +654,13 @@ static LLVMV fnP(IRState* irs, Definition* fn, LLVMT proxyT) {
     V = LLVMBuildICmp(irs->B, LLVMIntEQ, V, LLVM_CONSTANT_BOOLEAN(1), LLVM_TMP);
     LLVMBuildCondBr(irs->B, V, bbok, bberr);
     LLVMPositionBuilderAtEnd(irs->B, bberr);
-    // TODO: printf error message
+    // TODO: do this right
+    const char* msg = "runtime error: proxy function not ok\n";
+    LLVMV err = LLVMBuildGlobalString(irs->B, msg, "msg");
+    err = LLVMBuildBitCast(irs->B, err, LLVMT_PTR_VOID, "msg");
+    LLVMV error[] = {err};
+    ir_printf(irs->B, error, 1);
+    // end TODO
     ir_exit(irs->B);
     LLVMBuildUnreachable(irs->B);
     LLVMPositionBuilderAtEnd(irs->B, bbok);
@@ -707,15 +712,6 @@ static void vmtfill(LLVMB B, LLVMV vmt, LLVMV fns[], int n) {
     }
 }
 
-// static LLVMV proxy_new(IRState* irs, Definition* m) {
-//     LLVMT T = proxy_structure(m);
-//     LLVMV V = LLVMBuildMalloc(irs->B, T, LLVM_TMP);
-
-//     // capsa->V = LLVMBuildStructGEP(
-//     //     B, irs->self, capsa->llvm_structure_index, LLVM_TMP
-//     // );
-// }
-
 // ==================================================
 //
 //  Block
@@ -745,6 +741,8 @@ static void backend_block(IRState* irs, Block* block) {
 //  Statement
 //
 // ==================================================
+
+static void backend_stmt_acquire_value(IRState*, Statement*);
 
 /*
 static void backend_statement(IRState* irs, Statement* stmt) {
@@ -793,6 +791,38 @@ static void backend_statement(IRState* irs, Statement* stmt) {
     }
 }
 */
+
+static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
+    backend_definition(irs, stmt->acquire_value.value);
+
+    Capsa* capsa = stmt->acquire_value.value->capsa.capsa;
+    Type* t = capsa->type->unlocked;
+
+    LLVMV V;
+
+    // TODO
+    LLVMV obj = capsa->V;
+    LLVMV proxy = LLVMBuildMalloc(irs->B, t->structure.proxyT, LLVM_TMP_PROXY);
+    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_SELF, "obj");
+    LLVMBuildStore(irs->B, obj, V);
+    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_VMTP, LLVM_TMP_VMT);
+    LLVMBuildStore(irs->B, t->structure.gP, V);
+    LLVMV ok = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OK, LLVM_TMP_OK);
+    LLVMBuildStore(irs->B, LLVM_CONSTANT_BOOLEAN(true), ok);
+    capsa->V = LLVMBuildBitCast(irs->B, proxy, LLVMT_PTR_VOID, LLVM_TMP_PROXY);
+
+    // locks <obj>
+    V = LLVMBuildBitCast(irs->B, obj, LLVMT_PTR(t->T), "obj");
+    LLVMV mutex = monitormutex(irs->B, V);
+    ir_pthread_mutex_lock(irs->B, mutex);
+
+    backend_block(irs, stmt->acquire_value.block);
+
+    LLVMBuildStore(irs->B, LLVM_CONSTANT_BOOLEAN(false), ok);
+
+    // unlocks <obj>
+    ir_pthread_mutex_unlock(irs->B, mutex);
+}
 
 // ==================================================
 //
@@ -980,17 +1010,10 @@ static void backend_statement(IRState* irs, Statement* statement) {
     case STATEMENT_SPAWN:
         todospawn(irs, statement->spawn);
         break;
-    case STATEMENT_ACQUIRE_VALUE:
-        // TODO
-        backend_definition(irs, statement->acquire_value.value);
-        // LLVMV obj = statement->acquire_value.value->capsa.capsa->V;
-        // malloc new <proxy>
-        //      set contents of <proxy> with <obj> inside
-        // lock <obj>
-        // statement->acquire_value.value->capsa.capsa->V = <proxy>
-        backend_block(irs, statement->acquire_value.block);
-        // unlock <obj>
+    case STATEMENT_ACQUIRE_VALUE: {
+        backend_stmt_acquire_value(irs, statement);
         break;
+    }
     case STATEMENT_BLOCK:
         backend_block(irs, statement->block);
         break;
@@ -1409,9 +1432,9 @@ static LLVMV backend_fc_basic(IRState* irs, FunctionCall* fc) {
 
 static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
     LLVMV* args = fcargs(irs, fc);
-    LLVMV obj = LLVMBuildBitCast(irs->B,
-        args[0], LLVMT_PTR(fc->obj->type->T), LLVM_TMP
-    );
+    LLVMT oT = fc->obj->type->T ? fc->obj->type->T : fc->obj->type->unlocked->T;
+    assert(oT); // TODO: oT (gambiarra)
+    LLVMV obj = LLVMBuildBitCast(irs->B, args[0], LLVMT_PTR(oT), LLVM_TMP);
 
     // bitcast from i8* to (T)*
     // FIXME: LLVMT T = llvm_fn_type(fc->fn, fc->argc);
@@ -1589,24 +1612,18 @@ static void llvm_return(IRState* irs, LLVMV V) {
     state_close_block(irs);
 }
 
-// TODO: This functions is wrong, should use LLVMConstString and cast to pointer
+// TODO: search for IRBuilder CreateGlobalString => LLVMBuildGlobalString
+// TODO: this functions is wrong, should use LLVMConstString and cast to pointer
 static LLVMV stringliteral(IRState* irs, const char* string) {
-    // Global
+    // global
     size_t len = strlen(string);
-    LLVMV llvm_global = LLVMAddGlobal(irs->M,
+    LLVMV V = LLVMAddGlobal(irs->M,
         LLVMArrayType(LLVMInt8Type(), len + 1),
         LLVM_GLOBAL_STRING
     );
-    LLVMSetInitializer(llvm_global, LLVMConstString(string, len, false));
-    LLVMSetVisibility(llvm_global, LLVMHiddenVisibility);
-
-    // Expression
-    return LLVMBuildPointerCast(
-        irs->B,
-        llvm_global,
-        LLVM_ARIA_TYPE_STRING,
-        LLVM_TMP
-    );
+    LLVMSetInitializer(V, LLVMConstString(string, len, false));
+    LLVMSetVisibility(V, LLVMHiddenVisibility);
+    return LLVMBuildPointerCast(irs->B, V, LLVM_ARIA_TYPE_STRING, LLVM_TMP);
 }
 
 // TODO: doc
