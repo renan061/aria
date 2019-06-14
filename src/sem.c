@@ -504,7 +504,7 @@ static void semstructure(SS* ss, Definition* def) {
             // fallthrough
         case DEFINITION_FUNCTION:
             def->type->structure.methods[i_methods] = d;
-            d->function.vmt_index = i_methods++; // TODO: backend.c
+            d->function.vmti = i_methods++; // TODO: backend.c
             break;
         case DEFINITION_CONSTRUCTOR:
             break;
@@ -648,6 +648,9 @@ static ListValue armatch(ListValue x, ListValue y) {
         (am & FQ_RELEASE) == (bm & FQ_RELEASE)) { // both are `release`
         return NULL;
     }
+
+    a->function.pair = b;
+    b->function.pair = a;
 
     return x;
 }

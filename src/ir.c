@@ -95,7 +95,7 @@ void ir_setup(LLVMModuleRef module) {
         ir_exit_t = LLVMAddFunction(
             module,
             NAME_EXIT,
-            LLVMFunctionType(LLVM_TYPE_VOID, paramtypes, 1, false)
+            LLVMFunctionType(LLVMT_VOID, paramtypes, 1, false)
         );
     }
 }

@@ -22,12 +22,6 @@
  *  - free and destroy the mutex one day
  */
 
-typedef LLVMBuilderRef    LLVMB  ;
-typedef LLVMModuleRef     LLVMM  ;
-typedef LLVMTypeRef       LLVMT  ;
-typedef LLVMBasicBlockRef LLVMBB ;
-typedef LLVMValueRef      LLVMV  ;
-
 // string malloc that accounts for '\0'
 #define SMALLOC(str, len) MALLOC_ARRAY(str, char, (len + 1))
 
@@ -35,14 +29,13 @@ typedef LLVMValueRef      LLVMV  ;
 #define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
 #define NAME_SPAWN_FUNCTION             "_spawn_block"
 
-#define PROXY_IDX_SELF  (0)
-#define PROXY_IDX_VMTP  (1) // same as STRUCTURE_VMT
-#define PROXY_IDX_OK    (2)
+#define STRUCT_IDX_MUTEX    (0)
+#define STRUCT_IDX_VMT      (1)
+#define STRUCT_IDX_FIELD0   (STRUCT_IDX_VMT + 1)
 
-// TODO: rename like proxy
-#define STRUCTURE_MUTEX             (0)
-#define STRUCTURE_VMT               (1)
-#define STRUCTURE_ATTRIBUTE_START   (STRUCTURE_VMT + 1)
+#define PROXY_IDX_OBJ   (0)
+#define PROXY_IDX_VMTP  (STRUCT_IDX_VMT)
+#define PROXY_IDX_OK    (2)
 
 #define LABEL                   ""
 #define LABEL_ENTRY             LABEL "entry"
@@ -59,6 +52,8 @@ typedef LLVMValueRef      LLVMV  ;
 #define LABEL_FOR_LOOP          LABEL "for_loop"
 #define LABEL_FOR_INC           LABEL "for_inc"
 #define LABEL_FOR_END           LABEL "for_end"
+#define LABEL_OK                LABEL "ok"
+#define LABEL_ERROR             LABEL "error"
 
 // primitive types
 static Type* __void;
@@ -102,6 +97,7 @@ static List* globals = NULL; // global values
 //
 // ==================================================
 
+// TODO: stop using this
 static void position_builder(IRState* irs, LLVMBasicBlockRef block) {
     assert(!irs->block);
     LLVMPositionBuilderAtEnd(irs->B, block);
@@ -109,10 +105,10 @@ static void position_builder(IRState* irs, LLVMBasicBlockRef block) {
 }
 
 // TODO: move to auxiliary area
-// returns the mutex lock from a monitor
-static LLVMV monitormutex(LLVMB B, LLVMV monitor) {
-    LLVMV V = LLVMBuildStructGEP(B, monitor, STRUCTURE_MUTEX, "mutex-ptr");
-    return LLVMBuildLoad(B, V, "mutex"); // TODO: temps
+// auxiliary - returns the mutex lock from a monitor object
+static LLVMV monitormutex(LLVMB B, LLVMV obj) {
+    LLVMV V = LLVMBuildStructGEP(B, obj, STRUCT_IDX_MUTEX, "mutex-ptr");
+    return LLVMBuildLoad(B, V, "mutex");
 }
 
 static void todospawn(IRState*, FunctionCall*);
@@ -155,9 +151,9 @@ static IRState* setup(void) {
     __condition_queue = ast_type_condition_queue();
 
     // ir
-    IRState* irs = ir_state_new(
-        LLVMModuleCreateWithName("main.aria"), LLVMCreateBuilder()
-    );
+    LLVMM M = LLVMModuleCreateWithName("main.aria");
+    LLVMB B = LLVMCreateBuilder();
+    IRState* irs = ir_state_new(M, B);
     ir_setup(irs->M);
     ir_pthread_setup(irs->M);
 
@@ -284,13 +280,13 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
     LLVMV mutex = ir_malloc(irs->B, sizeof(pthread_mutex_t));
     ir_pthread_mutex_init(irs->B, mutex);
     LLVMBuildStore(irs->B, mutex, LLVMBuildStructGEP(
-        irs->B, irs->self, STRUCTURE_MUTEX, LLVM_TMP
+        irs->B, irs->self, STRUCT_IDX_MUTEX, LLVM_TMP
     ));
 
     // stores the VMT-L inside the <self> instance
     assert(def->function.type->structure.gL);
     LLVMBuildStore(irs->B, def->function.type->structure.gL, LLVMBuildStructGEP(
-        irs->B, irs->self, STRUCTURE_VMT, LLVM_TMP_VMT
+        irs->B, irs->self, STRUCT_IDX_VMT, LLVM_TMP_VMT
     ));
 
     // initializes attributes
@@ -324,7 +320,7 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
 static void backend_definition_interface(IRState* irs, Definition* def) {
     size_t vmt_size = def->type->structure.methods_size;
     LLVMT fields[] = {
-        LLVM_TYPE_POINTER_PTHREAD_MUTEX_T,
+        LLVMT_PTR_PTHREAD_MUTEX_T,
         LLVMT_PTR(LLVMArrayType(LLVMT_PTR_VOID, vmt_size))
     };
     const char* name = def->type->structure.id->name;
@@ -348,29 +344,29 @@ static LLVMT proxytype(const char* name, int n) {
     return T;
 }
 
-static void backend_definition_monitor(IRState* irs, Definition* def) {
-    Definition* m = def;
-
-    size_t fields_sz = def->type->structure.attributes_size;
-    LLVMT fields[STRUCTURE_ATTRIBUTE_START + fields_sz];
-
-    // mutex & VMT
-    fields[STRUCTURE_MUTEX] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
-    fields[STRUCTURE_VMT] = LLVMT_PTR(LLVMArrayType(
-        LLVMT_PTR_VOID, def->type->structure.methods_size
-    ));
-
-    // fields
-    for (int i = 0; i < fields_sz; i++) {
-        Capsa* capsa = def->type->structure.attributes[i]->capsa.capsa;
-        capsa->llvm_structure_index = STRUCTURE_ATTRIBUTE_START + i;
-        fields[STRUCTURE_ATTRIBUTE_START + i] = llvm_type(capsa->type);
+static void backend_definition_monitor(IRState* irs, Definition* m) {
+    { // llvm structure type
+        int fields_sz = m->type->structure.attributes_size;
+        int struct_sz = STRUCT_IDX_FIELD0 + fields_sz;
+        LLVMT structT[struct_sz];
+    
+        // mutex & VMT
+        structT[STRUCT_IDX_MUTEX] = LLVMT_PTR_PTHREAD_MUTEX_T;
+        structT[STRUCT_IDX_VMT] = LLVMT_PTR(LLVMArrayType(
+            LLVMT_PTR_VOID, m->type->structure.methods_size
+        ));
+    
+        // fields
+        for (int i = 0; i < fields_sz; i++) {
+            Capsa* capsa = m->type->structure.attributes[i]->capsa.capsa;
+            capsa->llvm_structure_index = STRUCT_IDX_FIELD0 + i;
+            structT[capsa->llvm_structure_index] = llvm_type(capsa->type);
+        }
+    
+        m->type->T = llvm_structure(structT, struct_sz,
+            m->type->structure.id->name
+        );
     }
-
-    def->type->T = llvm_structure(fields,
-        STRUCTURE_ATTRIBUTE_START + fields_sz,
-        def->type->structure.id->name
-    );
 
     // backend_definition_method (R, L & P)
     // VMT(s)
@@ -420,12 +416,12 @@ static void backend_definition_monitor(IRState* irs, Definition* def) {
                 vmtset(irs->B, R, VR, j);
                 vmtset(irs->B, L, VL, j);
                 vmtset(irs->B, P, VP, j);
-                methods[i]->function.vmt_index = j++;
+                methods[i]->function.vmti = j++;
             } else {
                 VR = fnR(irs, methods[i], selfT);
                 LLVMPositionBuilderAtEnd(irs->B, bb);
                 vmtset(irs->B, R, VR, k);
-                methods[i]->function.vmt_index = k++;
+                methods[i]->function.vmti = k++;
             }
         }
 
@@ -606,8 +602,8 @@ static LLVMV fnP(IRState* irs, Definition* fn, LLVMT proxyT) {
     LLVMV proxy = LLVMBuildBitCast(irs->B, V, T, LLVM_TMP_PROXY);
 
     // checks if <proxy.ok> is true
-    LLVMBB bberr = LLVMAppendBasicBlock(fnP, "error");
-    LLVMBB bbok = LLVMAppendBasicBlock(fnP, "ok");
+    LLVMBB bberr = LLVMAppendBasicBlock(fnP, LABEL_ERROR);
+    LLVMBB bbok = LLVMAppendBasicBlock(fnP, LABEL_OK);
     V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OK, LLVM_TMP_OK);
     V = LLVMBuildLoad(irs->B, V, LLVM_TMP_OK);
     V = LLVMBuildICmp(irs->B, LLVMIntEQ, V, LLVM_CONSTANT_BOOLEAN(1), LLVM_TMP);
@@ -627,7 +623,7 @@ static LLVMV fnP(IRState* irs, Definition* fn, LLVMT proxyT) {
     // calls the function from the regular VMT
     LLVMV argv[argc];
     LLVMGetParams(fnP, argv);
-    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_SELF, LLVM_TMP_SELF);
+    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OBJ, LLVM_TMP_SELF);
     V = LLVMBuildLoad(irs->B, V, LLVM_TMP_SELF);
     argv[0] = V;
     if (fn->function.type != __void) { // TODO: direct calls not using the VMT
@@ -747,15 +743,17 @@ static void backend_statement(IRState* irs, Statement* stmt) {
 static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
     backend_definition(irs, stmt->acquire_value.value);
 
-    Capsa* capsa = stmt->acquire_value.value->capsa.capsa;
+    Definition* value = stmt->acquire_value.value;
+    Capsa* capsa = value->capsa.capsa;
+    Expression* exp = value->capsa.expression;
     Type* t = capsa->type->unlocked;
 
     LLVMV V;
 
-    // TODO
+    // creates the proxy object
     LLVMV obj = capsa->V;
     LLVMV proxy = LLVMBuildMalloc(irs->B, t->structure.proxyT, LLVM_TMP_PROXY);
-    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_SELF, "obj");
+    V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OBJ, LLVM_TMP_OBJ);
     LLVMBuildStore(irs->B, obj, V);
     V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_VMTP, LLVM_TMP_VMT);
     LLVMBuildStore(irs->B, t->structure.gP, V);
@@ -764,13 +762,26 @@ static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
     capsa->V = LLVMBuildBitCast(irs->B, proxy, LLVMT_PTR_VOID, LLVM_TMP_PROXY);
 
     // locks <obj>
-    V = LLVMBuildBitCast(irs->B, obj, LLVMT_PTR(t->T), "obj");
+    V = LLVMBuildBitCast(irs->B, obj, LLVMT_PTR(t->T), LLVM_TMP_OBJ);
     LLVMV mutex = monitormutex(irs->B, V);
     ir_pthread_mutex_lock(irs->B, mutex);
 
     backend_block(irs, stmt->acquire_value.block);
 
     LLVMBuildStore(irs->B, LLVM_CONSTANT_BOOLEAN(false), ok);
+
+    // calls the release function
+    Definition* pair = exp->function_call->fn->function.pair;
+    assert(pair);
+    LLVMV gR = value->capsa.expression->function_call->obj->type->structure.gR;
+    LLVMV indices[] = {LLVM_CONST_INT(0), LLVM_CONST_INT(pair->function.vmti)};
+    V = LLVMBuildGEP(irs->B, gR, indices, 2, "release-ptr");
+    V = LLVMBuildLoad(irs->B, V, "release");
+    LLVMT params[] = {LLVMT_PTR_VOID};
+    LLVMT T = LLVMFunctionType(LLVMT_VOID, params, 1, false);
+    V = LLVMBuildBitCast(irs->B, V, LLVMT_PTR(T), "release");
+    LLVMV args[] = {capsa->V};
+    LLVMBuildCall(irs->B, V, args, 1, LLVM_TMP_NONE);
 
     // unlocks <obj>
     ir_pthread_mutex_unlock(irs->B, mutex);
@@ -1402,7 +1413,7 @@ static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
         T = LLVMFunctionType(T, params, fc->argc, false);
     }
 
-    int vmti = fc->fn->function.vmt_index;
+    int vmti = fc->fn->function.vmti;
     if (fc->obj->type->tag == TYPE_INTERFACE) { // FIXME: gambiarra
         vmti += 2; // accounting for the <unlocked> pair
     }
@@ -1473,7 +1484,7 @@ static LLVMV nativefc(IRState* irs, FunctionCall* fc) {
 
 // TODO: doc
 static LLVMV getvmt(LLVMB B, LLVMV obj) {
-    obj = LLVMBuildStructGEP(B, obj, STRUCTURE_VMT, LLVM_TMP);
+    obj = LLVMBuildStructGEP(B, obj, STRUCT_IDX_VMT, LLVM_TMP);
     return LLVMBuildLoad(B, obj, LLVM_TMP_VMT);
 }
 

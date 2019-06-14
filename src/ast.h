@@ -25,6 +25,18 @@ typedef enum FunctionQualifier {
 
 // ==================================================
 //
+//  LLVM
+//
+// ==================================================
+
+typedef LLVMBuilderRef    LLVMB  ;
+typedef LLVMModuleRef     LLVMM  ;
+typedef LLVMTypeRef       LLVMT  ;
+typedef LLVMBasicBlockRef LLVMBB ;
+typedef LLVMValueRef      LLVMV  ;
+
+// ==================================================
+//
 //  Tags
 //
 // ==================================================
@@ -139,7 +151,8 @@ struct Definition {
             Definition* parameters;
             Type* type;
             Block* block;
-            int vmt_index; // default -1
+            int vmti; // default -1
+            Definition* pair; // acquire/release pair
         } function;
         // DefinitionType
         Type* type;

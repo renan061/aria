@@ -1,5 +1,27 @@
 --------------------------------------------------------------------------------
 -- Title
+Checking if both acquire and release functions are called
+-- Input
+monitor M {
+    initializer           { /* empty */                     }
+    function acquire f: M { print("Acquire\n"); return M(); }
+    function release f    { print("Release\n");             }
+}
+function main {
+    print("Start\n");
+    acquire value ignored = M().f() {
+        print("Inside\n");
+    }
+    print("End\n");
+}
+-- Output
+Start
+Acquire
+Inside
+Release
+End
+--------------------------------------------------------------------------------
+-- Title
 Scoped values can not escape their blocks (runtime error)
 -- Input
 monitor M {
@@ -7,7 +29,7 @@ monitor M {
     initializer(i: Integer) { n = i;                   }
     function f              { print("M.f => %d\n", n); }
     function acquire x: M   { return M(n + 1);         }
-    function release x      { /* empty */              }
+    function release x      { print("Release\n");      }
 }
 function main {
     value m = M(0);
@@ -27,4 +49,5 @@ Start
 M.f => 0
 M.f => 1
 M.f => 1
+Release
 runtime error: proxy function not ok

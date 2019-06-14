@@ -40,7 +40,8 @@ Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
     d->function.parameters = parameters;
     d->function.type = t;
     d->function.block = NULL;
-    d->function.vmt_index = -1;
+    d->function.vmti = -1;
+    d->function.pair = NULL;
     return d;
 }
 
