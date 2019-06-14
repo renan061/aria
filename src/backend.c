@@ -741,14 +741,15 @@ static void backend_statement(IRState* irs, Statement* stmt) {
 */
 
 static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
-    backend_definition(irs, stmt->acquire_value.value);
-
     Definition* value = stmt->acquire_value.value;
     Capsa* capsa = value->capsa.capsa;
     Expression* exp = value->capsa.expression;
     Type* t = capsa->type->unlocked;
 
     LLVMV V;
+
+    // calls the acquire function
+    backend_definition(irs, stmt->acquire_value.value);
 
     // creates the proxy object
     LLVMV obj = capsa->V;
@@ -768,23 +769,24 @@ static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
 
     backend_block(irs, stmt->acquire_value.block);
 
+    // proxy.ok = false
     LLVMBuildStore(irs->B, LLVM_CONSTANT_BOOLEAN(false), ok);
+
+    // unlocks <obj>
+    ir_pthread_mutex_unlock(irs->B, mutex);
 
     // calls the release function
     Definition* pair = exp->function_call->fn->function.pair;
     assert(pair);
-    LLVMV gR = value->capsa.expression->function_call->obj->type->structure.gR;
+    V = value->capsa.expression->function_call->obj->type->structure.gR;
     LLVMV indices[] = {LLVM_CONST_INT(0), LLVM_CONST_INT(pair->function.vmti)};
-    V = LLVMBuildGEP(irs->B, gR, indices, 2, "release-ptr");
+    V = LLVMBuildGEP(irs->B, V, indices, 2, "release-ptr");
     V = LLVMBuildLoad(irs->B, V, "release");
     LLVMT params[] = {LLVMT_PTR_VOID};
     LLVMT T = LLVMFunctionType(LLVMT_VOID, params, 1, false);
-    V = LLVMBuildBitCast(irs->B, V, LLVMT_PTR(T), "release");
+    V = LLVMBuildBitCast(irs->B, V, LLVMT_PTR(T), "release-typed");
     LLVMV args[] = {capsa->V};
     LLVMBuildCall(irs->B, V, args, 1, LLVM_TMP_NONE);
-
-    // unlocks <obj>
-    ir_pthread_mutex_unlock(irs->B, mutex);
 }
 
 // ==================================================
