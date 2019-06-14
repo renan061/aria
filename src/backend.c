@@ -235,7 +235,6 @@ static LLVMV fnP(IRState*, Definition*, LLVMT);
 
 static LLVMV vmtadd(LLVMM, Definition*, char*);
 static void vmtset(LLVMB, LLVMV, LLVMV, int);
-static void vmtfill(LLVMB, LLVMV, LLVMV[], int);
 
 static LLVMT proxytype(const char*, int);
 
@@ -402,44 +401,50 @@ static void templateinit(IRState* irs, Definition* m) {
         public++;
     }
 
-    LLVMV Ls[public], NLs[all], Ps[public];
-
-    { // backend for methods (L, NL & P)
-        int j, k;
-        LLVMT selfT = m->type->T;
-        LLVMT proxyT = proxytype(m->type->structure.id->name, all);
-        for (int i = j = (k = public, 0); i < all; i++) {
-            if (!ISPRIVATE(methods[i])) {
-                NLs[j] = fnNL(irs, methods[i], selfT);
-                Ls[j] = fnL(irs, methods[i], selfT);
-                Ps[j] = fnP(irs, methods[i], proxyT);
-                methods[i]->function.vmt_index = j++;
-            } else {
-                NLs[k] = fnNL(irs, methods[i], selfT);
-                methods[i]->function.vmt_index = k++;
-            }
-        }
-        m->type->structure.proxyT = proxyT;
-    }
-
+    LLVMBB bb;
     { // adds the template initializer function to the module
         LLVMT T = LLVMFunctionType(LLVMVoidType(), NULL, 0, false);
         char* name = concat((char*)m->type->structure.id->name, "-init");
         LLVMV init = LLVMAddFunction(irs->M, name, T);
         free(name);
-        LLVMBB bb = LLVMAppendBasicBlock(init, LABEL_ENTRY);
+        bb = LLVMAppendBasicBlock(init, LABEL_ENTRY);
         LLVMPositionBuilderAtEnd(irs->B, bb);
         list_append(inits, (ListValue)init);
     }
 
-    // VMT-L, VMT-NL & VMT-P
-    #define vmtinit(irs, V, m, name, fns, n) \
-        (V = vmtadd(irs->M, m, "-vmt-" name), vmtfill(irs->B, V, fns, n))
-    vmtinit(irs, m->type->structure.gNL, m, "NL", NLs, all);
-    vmtinit(irs, m->type->structure.gL, m, "L", Ls, public);
-    vmtinit(irs, m->type->structure.gP, m, "P", Ps, public);
-    #undef vmtinit
+    { // methods and and VMTs (L, NL & P)
+        LLVMV NL, L, P;    // VMTs
+        LLVMV VNL, VL, VP; // functions
 
+        m->type->structure.gNL = NL = vmtadd(irs->M, m, "-vmt-NL");
+        m->type->structure.gL  = L  = vmtadd(irs->M, m, "-vmt-L");
+        m->type->structure.gP  = P  = vmtadd(irs->M, m, "-vmt-P");
+
+        int j, k;
+        LLVMT selfT = m->type->T;
+        LLVMT proxyT = proxytype(m->type->structure.id->name, all);
+        for (int i = j = (k = public, 0); i < all; i++) {
+            if (!ISPRIVATE(methods[i])) {
+                VNL = fnNL(irs, methods[i], selfT);
+                VL = fnL(irs, methods[i], selfT);
+                VP = fnP(irs, methods[i], proxyT);
+                LLVMPositionBuilderAtEnd(irs->B, bb);
+                vmtset(irs->B, NL, VNL, j);
+                vmtset(irs->B, L, VL, j);
+                vmtset(irs->B, P, VP, j);
+                methods[i]->function.vmt_index = j++;
+            } else {
+                VNL = fnNL(irs, methods[i], selfT);
+                LLVMPositionBuilderAtEnd(irs->B, bb);
+                vmtset(irs->B, NL, VNL, k);
+                methods[i]->function.vmt_index = k++;
+            }
+        }
+
+        m->type->structure.proxyT = proxyT;
+    }
+
+    LLVMPositionBuilderAtEnd(irs->B, bb);
     LLVMBuildRetVoid(irs->B);
 }
 
@@ -703,13 +708,6 @@ static void vmtset(LLVMB B, LLVMV vmt, LLVMV fn, int n) {
     LLVMV P = LLVMBuildGEP(B, vmt, indices, 2, LLVM_TMP);
     LLVMV V = LLVMBuildBitCast(B, fn, LLVMT_PTR_VOID, LLVM_TMP);
     LLVMBuildStore(B, V, P);
-}
-
-// auxiliary - fills a VMT with functions
-static void vmtfill(LLVMB B, LLVMV vmt, LLVMV fns[], int n) {
-    for (int i = 0; i < n; i++) {
-        vmtset(B, vmt, fns[i], i);
-    }
 }
 
 // ==================================================

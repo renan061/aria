@@ -3,7 +3,7 @@
 Spawn is a broken mess
 -- Input
 function main {
-    spawn {
-    }
+    // spawn {
+    // }
 }
 -- Output
