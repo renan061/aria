@@ -242,8 +242,9 @@ Type* ast_type_structure(Id* id, TypeTag ttag, Definition* defs, Type* itype) {
     type->structure.methods = NULL;
     type->structure.methods_size = -1;
     type->structure.constructor = NULL;
+    type->structure.gR = NULL;
     type->structure.gL = NULL;
-    type->structure.gNL = NULL;
+    type->structure.gP = NULL;
     return type;
 }
 

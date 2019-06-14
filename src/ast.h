@@ -179,7 +179,7 @@ struct Type {
             size_t methods_size;
             Definition* constructor;
             // backend
-            LLVMValueRef gL, gNL, gP; // VMTs => TODO: atc.c !!!
+            LLVMValueRef gR, gL, gP; // VMTs
             LLVMTypeRef proxyT; // TODO: atc.c !!!
         } structure;
     };
