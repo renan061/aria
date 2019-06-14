@@ -37,8 +37,7 @@ typedef LLVMValueRef      LLVMV  ;
 
 #define PROXY_IDX_SELF  (0)
 #define PROXY_IDX_VMTP  (1) // same as STRUCTURE_VMT
-#define PROXY_IDX_VMTNL (2)
-#define PROXY_IDX_OK    (3)
+#define PROXY_IDX_OK    (2)
 
 // TODO: rename like proxy
 #define STRUCTURE_MUTEX             (0)
@@ -242,7 +241,6 @@ static void backend_definition(IRState* irs, Definition* d) {
     switch (d->tag) {
     case DEFINITION_CAPSA:       backend_definition_capsa(irs, d);       break;
     case DEFINITION_FUNCTION:    backend_definition_function(irs, d);    break;
-    case DEFINITION_METHOD:      UNREACHABLE;
     case DEFINITION_CONSTRUCTOR: backend_definition_constructor(irs, d); break;
     case DEFINITION_TYPE:
         switch (d->type->tag) {
@@ -310,11 +308,6 @@ static void backend_definition_function(IRState* irs, Definition* def) {
     irs->main = false;
 }
 
-// TODO: move
-static LLVMV generic_pointer(LLVMB B, LLVMV ptr) {
-    return LLVMBuildBitCast(B, ptr, LLVMT_PTR_VOID, LLVM_TMP);
-}
-
 static void backend_definition_constructor(IRState* irs, Definition* def) {
     irs->initializer = true;
 
@@ -356,7 +349,8 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
 
     // TODO: why is this IF here? should check the tests
     if (irs->block) {
-        llvm_return(irs, generic_pointer(irs->B, irs->self));
+        LLVMV V = LLVMBuildBitCast(irs->B, irs->self, LLVMT_PTR_VOID, LLVM_TMP);
+        llvm_return(irs, V);
     }
 
     irs->self = NULL;
@@ -379,19 +373,41 @@ static void backend_definition_structure(IRState* irs, Definition* def) {
 
 // TODO: function or not?
 // auxiliary - returns the type for proxy structures
-// type { self: i8*, vmt-P: [4 x i8*]*, vmt-NL: [4 x i8*]*, ok: i1 }
+// type { self: i8*, vmt-P: [4 x i8*]*, ok: i1 }
 static LLVMT proxytype(const char* name, int n) {
     char* s = concat((char*)name, "-P");
     LLVMT T = LLVMStructCreateNamed(LLVMGetGlobalContext(), s);
     free(s);
     LLVMT vmt = LLVMT_PTR(LLVMArrayType(LLVMT_PTR_VOID, n));
-    LLVMT fields[] = {LLVMT_PTR_VOID, vmt, vmt, LLVMT_BOOLEAN};
-    LLVMStructSetBody(T, fields, 4, false);
+    LLVMT fields[] = {LLVMT_PTR_VOID, vmt, LLVMT_BOOLEAN};
+    LLVMStructSetBody(T, fields, 3, false);
     return T;
 }
 
-// TODO: refactor: separate into two functions?
-static void templateinit(IRState* irs, Definition* m) {
+static void backend_definition_monitor(IRState* irs, Definition* def) {
+    size_t attributes_size = def->type->structure.attributes_size;
+    LLVMT attributes[STRUCTURE_ATTRIBUTE_START + attributes_size];
+
+    // mutex & VMT
+    attributes[STRUCTURE_MUTEX] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
+    attributes[STRUCTURE_VMT] = LLVMT_PTR(LLVMArrayType(
+        LLVMT_PTR_VOID, def->type->structure.methods_size
+    ));
+
+    // attributes
+    for (int i = 0; i < def->type->structure.attributes_size; i++) {
+        Capsa* capsa = def->type->structure.attributes[i]->capsa.capsa;
+        capsa->llvm_structure_index = STRUCTURE_ATTRIBUTE_START + i;
+        attributes[STRUCTURE_ATTRIBUTE_START + i] = llvm_type(capsa->type);
+    }
+
+    def->type->T = llvm_structure(attributes,
+        def->type->structure.attributes_size + STRUCTURE_ATTRIBUTE_START,
+        def->type->structure.id->name
+    );
+
+    // backend_definition_method (NL, L & P) & VMT(s)
+    Definition* m = def;
     Definition** methods = m->type->structure.methods;
 
     int all = m->type->structure.methods_size; // all functions
@@ -412,6 +428,8 @@ static void templateinit(IRState* irs, Definition* m) {
         list_append(inits, (ListValue)init);
     }
 
+    // TODO: constructor needs vmt-L
+
     { // methods and and VMTs (L, NL & P)
         LLVMV NL, L, P;    // VMTs
         LLVMV VNL, VL, VP; // functions
@@ -419,6 +437,11 @@ static void templateinit(IRState* irs, Definition* m) {
         m->type->structure.gNL = NL = vmtadd(irs->M, m, "-vmt-NL");
         m->type->structure.gL  = L  = vmtadd(irs->M, m, "-vmt-L");
         m->type->structure.gP  = P  = vmtadd(irs->M, m, "-vmt-P");
+
+        // constructor
+        irs->structure = m;
+        backend_definition(irs, m->type->structure.constructor);
+        irs->structure = NULL;
 
         int j, k;
         LLVMT selfT = m->type->T;
@@ -446,39 +469,6 @@ static void templateinit(IRState* irs, Definition* m) {
 
     LLVMPositionBuilderAtEnd(irs->B, bb);
     LLVMBuildRetVoid(irs->B);
-}
-
-static void backend_definition_monitor(IRState* irs, Definition* def) {
-    size_t attributes_size = def->type->structure.attributes_size;
-    LLVMT attributes[STRUCTURE_ATTRIBUTE_START + attributes_size];
-
-    // mutex & VMT
-    attributes[STRUCTURE_MUTEX] = LLVM_TYPE_POINTER_PTHREAD_MUTEX_T;
-    attributes[STRUCTURE_VMT] = LLVMT_PTR(LLVMArrayType(
-        LLVMT_PTR_VOID, def->type->structure.methods_size
-    ));
-
-    // attributes
-    for (int i = 0; i < def->type->structure.attributes_size; i++) {
-        Capsa* capsa = def->type->structure.attributes[i]->capsa.capsa;
-        capsa->llvm_structure_index = STRUCTURE_ATTRIBUTE_START + i;
-        attributes[STRUCTURE_ATTRIBUTE_START + i] = llvm_type(capsa->type);
-    }
-
-    def->type->T = llvm_structure(attributes,
-        def->type->structure.attributes_size + STRUCTURE_ATTRIBUTE_START,
-        def->type->structure.id->name
-    );
-
-    // backend_definition_method (NL, L & P)
-    // templete initializer
-    // VMT(s)
-    templateinit(irs, def);
-
-    // constructor
-    irs->structure = def;
-    backend_definition(irs, def->type->structure.constructor);
-    irs->structure = NULL;
 }
 
 // -----------------------------------------------------------------------------

@@ -1,0 +1,30 @@
+--------------------------------------------------------------------------------
+-- Title
+Scoped values can not escape their blocks (runtime error)
+-- Input
+monitor M {
+    variable n: Integer;
+    initializer(i: Integer) { n = i;                   }
+    function f              { print("M.f => %d\n", n); }
+    function acquire x: M   { return M(n + 1);         }
+    function release x      { /* empty */              }
+}
+function main {
+    value m = M(0);
+    variable cheater: M!;
+    print("Start\n");
+    m.f();
+    acquire value m = m.x() {
+        m.f();
+        cheater = m;
+        cheater.f();
+    }
+    cheater.f();
+    print("Fim\n");
+}
+-- Output
+Start
+M.f => 0
+M.f => 1
+M.f => 1
+runtime error: proxy function not ok
