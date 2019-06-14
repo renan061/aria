@@ -529,15 +529,32 @@ static LLVMV fnR(IRState* irs, Definition* fn, LLVMT selfT) {
     irs->function = fn->V;
 
     // <self> is the first parameter
-    LLVMV selfV = fn->function.parameters->capsa.capsa->V;
     selfT = LLVMT_PTR(selfT);
-    irs->self = LLVMBuildBitCast(irs->B, selfV, selfT, LLVM_TMP_SELF);
+    irs->self = fn->function.parameters->capsa.capsa->V;
+    irs->self = LLVMBuildBitCast(irs->B, irs->self, selfT, LLVM_TMP_SELF);
 
-    backend_block(irs, fn->function.block);
-
-    // implicit return
-    if (irs->block) {
-        llvm_return(irs, zerovalue(irs, fn->function.type));
+    // native functions
+    // TODO: separate function for native functions
+    if (fn->function.id->name == scanner_native[SCANNER_NATIVE_UNLOCKED]) {
+        // NOTE: the acquire-value statement already calls lock/unlock
+        //       this implementation is left here for future use
+        // LLVMV mutex = monitormutex(irs->B, irs->self);
+        if (fn->function.qualifiers & FQ_ACQUIRE) {
+            // ir_pthread_mutex_lock(irs->B, mutex);
+            // LLVMBuildRet(irs->B, fn->function.parameters->capsa.capsa->V);
+            LLVMBuildRet(irs->B, fn->function.parameters->capsa.capsa->V);
+        } else if (fn->function.qualifiers & FQ_RELEASE) {
+            // ir_pthread_mutex_unlock(irs->B, mutex);
+            LLVMBuildRetVoid(irs->B);
+        } else {
+            UNREACHABLE;
+        }
+        irs->block = NULL;
+    } else {
+        backend_block(irs, fn->function.block);
+        if (irs->block) { // implicit return
+            llvm_return(irs, zerovalue(irs, fn->function.type));
+        }
     }
 
     irs->self = NULL;
@@ -547,6 +564,11 @@ static LLVMV fnR(IRState* irs, Definition* fn, LLVMT selfT) {
 // TODO: doc
 static LLVMV fnL(IRState* irs, Definition* fn, LLVMT selfT) {
     assert(fn->V);
+
+    // unlocked function
+    if (fn->function.id->name == scanner_native[SCANNER_NATIVE_UNLOCKED]) {
+        return fn->V;;
+    }
 
     // adds the locking-function's prototype to the module
     int argc = LLVMCountParams(fn->V);
@@ -579,7 +601,6 @@ static LLVMV fnL(IRState* irs, Definition* fn, LLVMT selfT) {
 
     llvm_return(irs, ret ? ret : zerovalue(irs, fn->function.type));
 
-    fn->LV = fnL; // TODO
     return fnL;
 }
 

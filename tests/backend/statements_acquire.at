@@ -1,6 +1,27 @@
 --------------------------------------------------------------------------------
 -- Title
-Checking if both acquire and release functions are called
+The <unlocked> acquire release pair of functions
+-- Input
+monitor M {
+    initializer { /* empty */    }
+    function f  { print("F!\n"); }
+}
+function main {
+    print("Start\n");
+    acquire value m = M().unlocked() {
+        m.f();
+        print("Inside\n");
+    }
+    print("End\n");
+}
+-- Output
+Start
+F!
+Inside
+End
+--------------------------------------------------------------------------------
+-- Title
+Both acquire and release functions must be called
 -- Input
 monitor M {
     initializer           { /* empty */                     }
@@ -26,10 +47,10 @@ Scoped values can not escape their blocks (runtime error)
 -- Input
 monitor M {
     variable n: Integer;
-    initializer(i: Integer) { n = i;                   }
-    function f              { print("M.f => %d\n", n); }
-    function acquire x: M   { return M(n + 1);         }
-    function release x      { print("Release\n");      }
+    initializer(i: Integer) { n = i;                               }
+    function f              { print("M.f => %d\n", n);             }
+    function acquire x: M   { print("Acquire\n"); return M(n + 1); }
+    function release x      { print("Release\n");                  }
 }
 function main {
     value m = M(0);
@@ -47,6 +68,7 @@ function main {
 -- Output
 Start
 M.f => 0
+Acquire
 M.f => 1
 M.f => 1
 Release
