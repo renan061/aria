@@ -186,6 +186,7 @@ static void backend_definition_structure(IRState*, Definition*);
 static void backend_definition_monitor(IRState*, Definition*);
 
 static void initializefunction(IRState*, Definition*);
+static void addglobal(IRState*, Definition*);
 static void initializeglobals(IRState*);
 
 static const char* fname(Definition*, int);
@@ -222,7 +223,7 @@ static void backend_definition_capsa(IRState* irs, Definition* def) {
     Capsa* capsa = def->capsa.capsa;
 
     if (capsa->global) {
-        list_append(globals, def);
+        addglobal(irs, def);
         return;
     }
 
@@ -466,13 +467,18 @@ static void initializefunction(IRState* irs, Definition* fn) {
     irs->function = fn->V;
 }
 
+// auxiliary - adds a global value (to be initialized later)
+static void addglobal(IRState* irs, Definition* d) {
+    LLVMT T = llvm_type(d->capsa.capsa->type);
+    d->capsa.capsa->V = LLVMAddGlobal(irs->M, T, d->capsa.capsa->id->name);
+    LLVMSetInitializer(d->capsa.capsa->V, LLVMGetUndef(T));
+    list_append(globals, d);
+}
+
 // auxiliary - initializes all global values
 static void initializeglobals(IRState* irs) {
     FOREACH(ListNode, n, globals->first) {
         Definition* d = (Definition*)n->value;
-        LLVMT T = llvm_type(d->capsa.capsa->type);
-        d->capsa.capsa->V = LLVMAddGlobal(irs->M, T, d->capsa.capsa->id->name);
-        LLVMSetInitializer(d->capsa.capsa->V, LLVMGetUndef(T));
         backend_expression(irs, d->capsa.expression);
         LLVMBuildStore(irs->B, d->capsa.expression->V, d->capsa.capsa->V);
     }
