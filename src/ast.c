@@ -112,7 +112,7 @@ Id* ast_id(Line line, const char* name) {
 //
 // ==================================================
 
-// TODO: Test static
+// TODO: test static
 #define NATIVE_TYPE(v, i) \
     static Type* v = NULL; \
     if (!v) { \
@@ -155,7 +155,7 @@ Type* ast_type_string(void) {
 }
 
 Type* ast_type_condition_queue(void) {
-    // TODO: Refactor
+    // TODO: refactor
     static Type* type_condition_queue = NULL;
     if (!type_condition_queue) {
         MALLOC(type_condition_queue, Type);
@@ -622,9 +622,6 @@ Expression* ast_expression_binary(Line ln, Token t, Expression* l,
 }
 
 Expression* ast_expression_cast(Line ln, Expression* expression, Type* type) {
-    // TODO: Remove when 'as' gets in the language
-    assert(expression->type != type);
-
     Expression* castExpression;
     MALLOC(castExpression, Expression);
     castExpression->tag = EXPRESSION_CAST;

@@ -1,14 +1,12 @@
 #include <assert.h>
-#include <stdio.h> // TODO: Remove
+#include <stdio.h> // TODO: remove
 
 #include "alloc.h"
 #include "errs.h"
+#include "macros.h"
 #include "symtable.h"
 
 #define ERR_SCOPE "symbol table: did not leave all scopes"
-
-// TODO: Move this somewhere else and look for assert(NULL) in the code
-#define UNREACHABLE assert(NULL)
 
 /*
  * TODO:

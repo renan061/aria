@@ -60,7 +60,7 @@ void ir_state_free(IRState* irs) {
 //
 // ==================================================
 
-// TODO: Duplicated -> Also in backend.c
+// TODO: duplicated => also in backend.c
 static Type* __boolean;
 static Type* __integer;
 static Type* __float;

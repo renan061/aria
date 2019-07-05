@@ -43,14 +43,14 @@
 #define ERR_STRING_LINE     "multiline string"
 
 // auxiliary macro
-#define TOKEN(t) yylval.ival = line, t
+#define TOKEN(t) (yylval.ival = line, t)
 
 // auxiliary variables
 static Vector* strs;
 static unsigned int line = 1; // current line number
 
 // auxiliary functions
-static void idaction();
+static void idaction(void);
 static const char* checkunique(const char*);
 static const char* copystr(const char*, size_t);
 static const char* convertescapes(const char*, size_t);
@@ -166,14 +166,14 @@ void scanner_setup(const char* file) {
     }
     strs = vector_new();
 
-    scanner_native[SCANNER_NATIVE_BOOLEAN] = "Boolean";
+    scanner_native[SCANNER_NATIVE_BOOLEAN]         = "Boolean";
     scanner_native[SCANNER_NATIVE_CONDITION_QUEUE] = "ConditionQueue";
-    scanner_native[SCANNER_NATIVE_FLOAT] = "Float";
-    scanner_native[SCANNER_NATIVE_INTEGER] = "Integer";
-    scanner_native[SCANNER_NATIVE_MAIN] = "main";
-    scanner_native[SCANNER_NATIVE_SELF] = "self";
-    scanner_native[SCANNER_NATIVE_STRING] = "String";
-    scanner_native[SCANNER_NATIVE_UNLOCKED] = "unlocked";
+    scanner_native[SCANNER_NATIVE_FLOAT]           = "Float";
+    scanner_native[SCANNER_NATIVE_INTEGER]         = "Integer";
+    scanner_native[SCANNER_NATIVE_MAIN]            = "main";
+    scanner_native[SCANNER_NATIVE_SELF]            = "self";
+    scanner_native[SCANNER_NATIVE_STRING]          = "String";
+    scanner_native[SCANNER_NATIVE_UNLOCKED]        = "unlocked";
 
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_BOOLEAN]);
     vector_append(strs, (void*) scanner_native[SCANNER_NATIVE_CONDITION_QUEUE]);
@@ -201,7 +201,7 @@ void scanner_clean(void) {
 //       another data structure should be used instead
 
 // used by lower-id and upper-id
-static void idaction() {
+static void idaction(void) {
     const char* str = checkunique(yytext);
     if (!str) {
         str = copystr(yytext, yyleng);

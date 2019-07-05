@@ -37,5 +37,8 @@ clean:
 	$(RM) bison.output
 	$(RM) *.bc
 	$(RM) *.ll
+	$(RM) *.o
+	$(RM) *.out
+	$(RM) *.s
 	cd src && $(MAKE) $@
 	cd tests && $(MAKE) $@

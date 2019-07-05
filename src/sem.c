@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h> // TODO: Remove
+#include <stdio.h> // TODO: remove
 #include <string.h>
 
 #include "macros.h"
@@ -25,7 +25,7 @@
 #define insidestructure(s) (s->structure && structuretype(s->structure))
 #define insidemonitor(s) (s->structure && s->structure->tag == TYPE_MONITOR)
 
-// TODO: Also check if TODOERR errors have matching tests
+// TODO: also check if TODOERR errors have matching tests
 #define TODOERR(line, err) \
     printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
 
@@ -1781,7 +1781,7 @@ static const char* tokenstring(Token token) {
     }
 }
 
-// TODO: These errs with variadic functions
+// TODO: these errs with variadic functions
 
 // Creates a formatted error with one dynamic string
 static const char* err1(const char* format, const char* name) {

@@ -966,7 +966,7 @@ static void backend_statement(IRState* irs, Statement* statement) {
         break;
     }
     case STATEMENT_FOR: {
-        // TODO: Check this later, better way to do this?
+        // TODO: check this; better way to do this?
         LLVMBasicBlockRef
             binit = LLVMAppendBasicBlock(irs->function, LABEL_FOR_INIT),
             bcond = LLVMAppendBasicBlock(irs->function, LABEL_FOR_COND),
@@ -1094,7 +1094,7 @@ static void backend_expression(IRState* irs, Expression* expression) {
     }
     case EXPRESSION_CAPSA:
         backend_capsa(irs, expression->capsa);
-        // TODO: Find better way to write this
+        // TODO: find better way to write this
         if (expression->capsa->llvm_structure_index > -1) { // attributes
             expression->V = LLVMBuildLoad(
                 irs->B,
@@ -1577,7 +1577,7 @@ static LLVMT llvm_fn_type(Definition* fn, size_t psize) {
     return LLVMFunctionType(T, params, psize, false);
 }
 
-// TODO: Rename this: backend_return?
+// TODO: rename this: backend_return?
 static void llvm_return(IRState* irs, LLVMV V) {
     assert(irs->block);
 
@@ -1623,7 +1623,7 @@ static LLVMV stringliteral(IRState* irs, const char* string) {
 // TODO: doc
 static LLVMT llvm_structure(LLVMT fields[], size_t size, const char* name) {
     LLVMT type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
-    LLVMStructSetBody(type, fields, size, false); // TODO: Packed?
+    LLVMStructSetBody(type, fields, size, false); // TODO: packed?
     return type;
 }
 
@@ -1633,8 +1633,8 @@ static LLVMT llvm_structure(LLVMT fields[], size_t size, const char* name) {
 //
 // ==================================================
 
-// TODO: Find a better way to write this...
-// TODO: Read about llvm zeroinitalizer (ConstantAggregateZero ?)
+// TODO: find a better way to write this...
+// TODO: read about llvm zeroinitalizer (ConstantAggregateZero ?)
 static LLVMV zerovalue(IRState* irs, Type* type) {
     switch (type->tag) {
     case TYPE_VOID:
@@ -1729,7 +1729,7 @@ static void todospawn(IRState* irs, FunctionCall* call) {
     // Block
     backend_block(spawn_irs, call->fn->function.block);
 
-    // TODO: Should free, but weird error (not this...)
+    // TODO: should free, but weird error (not this...)
     // LLVMBuildFree(irs->B, parameter);
     LLVMBuildRet(
         spawn_irs->B, LLVMConstPointerNull(LLVMT_PTR_VOID)
