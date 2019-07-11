@@ -5,10 +5,10 @@
 
 #include "ast.h"
 
-#define LLVMT_PTR_PTHREAD_MUTEX_T	LLVMT_PTR_VOID
-#define LLVMT_PTR_PTHREAD_COND_T	LLVMT_PTR_VOID
+#define irT_ptr_PTHREAD_MUTEX_T	irT_pvoid
+#define irT_ptr_PTHREAD_COND_T	irT_pvoid
 
-extern void ir_pthread_setup(LLVMModuleRef);
+extern void ir_pthread_setup(LLVMM);
 
 // the type pthread_create needs to receive as an argument
 extern LLVMT ir_spawn_t;

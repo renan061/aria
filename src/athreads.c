@@ -6,7 +6,7 @@
 #include "athreads.h"
 #include "ir.h"
 
-#define LLVMT_PTR_PTHREAD_T LLVMT_PTR_VOID
+#define irT_ptr_PTHREAD_T irT_pvoid
 
 #define NAME_PTHREAD_CREATE         "pthread_create"
 #define NAME_PTHREAD_EXIT           "pthread_exit"
@@ -24,11 +24,11 @@
 //
 // ==================================================
 
-LLVMTypeRef
+LLVMT
     ir_spawn_t = NULL
 ;
 
-LLVMValueRef
+LLVMV
     ir_pthread_create_t         = NULL,
     ir_pthread_exit_t           = NULL,
     ir_pthread_mutex_init_t     = NULL,
@@ -40,11 +40,11 @@ LLVMValueRef
     ir_pthread_cond_broadcast_t = NULL
 ;
 
-void ir_pthread_setup(LLVMModuleRef module) {
+void ir_pthread_setup(LLVMM module) {
     { // ir_spawn_t
-        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_VOID};
+        LLVMT paramtypes[1] = {irT_pvoid};
         ir_spawn_t = LLVMFunctionType(
-            LLVMT_PTR_VOID,
+            irT_pvoid,
             paramtypes,
             1,
             false
@@ -52,97 +52,97 @@ void ir_pthread_setup(LLVMModuleRef module) {
     }
 
     { // pthread_create
-        LLVMTypeRef paramtypes[4] = {
-            LLVMT_PTR_PTHREAD_T,
-            LLVMT_PTR_VOID,
-            LLVMT_PTR(ir_spawn_t),
-            LLVMT_PTR_VOID
+        LLVMT paramtypes[4] = {
+            irT_ptr_PTHREAD_T,
+            irT_pvoid,
+            irT_ptr(ir_spawn_t),
+            irT_pvoid
         };
         ir_pthread_create_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_CREATE,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 4, false)
+            LLVMFunctionType(irT_int, paramtypes, 4, false)
         );
     }
 
     { // pthread_exit
-        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_VOID};
+        LLVMT paramtypes[1] = {irT_pvoid};
         ir_pthread_exit_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_EXIT,
-            LLVMFunctionType(LLVMT_VOID, paramtypes, 1, false)
+            LLVMFunctionType(irT_void, paramtypes, 1, false)
         );
     }
         
     { // pthread_mutex_init
-        LLVMTypeRef paramtypes[2] = {
-            LLVMT_PTR_PTHREAD_MUTEX_T,
-            LLVMT_PTR_VOID
+        LLVMT paramtypes[2] = {
+            irT_ptr_PTHREAD_MUTEX_T,
+            irT_pvoid
         };
         ir_pthread_mutex_init_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_MUTEX_INIT,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 2, false)
+            LLVMFunctionType(irT_int, paramtypes, 2, false)
         );
     }
 
     { // pthread_mutex_lock
-        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_PTHREAD_MUTEX_T};
+        LLVMT paramtypes[1] = {irT_ptr_PTHREAD_MUTEX_T};
         ir_pthread_mutex_lock_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_MUTEX_LOCK,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 1, false)
+            LLVMFunctionType(irT_int, paramtypes, 1, false)
         );
     }
 
     { // pthread_mutex_unlock
-        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_PTHREAD_MUTEX_T};
+        LLVMT paramtypes[1] = {irT_ptr_PTHREAD_MUTEX_T};
         ir_pthread_mutex_unlock_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_MUTEX_UNLOCK,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 1, false)
+            LLVMFunctionType(irT_int, paramtypes, 1, false)
         );
     }
 
     { // pthread_cond_init
-        LLVMTypeRef paramtypes[2] = {
-            LLVMT_PTR_PTHREAD_COND_T,
-            LLVMT_PTR_VOID
+        LLVMT paramtypes[2] = {
+            irT_ptr_PTHREAD_COND_T,
+            irT_pvoid
         };
         ir_pthread_cond_init_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_COND_INIT,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 2, false)
+            LLVMFunctionType(irT_int, paramtypes, 2, false)
         );
     }
 
     { // pthread_cond_wait
-        LLVMTypeRef paramtypes[2] = {
-            LLVMT_PTR_PTHREAD_COND_T,
-            LLVMT_PTR_PTHREAD_MUTEX_T
+        LLVMT paramtypes[2] = {
+            irT_ptr_PTHREAD_COND_T,
+            irT_ptr_PTHREAD_MUTEX_T
         };
         ir_pthread_cond_wait_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_COND_WAIT,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 2, false)
+            LLVMFunctionType(irT_int, paramtypes, 2, false)
         );
     }
 
     { // pthread_cond_signal
-        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_PTHREAD_COND_T};
+        LLVMT paramtypes[1] = {irT_ptr_PTHREAD_COND_T};
         ir_pthread_cond_signal_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_COND_SIGNAL,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 1, false)
+            LLVMFunctionType(irT_int, paramtypes, 1, false)
         );
     }
 
     { // pthread_cond_broadcast
-        LLVMTypeRef paramtypes[1] = {LLVMT_PTR_PTHREAD_COND_T};
+        LLVMT paramtypes[1] = {irT_ptr_PTHREAD_COND_T};
         ir_pthread_cond_broadcast_t = LLVMAddFunction(
             module,
             NAME_PTHREAD_COND_BROADCAST,
-            LLVMFunctionType(LLVM_TYPE_INTEGER, paramtypes, 1, false)
+            LLVMFunctionType(irT_int, paramtypes, 1, false)
         );
     }
 }
@@ -154,52 +154,52 @@ void ir_pthread_setup(LLVMModuleRef module) {
 // ==================================================
 
 // ASK: Should the p_thread_t really be allocated with malloc?
-void ir_pthread_create(LLVMBuilderRef B, LLVMValueRef fn, LLVMValueRef args) {
-    LLVMValueRef arguments[] = {
+void ir_pthread_create(LLVMB B, LLVMV fn, LLVMV args) {
+    LLVMV arguments[] = {
         ir_malloc(B, sizeof(pthread_t)),
-        LLVMConstPointerNull(LLVMT_PTR_VOID),
+        LLVMConstPointerNull(irT_pvoid),
         fn,
         args
     };
     LLVMBuildCall(B, ir_pthread_create_t, arguments, 4, LLVM_TMP_NONE);
 }
 
-void ir_pthread_exit(LLVMBuilderRef builder) {
-    LLVMValueRef args[] = {LLVMConstPointerNull(LLVMT_PTR_VOID)};
+void ir_pthread_exit(LLVMB builder) {
+    LLVMV args[] = {LLVMConstPointerNull(irT_pvoid)};
     LLVMBuildCall(builder, ir_pthread_exit_t, args, 1, LLVM_TMP_NONE);
 }
 
-void ir_pthread_mutex_init(LLVMBuilderRef builder, LLVMValueRef mutex) {
-    LLVMValueRef args[] = {mutex, LLVMConstPointerNull(LLVMT_PTR_VOID)};
+void ir_pthread_mutex_init(LLVMB builder, LLVMV mutex) {
+    LLVMV args[] = {mutex, LLVMConstPointerNull(irT_pvoid)};
     LLVMBuildCall(builder, ir_pthread_mutex_init_t, args, 2, LLVM_TMP_NONE);
 }
 
-void ir_pthread_mutex_lock(LLVMBuilderRef builder, LLVMValueRef mutex) {
-    LLVMValueRef args[] = {mutex};
+void ir_pthread_mutex_lock(LLVMB builder, LLVMV mutex) {
+    LLVMV args[] = {mutex};
     LLVMBuildCall(builder, ir_pthread_mutex_lock_t, args, 1, LLVM_TMP_NONE);
 }
 
-void ir_pthread_mutex_unlock(LLVMBuilderRef builder, LLVMValueRef mutex) {
-    LLVMValueRef args[] = {mutex};
+void ir_pthread_mutex_unlock(LLVMB builder, LLVMV mutex) {
+    LLVMV args[] = {mutex};
     LLVMBuildCall(builder, ir_pthread_mutex_unlock_t, args, 1, LLVM_TMP_NONE);
 }
 
-void ir_pthread_cond_init(LLVMBuilderRef builder, LLVMValueRef cond) {
-    LLVMValueRef args[] = {cond, LLVMConstPointerNull(LLVMT_PTR_VOID)};
+void ir_pthread_cond_init(LLVMB builder, LLVMV cond) {
+    LLVMV args[] = {cond, LLVMConstPointerNull(irT_pvoid)};
     LLVMBuildCall(builder, ir_pthread_cond_init_t, args, 2, LLVM_TMP_NONE);
 }
 
-void ir_pthread_cond_wait(LLVMBuilderRef B, LLVMValueRef cd, LLVMValueRef mtx) {
-    LLVMValueRef args[] = {cd, mtx}; // {cond, mutex}
+void ir_pthread_cond_wait(LLVMB B, LLVMV cd, LLVMV mtx) {
+    LLVMV args[] = {cd, mtx}; // {cond, mutex}
     LLVMBuildCall(B, ir_pthread_cond_wait_t, args, 2, LLVM_TMP_NONE);
 }
 
-void ir_pthread_cond_signal(LLVMBuilderRef builder, LLVMValueRef cond) {
-    LLVMValueRef args[] = {cond};
+void ir_pthread_cond_signal(LLVMB builder, LLVMV cond) {
+    LLVMV args[] = {cond};
     LLVMBuildCall(builder, ir_pthread_cond_signal_t, args, 1, LLVM_TMP_NONE);
 }
 
-void ir_pthread_cond_broadcast(LLVMBuilderRef builder, LLVMValueRef cond) {
-    LLVMValueRef args[] = {cond};
+void ir_pthread_cond_broadcast(LLVMB builder, LLVMV cond) {
+    LLVMV args[] = {cond};
     LLVMBuildCall(builder, ir_pthread_cond_broadcast_t, args, 1, LLVM_TMP_NONE);
 }

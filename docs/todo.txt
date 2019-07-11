@@ -1,38 +1,15 @@
 
-- Test operator precedence and expressions inside parenthesis precedence in
-	the parser (only after test script is refactored)
-
 // ==================================================
 //
-//	TODO
+//  TODO
 //
 // ==================================================
 
-// global
-// permitir expressões que não sejam literais?
-value g = true or false;
+- Test operator precedence and expressions inside parenthesis precedence in the parser (only after test script is refactored)
 
 - Funções retornam zero value implicitamente caso não seja fornecido um return?
 
-- Variáveis não inicializadas são sempre inicializadas para um
-	zero value correspondente?
+- Variáveis não inicializadas são sempre inicializadas para um zero value correspondente?
 
-// ==================================================
-//
-//	Ask
-//
-// ==================================================
-
+// ask
 - foo() = 1 é erro do parser, mas foo()[1] = 1 é erro semântico, inconsistência?
-
-// ==================================================
-//
-//	Thinking
-//
-// ==================================================
-
-closure : [arguments [type] 'in'] block
-
-return { lenght(values) > 0 }
-
-return (values) Bool in { lenght(values) > 0 }

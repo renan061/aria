@@ -130,7 +130,7 @@ struct AST {
 struct Definition {
     DefinitionTag tag;
     Definition* next;
-    LLVMValueRef V; // TODO: move this inside definition->function
+    LLVMV V; // TODO: move this inside definition->function
     
     union {
         // DefinitionCapsa
@@ -165,7 +165,7 @@ struct Type {
     bool primitive;
     bool immutable; // default false
 
-    LLVMTypeRef T; // type
+    LLVMT T; // type
 
     union {
         // TypeID
@@ -188,8 +188,8 @@ struct Type {
             size_t methods_size;
             Definition* constructor;
             // backend
-            LLVMValueRef gR, gL, gP; // VMTs
-            LLVMTypeRef proxyT; // TODO: atc.c !!!
+            LLVMV gR, gL, gP; // VMTs
+            LLVMT proxyT; // TODO: atc.c !!!
         } structure;
     };
 };
@@ -270,7 +270,7 @@ struct Capsa {
     Type* type; // default NULL
     bool global; // default false
     bool value; // default false
-    LLVMValueRef V; // default NULL
+    LLVMV V; // default NULL
     int llvm_structure_index; // default -1
 
     union {
@@ -294,7 +294,7 @@ struct Expression {
     Line line;
     Expression *previous, *next;
     Type* type;
-    LLVMValueRef V;
+    LLVMV V;
     
     union {
         struct {

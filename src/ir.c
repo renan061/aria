@@ -14,8 +14,20 @@
 #define NAME_MALLOC "malloc"
 #define NAME_EXIT   "exit"
 
-// Internal
-static LLVMValueRef
+// module variables
+LLVMT
+    irT_pvoid,
+    irT_void,
+    irT_bool,
+    irT_int,
+    irT_float;
+LLVMV
+    ir_zerobool,
+    ir_zeroint,
+    ir_zerofloat;
+
+// internal
+static LLVMV
     ir_malloc_t = NULL,
     ir_printf_t = NULL,
     ir_exit_t   = NULL
@@ -27,7 +39,7 @@ static LLVMValueRef
 //
 // ==================================================
 
-IRState* ir_state_new(LLVMModuleRef M, LLVMBuilderRef B) {
+IRState* ir_state_new(LLVMM M, LLVMB B) {
     IRState* irs;
     MALLOC(irs, IRState);
     irs->M = M;
@@ -65,38 +77,43 @@ static Type* __boolean;
 static Type* __integer;
 static Type* __float;
 
-void ir_setup(LLVMModuleRef module) {
+void ir_setup(LLVMM M) {
     { // primitive types
         __boolean = ast_type_boolean();
         __integer = ast_type_integer();
         __float = ast_type_float();
     }
 
+    { // types
+        irT_pvoid = irT_ptr(LLVMInt8Type());
+        irT_void  = LLVMVoidType();
+        irT_bool  = LLVMIntType(1);
+        irT_int   = LLVMInt32Type();
+        irT_float = LLVMDoubleType();
+    }
+
+    { // zero constants
+        ir_zerobool  = ir_bool(false);
+        ir_zeroint   = ir_int(0);
+        ir_zerofloat = ir_float(0.0);
+    }
+
     { // printf
-        LLVMTypeRef paramtypes[1] = {LLVM_ARIA_TYPE_STRING};
-        ir_printf_t = LLVMAddFunction(
-            module,
-            NAME_PRINTF,
-            LLVMFunctionType(LLVM_ARIA_TYPE_INTEGER, paramtypes, 1, true)
-        );
+        LLVMT paramsT[1] = {irT_string};
+        LLVMT T = LLVMFunctionType(irT_int, paramsT, 1, true);
+        ir_printf_t = LLVMAddFunction(M, NAME_PRINTF, T);
     }
     
     { // malloc
-        LLVMTypeRef paramtypes[1] = {LLVM_TYPE_INTEGER};
-        ir_malloc_t = LLVMAddFunction(
-            module,
-            NAME_MALLOC,
-            LLVMFunctionType(LLVMT_PTR_VOID, paramtypes, 1, false)
-        );
+        LLVMT paramsT[1] = {irT_int};
+        LLVMT T = LLVMFunctionType(irT_pvoid, paramsT, 1, false);
+        ir_malloc_t = LLVMAddFunction(M, NAME_MALLOC, T);
     }
 
     { // exit
-        LLVMTypeRef paramtypes[1] = {LLVM_TYPE_INTEGER};
-        ir_exit_t = LLVMAddFunction(
-            module,
-            NAME_EXIT,
-            LLVMFunctionType(LLVMT_VOID, paramtypes, 1, false)
-        );
+        LLVMT paramsT[1] = {irT_int};
+        LLVMT T = LLVMFunctionType(irT_void, paramsT, 1, false);
+        ir_exit_t = LLVMAddFunction(M, NAME_EXIT, T);
     }
 }
 
@@ -106,21 +123,21 @@ void ir_setup(LLVMModuleRef module) {
 //
 // ==================================================
 
-LLVMValueRef ir_printf(LLVMBuilderRef B, LLVMValueRef* args, int n) {
+LLVMV ir_printf(LLVMB B, LLVMV* args, int n) {
     return LLVMBuildCall(B, ir_printf_t, args, n, LLVM_TMP_NONE);
 }
 
-LLVMValueRef ir_malloc(LLVMBuilderRef B, size_t size) {
-    LLVMValueRef args[1] = {LLVM_CONST_INT(size)};
+LLVMV ir_malloc(LLVMB B, size_t size) {
+    LLVMV args[1] = {ir_int(size)};
     return LLVMBuildCall(B, ir_malloc_t, args, 1, LLVM_TMP_NONE);
 }
 
-LLVMValueRef ir_exit(LLVMBuilderRef B) {
-    LLVMValueRef args[1] = {LLVM_CONST_INT(1)};
+LLVMV ir_exit(LLVMB B) {
+    LLVMV args[1] = {ir_int(1)};
     return LLVMBuildCall(B, ir_exit_t, args, 1, LLVM_TMP_NONE);
 }
 
-LLVMValueRef ir_cmp(LLVMBuilderRef B,
+LLVMV ir_cmp(LLVMB B,
     LLVMIntPredicate iop,
     LLVMRealPredicate fop,
     Expression* lhs,
@@ -129,17 +146,11 @@ LLVMValueRef ir_cmp(LLVMBuilderRef B,
     assert(lhs->type == rhs->type);
 
     if (lhs->type == __boolean) {
-        return LLVMBuildICmp(
-            B, iop, lhs->V, rhs->V, LLVM_TMP
-        );
+        return LLVMBuildICmp(B, iop, lhs->V, rhs->V, LLVM_TMP);
     } else if (lhs->type == __integer) {
-        return LLVMBuildICmp(
-            B, iop, lhs->V, rhs->V, LLVM_TMP
-        );
+        return LLVMBuildICmp(B, iop, lhs->V, rhs->V, LLVM_TMP);
     } else if (lhs->type == __float) {
-        return LLVMBuildFCmp(
-            B, fop, lhs->V, rhs->V, LLVM_TMP
-        );
+        return LLVMBuildFCmp(B, fop, lhs->V, rhs->V, LLVM_TMP);
     } else {
         UNREACHABLE;
     }

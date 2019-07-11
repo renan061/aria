@@ -4,6 +4,6 @@
 #include "ast.h"
 
 // TODO: doc
-extern LLVMModuleRef compile(AST*);
+extern LLVMM compile(AST*);
 
 #endif

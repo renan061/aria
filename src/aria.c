@@ -20,7 +20,7 @@
 #define TAG_BUILD_TEXT  "builds the program to LLVM IR"
 #define TAG_RUN_TEXT    "runs the program using LLVM's interpreter"
 
-static int execute_module(LLVMModuleRef module);
+static int execute_module(LLVMM module);
 static void checkargs(int argc, char* argv[]);
 static void checkhelp(int argc, char* argv[]);
 
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     yyparse();
     scanner_clean();
     sem_analyse(ast);
-    LLVMModuleRef module = compile(ast);
+    LLVMM module = compile(ast);
 
     if (build) {
         if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {
@@ -97,7 +97,7 @@ static void checkargs(int argc, char* argv[]) {
     }
 }
 
-static int execute_module(LLVMModuleRef module) {
+static int execute_module(LLVMM module) {
     // TODO: "LLVM ERROR: Target does not support MC emission!"
     LLVMInitializeNativeAsmPrinter();
     // LLVMInitializeNativeAsmParser();
@@ -115,7 +115,7 @@ static int execute_module(LLVMModuleRef module) {
         printf("error: %s", error);
         exit(1);
     }
-    LLVMValueRef main_function = LLVMGetNamedFunction(module, "main");
+    LLVMV main_function = LLVMGetNamedFunction(module, "main");
     if (!main_function) {
         printf("error: main function not found\n");
         exit(1);

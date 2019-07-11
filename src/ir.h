@@ -8,10 +8,8 @@
 #include "ast.h"
 #include "athreads.h"
 
-#define LLVM_DEFAULT_ADDRESS_SPACE 0
-
 // global names
-#define LLVM_GLOBAL_STRING "_global_string"
+#define LLVM_GLOBAL_STRING "String"
 
 // temporary names
 #define LLVM_TMP                    "t"
@@ -25,37 +23,6 @@
 #define LLVM_TMP_OK                 "ok"
 #define LLVM_TMP_RETURN             "ret"
 
-// types
-#define LLVMT_PTR(t)        (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))
-#define LLVMT_PTR_VOID      (LLVMT_PTR(LLVMInt8Type()))
-#define LLVMT_VOID      (LLVMVoidType())
-#define LLVMT_BOOLEAN       (LLVMIntType(1))
-#define LLVM_TYPE_INTEGER   (LLVMInt32Type())
-#define LLVM_TYPE_DOUBLE    (LLVMDoubleType())
-
-// aria types
-#define LLVM_ARIA_TYPE_VOID             LLVMT_VOID
-#define LLVM_ARIA_TYPE_BOOLEAN          LLVMT_BOOLEAN
-#define LLVM_ARIA_TYPE_INTEGER          LLVM_TYPE_INTEGER
-#define LLVM_ARIA_TYPE_FLOAT            LLVM_TYPE_DOUBLE
-#define LLVM_ARIA_TYPE_STRING           LLVMT_PTR(LLVMInt8Type())
-#define LLVM_ARIA_TYPE_ARRAY(t)         LLVMT_PTR(t)
-#define LLVM_ARIA_TYPE_INTERFACE        LLVMT_PTR_VOID
-#define LLVM_ARIA_TYPE_MONITOR          LLVMT_PTR_VOID
-#define LLVM_ARIA_TYPE_CONDITION_QUEUE  LLVMT_PTR_PTHREAD_COND_T
-
-#define LLVMT_AOBJ                      LLVMT_PTR_VOID
-
-// ASK: should SignExtend?
-// TODO: not necessarily LLVM_ARIA_TYPES
-
-// constants
-#define LLVM_CONSTANT_BOOLEAN(b)    LLVMConstInt(LLVM_ARIA_TYPE_BOOLEAN, b, 0)
-#define LLVM_CONST_INT(i)           LLVMConstInt(LLVM_ARIA_TYPE_INTEGER, i, 0)
-#define LLVM_CONSTANT_FLOAT(f)      LLVMConstReal(LLVM_ARIA_TYPE_FLOAT, f)
-#define LLVM_CONSTANT_TRUE          LLVM_CONSTANT_BOOLEAN(1)
-#define LLVM_CONSTANT_FALSE         LLVM_CONSTANT_BOOLEAN(0)
-
 // ==================================================
 //
 //  IRState
@@ -63,16 +30,16 @@
 // ==================================================
 
 typedef struct IRState {
-    LLVMModuleRef M;
-    LLVMBuilderRef B;
+    LLVMM M;
+    LLVMB B;
 
     // current function
-    LLVMValueRef function;
+    LLVMV function;
 
     // current basic block
     // must always be set after repositioning the builder
     // must always be set to NULL after adding a terminator instruction
-    LLVMBasicBlockRef block;
+    LLVMBB block;
 
     // definition of the structure currently being evaluated
     // must always be set before evaluating a structure's definitions
@@ -80,7 +47,7 @@ typedef struct IRState {
     Definition* structure;
 
     // TODO: gambiarra
-    LLVMValueRef self;
+    LLVMV self;
 
     // if inside the main function
     bool main;
@@ -89,7 +56,7 @@ typedef struct IRState {
     bool initializer;
 } IRState;
 
-extern IRState* ir_state_new(LLVMModuleRef, LLVMBuilderRef);
+extern IRState* ir_state_new(LLVMM, LLVMB);
 extern void ir_state_done(IRState*);
 extern void ir_state_free(IRState*);
 
@@ -99,13 +66,34 @@ extern void ir_state_free(IRState*);
 //
 // ==================================================
 
-extern void ir_setup(LLVMModuleRef);
+extern void ir_setup(LLVMM);
 
-extern LLVMValueRef ir_printf(LLVMBuilderRef, LLVMValueRef*, int);
-extern LLVMValueRef ir_malloc(LLVMBuilderRef, size_t);
-extern LLVMValueRef ir_exit(LLVMBuilderRef B);
+extern LLVMV ir_printf(LLVMB, LLVMV*, int);
+extern LLVMV ir_malloc(LLVMB, size_t);
+extern LLVMV ir_exit(LLVMB B);
 
-extern LLVMValueRef ir_cmp(LLVMBuilderRef, LLVMIntPredicate, LLVMRealPredicate,
+extern LLVMV ir_cmp(LLVMB, LLVMIntPredicate, LLVMRealPredicate,
     Expression*, Expression*);
+
+// types
+extern LLVMT irT_pvoid;
+extern LLVMT irT_void;
+extern LLVMT irT_bool;
+extern LLVMT irT_int;
+extern LLVMT irT_float;
+#define irT_ptr(t)    (LLVMPointerType(t, 0))
+#define irT_string    (irT_pvoid)
+#define irT_array(t)  (irT_ptr(t))
+#define irT_interface (irT_pvoid)
+#define irT_monitor   (irT_pvoid)
+#define irT_cq        (irT_pvoid)
+
+// constants
+extern LLVMV ir_zerobool;
+extern LLVMV ir_zeroint;
+extern LLVMV ir_zerofloat;
+#define ir_bool(b)  (LLVMConstInt(irT_bool, b, false))
+#define ir_int(i)   (LLVMConstInt(irT_int, i, true))
+#define ir_float(f) (LLVMConstReal(irT_float, f))
 
 #endif

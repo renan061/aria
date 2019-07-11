@@ -33,7 +33,9 @@ OBJS= scanner.o bison.o ast.o sem.o backend.o aria.o \
 	errs.o vector.o list.o symtable.o ir.o athreads.o
 
 # Targets start here.
-default: tools $(OBJS)
+default: main
+
+main: tools $(OBJS)
 	$(CXXC) $(CXXFLAGS) -o $(TO_BIN) $(OBJS) $(LDFLAGS)
 
 tools:
