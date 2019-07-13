@@ -30,7 +30,7 @@ LDFLAGS= $(LLVM_LDFLAGS) $(LLVM_LIBS)
 
 # Objects.
 OBJS= scanner.o bison.o ast.o sem.o backend.o aria.o \
-	errs.o vector.o list.o symtable.o ir.o athreads.o
+	errs.o vector.o list.o symtable.o ir.o
 
 # Targets start here.
 default: main
@@ -60,4 +60,3 @@ list.o: list.c list.h
 vector.o: vector.c vector.h
 symtable.o: symtable.c symtable.h
 ir.o: ir.c ir.h
-athreads.o: athreads.c athreads.h
