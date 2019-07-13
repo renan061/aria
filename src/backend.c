@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdbool.h>
-#include <stdio.h> // TODO: remove
-#include <strings.h> // TODO: remove
+#include <strings.h>
 
 #include <llvm-c/Core.h>
 
@@ -34,27 +33,28 @@
 #define PROXY_IDX_VMTP  (STRUCT_IDX_VMT)
 #define PROXY_IDX_OK    (2)
 
+// TODO: change name to BB
 #define LABEL                   ""
-#define LABEL_ENTRY             LABEL "entry"
-#define LABEL_IF_TRUE           LABEL "if_true"
-#define LABEL_IF_END            LABEL "if_end"
-#define LABEL_IF_ELSE_TRUE      LABEL "if_else_true"
-#define LABEL_IF_ELSE_FALSE     LABEL "if_else_false"
-#define LABEL_IF_ELSE_END       LABEL "if_else_end"
-#define LABEL_WHILE             LABEL "while"
-#define LABEL_WHILE_LOOP        LABEL "while_loop"
-#define LABEL_WHILE_END         LABEL "while_end"
-#define LABEL_FOR_INIT          LABEL "for_init"
-#define LABEL_FOR_COND          LABEL "for_cond"
-#define LABEL_FOR_LOOP          LABEL "for_loop"
-#define LABEL_FOR_INC           LABEL "for_inc"
-#define LABEL_FOR_END           LABEL "for_end"
-#define LABEL_OK                LABEL "ok"
-#define LABEL_ERROR             LABEL "error"
+#define LABEL_ENTRY             (LABEL "entry")
+#define LABEL_IF_TRUE           (LABEL "if_true")
+#define LABEL_IF_END            (LABEL "if_end")
+#define LABEL_IF_ELSE_TRUE      (LABEL "if_else_true")
+#define LABEL_IF_ELSE_FALSE     (LABEL "if_else_false")
+#define LABEL_IF_ELSE_END       (LABEL "if_else_end")
+#define LABEL_WHILE             (LABEL "while")
+#define LABEL_WHILE_LOOP        (LABEL "while_loop")
+#define LABEL_WHILE_END         (LABEL "while_end")
+#define LABEL_FOR_INIT          (LABEL "for_init")
+#define LABEL_FOR_COND          (LABEL "for_cond")
+#define LABEL_FOR_LOOP          (LABEL "for_loop")
+#define LABEL_FOR_INC           (LABEL "for_inc")
+#define LABEL_FOR_END           (LABEL "for_end")
+#define LABEL_OK                (LABEL "ok")
+#define LABEL_ERROR             (LABEL "error")
 
-#define BB_WFI_WHILE      "wfi-while"
-#define BB_WFI_WHILE_LOOP "wfi-while-loop"
-#define BB_WFI_WHILE_END  "wfi-while-end"
+#define BB_WFI_WHILE      ("wfi-while")
+#define BB_WFI_WHILE_LOOP ("wfi-while-loop")
+#define BB_WFI_WHILE_END  ("wfi-while-end")
 
 // primitive types
 static Type* __void;
@@ -80,7 +80,6 @@ static char* concat(char* a, char* b) {
 static LLVMT llvm_type(Type*);
 static LLVMT llvm_fn_type(Definition*, size_t);
 static LLVMT llvm_structure(LLVMT[], size_t, const char*);
-static void llvm_return(IRState*, LLVMV);
 
 static List* inits = NULL;   // structures' static initializers
 static List* globals = NULL; // global values
@@ -247,9 +246,9 @@ static void backend_definition_function(IRState* irs, Definition* def) {
 
     backend_block(irs, def->function.block);
 
-    // implicit return
+    // checks if it's necessary to place an implicit return instruction
     if (irs->block) {
-        llvm_return(irs, zerovalue(irs, def->function.type));
+        irs_return(irs, zerovalue(irs, def->function.type));
     }
 
     irs->main = false;
@@ -294,10 +293,9 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
 
     backend_block(irs, def->function.block);
 
-    // TODO: why is this IF here? should check the tests
+    // checks if it's necessary to place an implicit return instruction
     if (irs->block) {
-        LLVMV V = LLVMBuildBitCast(irs->B, irs->self, irT_pvoid, LLVM_TMP);
-        llvm_return(irs, V);
+        irs_return(irs, NULL);
     }
 
     irs->self = NULL;
@@ -544,8 +542,9 @@ static LLVMV fnR(IRState* irs, Definition* fn, LLVMT selfT) {
         irs->block = NULL;
     } else {
         backend_block(irs, fn->function.block);
-        if (irs->block) { // implicit return
-            llvm_return(irs, zerovalue(irs, fn->function.type));
+        // checks if it's necessary to place an implicit return instruction
+        if (irs->block) {
+            irs_return(irs, zerovalue(irs, fn->function.type));
         }
     }
 
@@ -591,7 +590,7 @@ static LLVMV fnL(IRState* irs, Definition* fn, LLVMT selfT) {
 
     irPT_mutex_unlock(irs->B, mutex);
 
-    llvm_return(irs, ret ? ret : zerovalue(irs, fn->function.type));
+    irs_return(irs, ret ? ret : zerovalue(irs, fn->function.type));
 
     return fnL;
 }
@@ -708,7 +707,7 @@ static void backend_stmt_function_call(IRState*, Statement*);
 static void backend_stmt_wait_for_in(IRState*, Statement*);
 static void backend_stmt_signal(IRState*, Statement*);
 static void backend_stmt_broadcast(IRState*, Statement*);
-// static void backend_stmt_return(IRState*, Statement*);
+static void backend_stmt_return(IRState*, Statement*);
 // static void backend_stmt_if(IRState*, Statement*);
 // static void backend_stmt_if_else(IRState*, Statement*);
 // static void backend_stmt_while(IRState*, Statement*);
@@ -760,6 +759,15 @@ static void backend_stmt_signal(IRState* irs, Statement* stmt) {
 static void backend_stmt_broadcast(IRState* irs, Statement* stmt) {
     backend_expression(irs, stmt->broadcast);
     irPT_cond_broadcast(irs->B, stmt->broadcast->V);
+}
+
+static void backend_stmt_return(IRState* irs, Statement* stmt) {
+    if (stmt->return_) {
+        backend_expression(irs, stmt->return_);
+        irs_return(irs, stmt->return_->V);
+    } else {
+        irs_return(irs, NULL);
+    }
 }
 
 static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
@@ -835,12 +843,7 @@ static void backend_statement(IRState* irs, Statement* statement) {
         backend_stmt_broadcast(irs, statement);
         break;
     case STATEMENT_RETURN:
-        if (statement->return_) {
-            backend_expression(irs, statement->return_);
-            llvm_return(irs, statement->return_->V);
-        } else {
-            llvm_return(irs, NULL);
-        }
+        backend_stmt_return(irs, statement);
         break;
     case STATEMENT_IF: {
         LLVMBB
@@ -1468,35 +1471,6 @@ static LLVMT llvm_fn_type(Definition* fn, size_t psize) {
     }
     LLVMT T = llvm_type(fn->function.type);
     return LLVMFunctionType(T, params, psize, false);
-}
-
-// TODO: rename this: backend_return?
-static void llvm_return(IRState* irs, LLVMV V) {
-    assert(irs->block);
-
-    // The main function always ends with a call to pthred_exit
-    if (irs->main) {
-        irPT_exit(irs->B);
-        LLVMBuildRetVoid(irs->B);
-        irsBB_end(irs);
-        return;
-    }
-
-    // Initializers always returns the 'self' reference
-    if (irs->initializer) {
-        assert(V);
-        LLVMBuildRet(irs->B, V);
-        irsBB_end(irs);
-        return;
-    }
-
-    // Return for normal functions and methods
-    if (V) {
-        LLVMBuildRet(irs->B, V);
-    } else {
-        LLVMBuildRetVoid(irs->B);
-    }
-    irsBB_end(irs);
 }
 
 // TODO: doc

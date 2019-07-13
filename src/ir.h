@@ -89,6 +89,7 @@ typedef struct IRState {
 extern IRState* irs_new(LLVMM, LLVMB);
 extern void     irs_done(IRState*);
 extern void     irs_destroy(IRState*);
+extern void     irs_return(IRState*, LLVMV);
 extern void     irsBB_start(IRState*, LLVMBB);
 extern void     irsBB_end(IRState*);
 

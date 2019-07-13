@@ -1,0 +1,61 @@
+--------------------------------------------------------------------------------
+-- Title
+Exemplifies the misleading behavior of condition queues that are <variables> (strong case for condition queues as <values> only)
+-- Input
+
+function sleep {
+    variable i = 0;
+    while i < 10000000 {
+        i = i + 1;
+    }
+}
+
+monitor M {
+    variable oldQueue: ConditionQueue;
+    variable queue = ConditionQueue();
+    variable ok = false;
+
+    initializer {}
+
+    function waitInQueue {
+        print("Started waiting.\n");
+        wait for ok in queue;
+        print("Finished waiting.\n");
+    }
+
+    function switchToNewQueue {
+        print("Switching to new queue.\n");
+        oldQueue = queue;
+        queue = ConditionQueue();
+    }
+
+    function failToWakeUp {
+        print("Failing to wake up.\n");
+        ok = true;
+        signal queue;
+    }
+
+    function wakeUp {
+        print("Waking up.\n");
+        ok = true;
+        signal oldQueue;
+    }
+}
+
+function main {
+    value m = M();
+    spawn {
+        m.waitInQueue();
+    }
+    sleep();
+    m.switchToNewQueue();
+    m.failToWakeUp();
+    m.wakeUp();
+}
+
+-- Output
+Started waiting.
+Switching to new queue.
+Failing to wake up.
+Waking up.
+Finished waiting.

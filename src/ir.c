@@ -139,6 +139,23 @@ void irs_destroy(IRState* irs) {
     free(irs);
 }
 
+void irs_return(IRState* irs, LLVMV V) {
+    if (irs->main) {
+        irPT_exit(irs->B);
+        goto RETURN_VOID;
+    }
+    if (irs->initializer && !V) {
+        V = LLVMBuildBitCast(irs->B, irs->self, irT_pvoid, LLVM_TMP);
+        goto RETURN_VALUE;
+    }
+    if (V) RETURN_VALUE: {
+        LLVMBuildRet(irs->B, V);
+    } else RETURN_VOID:  {
+        LLVMBuildRetVoid(irs->B);
+    }
+    irsBB_end(irs);
+}
+
 void irsBB_start(IRState* irs, LLVMBB bb) {
     assert(!irs->block);
     LLVMPositionBuilderAtEnd(irs->B, bb);
