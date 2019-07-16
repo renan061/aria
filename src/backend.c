@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <strings.h>
+#include <stdio.h> // TODO: remove
 
 #include <llvm-c/Core.h>
 
@@ -20,10 +21,6 @@
 
 // string malloc that accounts for '\0'
 #define SMALLOC(str, len) MALLOC_ARRAY(str, char, (len + 1))
-
-// TODO: move / other names
-#define NAME_THREAD_ARGUMENTS_STRUCTURE "_thread_arguments"
-#define NAME_SPAWN_FUNCTION             "_spawn_block"
 
 #define STRUCT_IDX_MUTEX    (0)
 #define STRUCT_IDX_VMT      (1)
@@ -64,7 +61,7 @@ static char* concat(char* a, char* b) {
 // LLVM (TODO: new module?)
 static LLVMT llvm_type(Type*);
 static LLVMT llvm_fn_type(Definition*, size_t);
-static LLVMT llvm_structure(LLVMT[], size_t, const char*);
+static LLVMT llvmstruct(LLVMT[], size_t, const char*);
 
 static List* inits = NULL;   // structures' static initializers
 static List* globals = NULL; // global values
@@ -292,7 +289,7 @@ static void backend_definition_interface(IRState* irs, Definition* def) {
         irT_ptr(LLVMArrayType(irT_pvoid, vmt_size))
     };
     const char* name = def->type->structure.id->name;
-    def->type->T = llvm_structure(fields, 2, name);
+    def->type->T = llvmstruct(fields, 2, name);
 }
 
 static void backend_definition_structure(IRState* irs, Definition* def) {
@@ -331,9 +328,7 @@ static void backend_definition_monitor(IRState* irs, Definition* m) {
             structT[capsa->llvm_structure_index] = llvm_type(capsa->type);
         }
     
-        m->type->T = llvm_structure(structT, struct_sz,
-            m->type->structure.id->name
-        );
+        m->type->T = llvmstruct(structT, struct_sz,m->type->structure.id->name);
     }
 
     // backend_definition_method (R, L & P)
@@ -850,85 +845,58 @@ static void backend_stmt_for(IRState* irs, Statement* stmt) {
     irsBB_start(irs, bbend);
 }
 
+// TODO: move
+// auxiliary - defines the LLVM function for a <spawn>
+static void spawnfunction(IRState* irs, Definition* spawn, LLVMT psT) {
+    int i = 0;
+    irsBB_start(irs, LLVMAppendBasicBlock(irs->function, BB_ENTRY));
+    LLVMV parameter = LLVMGetParam(irs->function, 0);
+    LLVMV psV = parameter; // parameters
+    psV = LLVMBuildBitCast(irs->B, psV, psT, LLVM_TMP);
+    psV = LLVMBuildLoad(irs->B, psV, LLVM_TMP);
+    FOREACH(Definition, p, spawn->function.parameters) {
+        p->capsa.capsa->V = LLVMBuildExtractValue(irs->B, psV, i++, LLVM_TMP);
+    }
+    LLVMBuildFree(irs->B, parameter);
+    backend_block(irs, spawn->function.block);
+    LLVMBuildRet(irs->B, ir_zeroptr);
+    irsBB_end(irs);
+}    
+
 // TODO: fix
 static void backend_stmt_spawn(IRState* irs, Statement* stmt) {
     FunctionCall* call = stmt->spawn;
 
-    // Defining the structure to be used for argument passing
-    LLVMT fields[call->argc];
-    unsigned int n = 0;
-    for (Expression* e = call->arguments; e; e = e->next, n++) {
-        fields[n] = llvm_type(e->type);
-    }
-    LLVMT type_structure = llvm_structure(
-        fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
-    );
-
-    // Allocating memory for the structure
-    LLVMV structure = LLVMBuildMalloc(
-        irs->B, type_structure, LLVM_TMP
-    );
-
-    // Filling the structure with values from the arguments
-    n = 0;
-    for (Expression* e = call->arguments; e; e = e->next, n++) {
-        backend_expression(irs, e);
-        LLVMBuildStore(irs->B, e->V, LLVMBuildStructGEP(
-            irs->B, structure, n, LLVM_TMP_NONE
-        ));
+    // arguments
+    LLVMV argsV = ir_zeroptr;
+    LLVMT argsT = irT_pvoid;
+    if (call->argc > 0) {
+        int i = 0;
+        LLVMV Vs[call->argc];
+        FOREACH(Expression, e, call->arguments) {
+            backend_expression(irs, e);
+            Vs[i++] = e->V;
+        }
+        argsV = LLVMConstStruct(Vs, call->argc, false);
+        argsT = LLVMTypeOf(argsV);
+        LLVMV malloc = LLVMBuildMalloc(irs->B, argsT, LLVM_TMP);
+        LLVMBuildStore(irs->B, argsV, malloc);
+        argsV = malloc;
+        argsT = irT_ptr(argsT);
     }
 
-    // Defining the spawn function
-    IRState* spawn_irs = irs_new(irs->M, irs->B);
+    // pthread_create(...)
+    LLVMV spawn = LLVMAddFunction(irs->M, "spawn", irPTT_spawn);
+    LLVMV args = LLVMBuildBitCast(irs->B, argsV, irT_pvoid, LLVM_TMP);
+    irPT_create(irs->B, spawn, args);
 
-    spawn_irs->function = LLVMAddFunction(
-        spawn_irs->M, NAME_SPAWN_FUNCTION, irPTT_spawn
-    );
-    spawn_irs->block = LLVMAppendBasicBlock(
-        spawn_irs->function, "spawn_function_entry"
-    );
-    LLVMPositionBuilderAtEnd(spawn_irs->B, spawn_irs->block);
+    // spawn function
+    IRState* irss = irs_new(irs->M, irs->B);
+    irss->function = spawn;
+    spawnfunction(irss, stmt->spawn->fn, argsT);
+    irs_destroy(irss);
 
-    // Parameters
-    LLVMV parameter = LLVMBuildBitCast(
-        spawn_irs->B,
-        LLVMGetParam(spawn_irs->function, 0),
-        irT_ptr(type_structure),
-        LLVM_TMP
-    );
-    Definition* p = call->fn->function.parameters;
-    for (unsigned int n = 0; p; p = p->next, n++) {
-        p->capsa.capsa->V = LLVMBuildLoad(
-            spawn_irs->B,
-            LLVMBuildStructGEP(
-                spawn_irs->B, parameter, n, LLVM_TMP
-            ),
-            LLVM_TMP
-        );
-    }
-
-    // Block
-    backend_block(spawn_irs, call->fn->function.block);
-
-    // TODO: should free, but weird error (not this...)
-    // LLVMBuildFree(irs->B, parameter);
-    LLVMBuildRet(
-        spawn_irs->B, LLVMConstPointerNull(irT_pvoid)
-    );
-
-    // Going back to the original irs builder position
     LLVMPositionBuilderAtEnd(irs->B, irs->block);
-
-    // Calling pthread_create
-    irPT_create(
-        irs->B,
-        spawn_irs->function,
-            LLVMBuildBitCast(
-            irs->B, structure, irT_pvoid, LLVM_TMP
-        )
-    );
-
-    irs_destroy(spawn_irs);
 }
 
 static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
@@ -1510,7 +1478,7 @@ static LLVMT llvm_fn_type(Definition* fn, size_t psize) {
 }
 
 // TODO: doc
-static LLVMT llvm_structure(LLVMT fields[], size_t size, const char* name) {
+static LLVMT llvmstruct(LLVMT fields[], size_t size, const char* name) {
     LLVMT type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
     LLVMStructSetBody(type, fields, size, false); // TODO: packed?
     return type;

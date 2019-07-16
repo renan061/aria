@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <llvm-c/Core.h>
@@ -20,6 +21,7 @@ LLVMT irT_float = NULL;
 LLVMV ir_zerobool  = NULL;
 LLVMV ir_zeroint   = NULL;
 LLVMV ir_zerofloat = NULL;
+LLVMV ir_zeroptr   = NULL;
 
 // TODO: duplicated => also in backend.c
 static Type* __boolean;
@@ -53,6 +55,7 @@ void ir_setup(LLVMM M) {
     ir_zerobool  = ir_bool(false);
     ir_zeroint   = ir_int(0);
     ir_zerofloat = ir_float(0.0);
+    ir_zeroptr   = LLVMConstPointerNull(irT_pvoid);
 
     { // printf
         LLVMT paramsT[1] = {irT_string};
@@ -83,7 +86,7 @@ LLVMV ir_printf(LLVMB B, LLVMV* args, int n) {
 
 LLVMV ir_malloc(LLVMB B, size_t size) {
     LLVMV args[1] = {ir_int(size)};
-    return LLVMBuildCall(B, irT_malloc, args, 1, LLVM_TMP_NONE);
+    return LLVMBuildCall(B, irT_malloc, args, 1, LLVM_TMP);
 }
 
 LLVMV ir_exit(LLVMB B) {
@@ -127,10 +130,12 @@ IRState* irs_new(LLVMM M, LLVMB B) {
 }
 
 void irs_done(IRState* irs) {
-    char* error = NULL;
-    LLVMVerifyModule(irs->M, LLVMAbortProcessAction, &error);
-    if (error) {
-        LLVMDisposeMessage(error);
+    char* err = NULL;
+    bool ok = !LLVMVerifyModule(irs->M, LLVMAbortProcessAction, &err);
+    if (!ok) {
+        printf("VerifyModule error...\n");
+        LLVMDisposeMessage(err);
+        LLVMDumpModule(irs->M);
     }
     LLVMDisposeBuilder(irs->B);
 }

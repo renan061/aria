@@ -44,6 +44,7 @@ extern     LLVMT    irT_float     ;
 extern     LLVMV    ir_zerobool  ;
 extern     LLVMV    ir_zeroint   ;
 extern     LLVMV    ir_zerofloat ;
+extern     LLVMV    ir_zeroptr   ;
 #define /* LLVMV */ ir_bool(b)   (LLVMConstInt(irT_bool, b, false))
 #define /* LLVMV */ ir_int(i)    (LLVMConstInt(irT_int, i, true))
 #define /* LLVMv */ ir_float(f)  (LLVMConstReal(irT_float, f))
