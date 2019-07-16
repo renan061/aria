@@ -63,6 +63,9 @@ typedef struct IRState {
     LLVMM M;
     LLVMB B;
 
+    bool main;        // if inside the main function
+    bool initializer; // if inside an initializer
+
     // current function
     LLVMV function;
 
@@ -78,12 +81,6 @@ typedef struct IRState {
 
     // TODO: gambiarra
     LLVMV self;
-
-    // if inside the main function
-    bool main;
-
-    // if inside an initializer
-    bool initializer;
 } IRState;
 
 extern IRState* irs_new(LLVMM, LLVMB);

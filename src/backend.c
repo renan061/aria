@@ -33,28 +33,13 @@
 #define PROXY_IDX_VMTP  (STRUCT_IDX_VMT)
 #define PROXY_IDX_OK    (2)
 
-// TODO: change name to BB
-#define LABEL                   ""
-#define LABEL_ENTRY             (LABEL "entry")
-#define LABEL_IF_TRUE           (LABEL "if_true")
-#define LABEL_IF_END            (LABEL "if_end")
-#define LABEL_IF_ELSE_TRUE      (LABEL "if_else_true")
-#define LABEL_IF_ELSE_FALSE     (LABEL "if_else_false")
-#define LABEL_IF_ELSE_END       (LABEL "if_else_end")
-#define LABEL_WHILE             (LABEL "while")
-#define LABEL_WHILE_LOOP        (LABEL "while_loop")
-#define LABEL_WHILE_END         (LABEL "while_end")
-#define LABEL_FOR_INIT          (LABEL "for_init")
-#define LABEL_FOR_COND          (LABEL "for_cond")
-#define LABEL_FOR_LOOP          (LABEL "for_loop")
-#define LABEL_FOR_INC           (LABEL "for_inc")
-#define LABEL_FOR_END           (LABEL "for_end")
-#define LABEL_OK                (LABEL "ok")
-#define LABEL_ERROR             (LABEL "error")
-
-#define BB_WFI_WHILE      ("wfi-while")
-#define BB_WFI_WHILE_LOOP ("wfi-while-loop")
-#define BB_WFI_WHILE_END  ("wfi-while-end")
+// basic block names
+#define BB_ENTRY ("entry")
+#define BB_IF    ("if")
+#define BB_ELSE  ("else")
+#define BB_COND  ("cond")
+#define BB_LOOP  ("loop")
+#define BB_END   ("end")
 
 // primitive types
 static Type* __void;
@@ -96,8 +81,6 @@ static LLVMV monitormutex(LLVMB B, LLVMV obj) {
     LLVMV V = LLVMBuildStructGEP(B, obj, STRUCT_IDX_MUTEX, "mutex-ptr");
     return LLVMBuildLoad(B, V, "mutex");
 }
-
-static void todospawn(IRState*, FunctionCall*);
 
 // ==================================================
 //
@@ -371,7 +354,7 @@ static void backend_definition_monitor(IRState* irs, Definition* m) {
         char* name = concat((char*)m->type->structure.id->name, "-init");
         LLVMV init = LLVMAddFunction(irs->M, name, T);
         free(name);
-        bb = LLVMAppendBasicBlock(init, LABEL_ENTRY);
+        bb = LLVMAppendBasicBlock(init, BB_ENTRY);
         LLVMPositionBuilderAtEnd(irs->B, bb);
         list_append(inits, (ListValue)init);
     }
@@ -446,7 +429,7 @@ static void initializefunction(IRState* irs, Definition* fn) {
         }
     }
 
-    irsBB_start(irs, LLVMAppendBasicBlock(fn->V, LABEL_ENTRY));
+    irsBB_start(irs, LLVMAppendBasicBlock(fn->V, BB_ENTRY));
 
     irs->function = fn->V;
 }
@@ -515,7 +498,7 @@ static LLVMV fnR(IRState* irs, Definition* fn, LLVMT selfT) {
         p->capsa.capsa->V = LLVMGetParam(fn->V, n++);
     }
 
-    irsBB_start(irs, LLVMAppendBasicBlock(fn->V, LABEL_ENTRY));
+    irsBB_start(irs, LLVMAppendBasicBlock(fn->V, BB_ENTRY));
     irs->function = fn->V;
 
     // <self> is the first parameter
@@ -567,7 +550,7 @@ static LLVMV fnL(IRState* irs, Definition* fn, LLVMT selfT) {
     LLVMV fnL = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, argc));
     free((void*)name);
 
-    irsBB_start(irs, LLVMAppendBasicBlock(fnL, LABEL_ENTRY));
+    irsBB_start(irs, LLVMAppendBasicBlock(fnL, BB_ENTRY));
 
     // gets the monitor's mutex from <self>
     LLVMV selfV = LLVMGetParam(fnL, 0);
@@ -603,7 +586,7 @@ static LLVMV fnP(IRState* irs, Definition* fn, LLVMT proxyT) {
     LLVMV fnP = LLVMAddFunction(irs->M, name, llvm_fn_type(fn, argc));
     free((void*)name);
 
-    LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(fnP, LABEL_ENTRY));
+    LLVMPositionBuilderAtEnd(irs->B, LLVMAppendBasicBlock(fnP, BB_ENTRY));
 
     LLVMV V;
     LLVMT T;
@@ -614,8 +597,8 @@ static LLVMV fnP(IRState* irs, Definition* fn, LLVMT proxyT) {
     LLVMV proxy = LLVMBuildBitCast(irs->B, V, T, LLVM_TMP_PROXY);
 
     // checks if <proxy.ok> is true
-    LLVMBB bberr = LLVMAppendBasicBlock(fnP, LABEL_ERROR);
-    LLVMBB bbok = LLVMAppendBasicBlock(fnP, LABEL_OK);
+    LLVMBB bberr = LLVMAppendBasicBlock(fnP, "error");
+    LLVMBB bbok = LLVMAppendBasicBlock(fnP, "ok");
     V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OK, LLVM_TMP_OK);
     V = LLVMBuildLoad(irs->B, V, LLVM_TMP_OK);
     V = LLVMBuildICmp(irs->B, LLVMIntEQ, V, ir_bool(true), LLVM_TMP);
@@ -708,13 +691,33 @@ static void backend_stmt_wait_for_in(IRState*, Statement*);
 static void backend_stmt_signal(IRState*, Statement*);
 static void backend_stmt_broadcast(IRState*, Statement*);
 static void backend_stmt_return(IRState*, Statement*);
-// static void backend_stmt_if(IRState*, Statement*);
-// static void backend_stmt_if_else(IRState*, Statement*);
-// static void backend_stmt_while(IRState*, Statement*);
-// static void backend_stmt_for(IRState*, Statement*);
-// static void backend_stmt_spawn(IRState*, Statement*);
+static void backend_stmt_if(IRState*, Statement*);
+static void backend_stmt_if_else(IRState*, Statement*);
+static void backend_stmt_while(IRState*, Statement*);
+static void backend_stmt_for(IRState*, Statement*);
+static void backend_stmt_spawn(IRState*, Statement*);
 static void backend_stmt_acquire_value(IRState*, Statement*);
-// static void backend_stmt_block(IRState*, Statement*);
+static void backend_stmt_block(IRState*, Statement*);
+
+static void backend_statement(IRState* irs, Statement* stmt) {
+    switch (stmt->tag) {
+    case STATEMENT_ASSIGNMENT:    backend_stmt_assignment(irs, stmt);    break;
+    case STATEMENT_FUNCTION_CALL: backend_stmt_function_call(irs, stmt); break;
+    case STATEMENT_WAIT_FOR_IN:   backend_stmt_wait_for_in(irs, stmt);   break;
+    case STATEMENT_SIGNAL:        backend_stmt_signal(irs, stmt);        break;
+    case STATEMENT_BROADCAST:     backend_stmt_broadcast(irs, stmt);     break;
+    case STATEMENT_RETURN:        backend_stmt_return(irs, stmt);        break;
+    case STATEMENT_IF:            backend_stmt_if(irs, stmt);            break;
+    case STATEMENT_IF_ELSE:       backend_stmt_if_else(irs, stmt);       break;
+    case STATEMENT_WHILE:         backend_stmt_while(irs, stmt);         break;
+    case STATEMENT_FOR:           backend_stmt_for(irs, stmt);           break;
+    case STATEMENT_SPAWN:         backend_stmt_spawn(irs, stmt);         break;
+    case STATEMENT_ACQUIRE_VALUE: backend_stmt_acquire_value(irs, stmt); break;
+    case STATEMENT_BLOCK:         backend_stmt_block(irs, stmt);         break;
+    default:
+        UNREACHABLE;
+    }
+}
 
 static void backend_stmt_assignment(IRState* irs, Statement* stmt) {
     Capsa* capsa = stmt->assignment.capsa;
@@ -729,25 +732,22 @@ static void backend_stmt_function_call(IRState* irs, Statement* stmt) {
 }
 
 static void backend_stmt_wait_for_in(IRState* irs, Statement* stmt) {
-    LLVMBB bbwhile = LLVMAppendBasicBlock(irs->function, BB_WFI_WHILE);
-    LLVMBB bbloop  = LLVMAppendBasicBlock(irs->function, BB_WFI_WHILE_LOOP);
-    LLVMBB bbend   = LLVMAppendBasicBlock(irs->function, BB_WFI_WHILE_END);
-    LLVMBuildBr(irs->B, bbwhile);
+    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
+    LLVMBuildBr(irs->B, bbcond);
     irsBB_end(irs);
-
-    // wait-for-in while
-    irsBB_start(irs, bbwhile);
+    // cond
+    irsBB_start(irs, bbcond);
     backend_condition(irs, stmt->wait_for_in.condition, bbend, bbloop);
-
-    // wait-for-in loop
+    // loop
     irsBB_start(irs, bbloop);
     backend_expression(irs, stmt->wait_for_in.queue);
     LLVMV mutex = monitormutex(irs->B, irs->self);
     irPT_cond_wait(irs->B, stmt->wait_for_in.queue->V, mutex);
-    LLVMBuildBr(irs->B, bbwhile);
+    LLVMBuildBr(irs->B, bbcond);
     irsBB_end(irs);
-
-    // wait-for-in end
+    // end
     irsBB_start(irs, bbend);
 }
 
@@ -768,6 +768,167 @@ static void backend_stmt_return(IRState* irs, Statement* stmt) {
     } else {
         irs_return(irs, NULL);
     }
+}
+
+static void backend_stmt_if(IRState* irs, Statement* stmt) {
+    LLVMBB bbif  = LLVMAppendBasicBlock(irs->function, BB_IF);
+    LLVMBB bbend = LLVMAppendBasicBlock(irs->function, BB_END);
+    backend_condition(irs, stmt->if_.expression, bbif, bbend);
+    // if
+    irsBB_start(irs, bbif);
+    backend_block(irs, stmt->if_.block);
+    if (irs->block) {
+        LLVMBuildBr(irs->B, bbend);
+        irsBB_end(irs);
+    }
+    // end
+    irsBB_start(irs, bbend);
+}
+
+static void backend_stmt_if_else(IRState* irs, Statement* stmt) {
+    LLVMBB bbif   = LLVMAppendBasicBlock(irs->function, BB_IF);
+    LLVMBB bbelse = LLVMAppendBasicBlock(irs->function, BB_ELSE);
+    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
+    backend_condition(irs, stmt->if_else.expression, bbif, bbelse);
+    // if
+    irsBB_start(irs, bbif);
+    backend_block(irs, stmt->if_else.if_block);
+    if (irs->block) {
+        LLVMBuildBr(irs->B, bbend);
+        irsBB_end(irs);
+    }
+    // else
+    irsBB_start(irs, bbelse);
+    backend_block(irs, stmt->if_else.else_block);
+    if (irs->block) {
+        LLVMBuildBr(irs->B, bbend);
+        irsBB_end(irs);
+    }
+    // end
+    irsBB_start(irs, bbend);
+}
+
+static void backend_stmt_while(IRState* irs, Statement* stmt) {
+    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
+    // cond
+    irsBB_start(irs, bbcond);
+    backend_condition(irs, stmt->while_.expression, bbloop, bbend);
+    // loop
+    irsBB_start(irs, bbloop);
+    backend_block(irs, stmt->while_.block);
+    if (irs->block) {
+        LLVMBuildBr(irs->B, bbcond);
+        irsBB_end(irs);
+    }
+    // end
+    irsBB_start(irs, bbend);
+}
+
+static void backend_stmt_for(IRState* irs, Statement* stmt) {
+    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
+    backend_definition(irs, stmt->for_.initialization);
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
+    // cond
+    irsBB_start(irs, bbcond);
+    backend_condition(irs, stmt->for_.condition, bbloop, bbend);
+    // loop
+    irsBB_start(irs, bbloop);
+    backend_block(irs, stmt->for_.block);
+    backend_statement(irs, stmt->for_.increment);
+    if (irs->block) {
+        LLVMBuildBr(irs->B, bbcond);
+        irsBB_end(irs);
+    }
+    // end
+    irsBB_start(irs, bbend);
+}
+
+// TODO: fix
+static void backend_stmt_spawn(IRState* irs, Statement* stmt) {
+    FunctionCall* call = stmt->spawn;
+
+    // Defining the structure to be used for argument passing
+    LLVMT fields[call->argc];
+    unsigned int n = 0;
+    for (Expression* e = call->arguments; e; e = e->next, n++) {
+        fields[n] = llvm_type(e->type);
+    }
+    LLVMT type_structure = llvm_structure(
+        fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
+    );
+
+    // Allocating memory for the structure
+    LLVMV structure = LLVMBuildMalloc(
+        irs->B, type_structure, LLVM_TMP
+    );
+
+    // Filling the structure with values from the arguments
+    n = 0;
+    for (Expression* e = call->arguments; e; e = e->next, n++) {
+        backend_expression(irs, e);
+        LLVMBuildStore(irs->B, e->V, LLVMBuildStructGEP(
+            irs->B, structure, n, LLVM_TMP_NONE
+        ));
+    }
+
+    // Defining the spawn function
+    IRState* spawn_irs = irs_new(irs->M, irs->B);
+
+    spawn_irs->function = LLVMAddFunction(
+        spawn_irs->M, NAME_SPAWN_FUNCTION, irPTT_spawn
+    );
+    spawn_irs->block = LLVMAppendBasicBlock(
+        spawn_irs->function, "spawn_function_entry"
+    );
+    LLVMPositionBuilderAtEnd(spawn_irs->B, spawn_irs->block);
+
+    // Parameters
+    LLVMV parameter = LLVMBuildBitCast(
+        spawn_irs->B,
+        LLVMGetParam(spawn_irs->function, 0),
+        irT_ptr(type_structure),
+        LLVM_TMP
+    );
+    Definition* p = call->fn->function.parameters;
+    for (unsigned int n = 0; p; p = p->next, n++) {
+        p->capsa.capsa->V = LLVMBuildLoad(
+            spawn_irs->B,
+            LLVMBuildStructGEP(
+                spawn_irs->B, parameter, n, LLVM_TMP
+            ),
+            LLVM_TMP
+        );
+    }
+
+    // Block
+    backend_block(spawn_irs, call->fn->function.block);
+
+    // TODO: should free, but weird error (not this...)
+    // LLVMBuildFree(irs->B, parameter);
+    LLVMBuildRet(
+        spawn_irs->B, LLVMConstPointerNull(irT_pvoid)
+    );
+
+    // Going back to the original irs builder position
+    LLVMPositionBuilderAtEnd(irs->B, irs->block);
+
+    // Calling pthread_create
+    irPT_create(
+        irs->B,
+        spawn_irs->function,
+            LLVMBuildBitCast(
+            irs->B, structure, irT_pvoid, LLVM_TMP
+        )
+    );
+
+    irs_destroy(spawn_irs);
 }
 
 static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
@@ -819,140 +980,15 @@ static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
     LLVMBuildCall(irs->B, V, args, 1, LLVM_TMP_NONE);
 }
 
+static void backend_stmt_block(IRState* irs, Statement* stmt) {
+    backend_block(irs, stmt->block);
+}
+
 // ==================================================
 //
 //  TODO
 //
 // ==================================================
-
-static void backend_statement(IRState* irs, Statement* statement) {
-    switch (statement->tag) {
-    case STATEMENT_ASSIGNMENT:
-        backend_stmt_assignment(irs, statement);
-        break;
-    case STATEMENT_FUNCTION_CALL:
-        backend_stmt_function_call(irs, statement);
-        break;
-    case STATEMENT_WAIT_FOR_IN:
-        backend_stmt_wait_for_in(irs, statement);
-        break;
-    case STATEMENT_SIGNAL:
-        backend_stmt_signal(irs, statement);
-        break;
-    case STATEMENT_BROADCAST:
-        backend_stmt_broadcast(irs, statement);
-        break;
-    case STATEMENT_RETURN:
-        backend_stmt_return(irs, statement);
-        break;
-    case STATEMENT_IF: {
-        LLVMBB
-            bt = LLVMAppendBasicBlock(irs->function, LABEL_IF_TRUE),
-            be = LLVMAppendBasicBlock(irs->function, LABEL_IF_END);
-        backend_condition(irs, statement->if_.expression, bt, be);
-        // If
-        irsBB_start(irs, bt);
-        backend_block(irs, statement->if_.block);
-        if (irs->block) {
-            LLVMBuildBr(irs->B, be);
-            irsBB_end(irs);
-        }
-        // End
-        irsBB_start(irs, be);
-        break;
-    }
-    case STATEMENT_IF_ELSE: {
-        LLVMBB
-            bt = LLVMAppendBasicBlock(irs->function, LABEL_IF_ELSE_TRUE),
-            bf = LLVMAppendBasicBlock(irs->function, LABEL_IF_ELSE_FALSE),
-            be = LLVMAppendBasicBlock(irs->function, LABEL_IF_ELSE_END);
-        backend_condition(irs, statement->if_else.expression, bt, bf);
-        // If
-        irsBB_start(irs, bt);
-        backend_block(irs, statement->if_else.if_block);
-        if (irs->block) {
-            LLVMBuildBr(irs->B, be);
-            irsBB_end(irs);
-        }
-        // Else
-        irsBB_start(irs, bf);
-        backend_block(irs, statement->if_else.else_block);
-        if (irs->block) {
-            LLVMBuildBr(irs->B, be);
-            irsBB_end(irs);
-        }
-        // End
-        irsBB_start(irs, be);
-        break;
-    }
-    case STATEMENT_WHILE: {
-        LLVMBB
-            bw = LLVMAppendBasicBlock(irs->function, LABEL_WHILE),
-            bl = LLVMAppendBasicBlock(irs->function, LABEL_WHILE_LOOP),
-            be = LLVMAppendBasicBlock(irs->function, LABEL_WHILE_END);
-        LLVMBuildBr(irs->B, bw);
-        irsBB_end(irs);
-        // While
-        irsBB_start(irs, bw);
-        backend_condition(irs, statement->while_.expression, bl, be);
-        // Loop
-        irsBB_start(irs, bl);
-        backend_block(irs, statement->while_.block);
-        if (irs->block) {
-            LLVMBuildBr(irs->B, bw);
-            irsBB_end(irs);
-        }
-        // End
-        irsBB_start(irs, be);
-        break;
-    }
-    case STATEMENT_FOR: {
-        // TODO: check this; better way to do this?
-        LLVMBB
-            binit = LLVMAppendBasicBlock(irs->function, LABEL_FOR_INIT),
-            bcond = LLVMAppendBasicBlock(irs->function, LABEL_FOR_COND),
-            bloop = LLVMAppendBasicBlock(irs->function, LABEL_FOR_LOOP),
-            binc  = LLVMAppendBasicBlock(irs->function, LABEL_FOR_INC),
-            bend  = LLVMAppendBasicBlock(irs->function, LABEL_FOR_END);
-        LLVMBuildBr(irs->B, binit);
-        irsBB_end(irs);
-        // init
-        irsBB_start(irs, binit);
-        backend_definition(irs, statement->for_.initialization);
-        LLVMBuildBr(irs->B, bcond);
-        irsBB_end(irs);
-        // cond
-        irsBB_start(irs, bcond);
-        backend_condition(irs, statement->for_.condition, bloop, bend);
-        // loop
-        irsBB_start(irs, bloop);
-        backend_block(irs, statement->for_.block);
-        if (irs->block) {
-            LLVMBuildBr(irs->B, binc);
-            irsBB_end(irs);
-        }
-        // inc
-        irsBB_start(irs, binc);
-        backend_statement(irs, statement->for_.increment);
-        LLVMBuildBr(irs->B, bcond);
-        irsBB_end(irs);
-        // end
-        irsBB_start(irs, bend);
-        break;
-    }
-    case STATEMENT_SPAWN:
-        todospawn(irs, statement->spawn);
-        break;
-    case STATEMENT_ACQUIRE_VALUE:
-        backend_stmt_acquire_value(irs, statement);
-        break;
-    case STATEMENT_BLOCK:
-        backend_block(irs, statement->block);
-        break;
-    default:
-        UNREACHABLE;
-    }
-}
 
 static void backend_capsa(IRState* irs, Capsa* capsa) {
     switch (capsa->tag) {
@@ -1151,9 +1187,9 @@ static void backend_expression(IRState* irs, Expression* expression) {
 
     CONDITION_EXPRESSION: { // expression ? true : false
         LLVMBB
-            block_true  = LLVMAppendBasicBlock(irs->function, LABEL "a"),
-            block_false = LLVMAppendBasicBlock(irs->function, LABEL "b"),
-            block_phi   = LLVMAppendBasicBlock(irs->function, LABEL "phi")
+            block_true  = LLVMAppendBasicBlock(irs->function, "a"),
+            block_false = LLVMAppendBasicBlock(irs->function, "b"),
+            block_phi   = LLVMAppendBasicBlock(irs->function, "phi")
         ;
 
         backend_condition(irs, expression, block_true, block_false);
@@ -1205,13 +1241,13 @@ static void backend_condition(IRState* irs, Expression* expression,
 
         switch (expression->binary.token) {
         case TK_OR:
-            label = LLVMAppendBasicBlock(irs->function, LABEL "or");
+            label = LLVMAppendBasicBlock(irs->function, "or");
             backend_condition(irs, l, lt, label);
             irsBB_start(irs, label);
             backend_condition(irs, r, lt, lf);
             break;
         case TK_AND:
-            label = LLVMAppendBasicBlock(irs->function, LABEL "and");
+            label = LLVMAppendBasicBlock(irs->function, "and");
             backend_condition(irs, l, label, lf);
             irsBB_start(irs, label);
             backend_condition(irs, r, lt, lf);
@@ -1510,89 +1546,4 @@ static LLVMV zerovalue(IRState* irs, Type* t) {
     default:
         UNREACHABLE;
     }
-}
-
-// ==================================================
-//
-//  TODO
-//
-// ==================================================
-
-// TODO: rename / fix
-static void todospawn(IRState* irs, FunctionCall* call) {
-    // Defining the structure to be used for argument passing
-    LLVMT fields[call->argc];
-    unsigned int n = 0;
-    for (Expression* e = call->arguments; e; e = e->next, n++) {
-        fields[n] = llvm_type(e->type);
-    }
-    LLVMT type_structure = llvm_structure(
-        fields, n, NAME_THREAD_ARGUMENTS_STRUCTURE
-    );
-
-    // Allocating memory for the structure
-    LLVMV structure = LLVMBuildMalloc(
-        irs->B, type_structure, LLVM_TMP
-    );
-
-    // Filling the structure with values from the arguments
-    n = 0;
-    for (Expression* e = call->arguments; e; e = e->next, n++) {
-        backend_expression(irs, e);
-        LLVMBuildStore(irs->B, e->V, LLVMBuildStructGEP(
-            irs->B, structure, n, LLVM_TMP_NONE
-        ));
-    }
-
-    // Defining the spawn function
-    IRState* spawn_irs = irs_new(irs->M, irs->B);
-
-    spawn_irs->function = LLVMAddFunction(
-        spawn_irs->M, NAME_SPAWN_FUNCTION, irPTT_spawn
-    );
-    spawn_irs->block = LLVMAppendBasicBlock(
-        spawn_irs->function, LABEL "spawn_function_entry"
-    );
-    LLVMPositionBuilderAtEnd(spawn_irs->B, spawn_irs->block);
-
-    // Parameters
-    LLVMV parameter = LLVMBuildBitCast(
-        spawn_irs->B,
-        LLVMGetParam(spawn_irs->function, 0),
-        irT_ptr(type_structure),
-        LLVM_TMP
-    );
-    Definition* p = call->fn->function.parameters;
-    for (unsigned int n = 0; p; p = p->next, n++) {
-        p->capsa.capsa->V = LLVMBuildLoad(
-            spawn_irs->B,
-            LLVMBuildStructGEP(
-                spawn_irs->B, parameter, n, LLVM_TMP
-            ),
-            LLVM_TMP
-        );
-    }
-
-    // Block
-    backend_block(spawn_irs, call->fn->function.block);
-
-    // TODO: should free, but weird error (not this...)
-    // LLVMBuildFree(irs->B, parameter);
-    LLVMBuildRet(
-        spawn_irs->B, LLVMConstPointerNull(irT_pvoid)
-    );
-
-    // Going back to the original irs builder position
-    LLVMPositionBuilderAtEnd(irs->B, irs->block);
-
-    // Calling pthread_create
-    irPT_create(
-        irs->B,
-        spawn_irs->function,
-            LLVMBuildBitCast(
-            irs->B, structure, irT_pvoid, LLVM_TMP
-        )
-    );
-
-    irs_destroy(spawn_irs);
 }
