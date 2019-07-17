@@ -52,17 +52,17 @@ int main(int argc, char* argv[]) {
     yyparse();
     scanner_clean();
     sem_analyse(ast);
-    LLVMM module = compile(ast);
+    LLVMM M = compile(ast);
 
     if (build) {
-        if (LLVMWriteBitcodeToFile(module, "aria.bc") != 0) {
+        if (LLVMWriteBitcodeToFile(M, "aria.bc") != 0) {
             printf("error: couldn't write bitcode to file\n");
             exit(1);
         }
     }
     
     if (run) {
-        return execute_module(module);
+        return execute_module(M);
     }
 
     return 0;

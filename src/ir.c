@@ -131,11 +131,13 @@ IRState* irs_new(LLVMM M, LLVMB B) {
 
 void irs_done(IRState* irs) {
     char* err = NULL;
-    bool ok = !LLVMVerifyModule(irs->M, LLVMAbortProcessAction, &err);
+    // TODO: LLVMAbortProcessAction
+    bool ok = !LLVMVerifyModule(irs->M, LLVMReturnStatusAction, &err);
     if (!ok) {
         printf("VerifyModule error...\n");
-        LLVMDisposeMessage(err);
         LLVMDumpModule(irs->M);
+        printf("-----\n%s\n", err);
+        exit(1);
     }
     LLVMDisposeBuilder(irs->B);
 }

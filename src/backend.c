@@ -694,6 +694,8 @@ static void backend_stmt_spawn(IRState*, Statement*);
 static void backend_stmt_acquire_value(IRState*, Statement*);
 static void backend_stmt_block(IRState*, Statement*);
 
+static void spawnfunction(IRState*, Definition*, LLVMT);
+
 static void backend_statement(IRState* irs, Statement* stmt) {
     switch (stmt->tag) {
     case STATEMENT_ASSIGNMENT:    backend_stmt_assignment(irs, stmt);    break;
@@ -845,44 +847,27 @@ static void backend_stmt_for(IRState* irs, Statement* stmt) {
     irsBB_start(irs, bbend);
 }
 
-// TODO: move
-// auxiliary - defines the LLVM function for a <spawn>
-static void spawnfunction(IRState* irs, Definition* spawn, LLVMT psT) {
-    int i = 0;
-    irsBB_start(irs, LLVMAppendBasicBlock(irs->function, BB_ENTRY));
-    LLVMV parameter = LLVMGetParam(irs->function, 0);
-    LLVMV psV = parameter; // parameters
-    psV = LLVMBuildBitCast(irs->B, psV, psT, LLVM_TMP);
-    psV = LLVMBuildLoad(irs->B, psV, LLVM_TMP);
-    FOREACH(Definition, p, spawn->function.parameters) {
-        p->capsa.capsa->V = LLVMBuildExtractValue(irs->B, psV, i++, LLVM_TMP);
-    }
-    LLVMBuildFree(irs->B, parameter);
-    backend_block(irs, spawn->function.block);
-    LLVMBuildRet(irs->B, ir_zeroptr);
-    irsBB_end(irs);
-}    
-
-// TODO: fix
+// TODO: test
 static void backend_stmt_spawn(IRState* irs, Statement* stmt) {
-    FunctionCall* call = stmt->spawn;
-
     // arguments
-    LLVMV argsV = ir_zeroptr;
     LLVMT argsT = irT_pvoid;
-    if (call->argc > 0) {
+    LLVMV argsV = ir_zeroptr;
+    if (stmt->spawn->argc > 0) {
         int i = 0;
-        LLVMV Vs[call->argc];
-        FOREACH(Expression, e, call->arguments) {
+        LLVMT Ts[stmt->spawn->argc];
+        FOREACH(Expression, e, stmt->spawn->arguments) {
             backend_expression(irs, e);
-            Vs[i++] = e->V;
+            Ts[i++] = LLVMTypeOf(e->V);
         }
-        argsV = LLVMConstStruct(Vs, call->argc, false);
-        argsT = LLVMTypeOf(argsV);
+        argsT = LLVMStructType(Ts, stmt->spawn->argc, false);
+        argsV = LLVMGetUndef(argsT);
+        FOREACH(Expression, e, (i = 0, stmt->spawn->arguments)) {
+            argsV = LLVMBuildInsertValue(irs->B, argsV, e->V, i++, LLVM_TMP);
+        }
         LLVMV malloc = LLVMBuildMalloc(irs->B, argsT, LLVM_TMP);
         LLVMBuildStore(irs->B, argsV, malloc);
-        argsV = malloc;
         argsT = irT_ptr(argsT);
+        argsV = malloc;
     }
 
     // pthread_create(...)
@@ -950,6 +935,25 @@ static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
 
 static void backend_stmt_block(IRState* irs, Statement* stmt) {
     backend_block(irs, stmt->block);
+}
+
+// -----------------------------------------------------------------------------
+
+// auxiliary - defines the LLVM function for a <spawn>
+static void spawnfunction(IRState* irs, Definition* spawn, LLVMT psT) {
+    int i = 0;
+    irsBB_start(irs, LLVMAppendBasicBlock(irs->function, BB_ENTRY));
+    LLVMV parameter = LLVMGetParam(irs->function, 0);
+    LLVMV psV = parameter;
+    psV = LLVMBuildBitCast(irs->B, psV, psT, LLVM_TMP);
+    psV = LLVMBuildLoad(irs->B, psV, LLVM_TMP);
+    FOREACH(Definition, p, spawn->function.parameters) {
+        p->capsa.capsa->V = LLVMBuildExtractValue(irs->B, psV, i++, LLVM_TMP);
+    }
+    LLVMBuildFree(irs->B, parameter);
+    backend_block(irs, spawn->function.block);
+    LLVMBuildRet(irs->B, ir_zeroptr);
+    irsBB_end(irs);
 }
 
 // ==================================================
