@@ -23,9 +23,6 @@
 
 // -----------------------------------------------------------------------------
 
-// must be called before using the module
-extern void ir_setup(LLVMM);
-
 #define DEFAULT_ADDRESS_SPACE 0
 
 // types
@@ -41,13 +38,14 @@ extern     LLVMT    irT_float     ;
 #define /* LLVMT */ irT_monitor   (irT_pvoid)
 
 // values
-extern     LLVMV    ir_zerobool  ;
-extern     LLVMV    ir_zeroint   ;
-extern     LLVMV    ir_zerofloat ;
-extern     LLVMV    ir_zeroptr   ;
-#define /* LLVMV */ ir_bool(b)   (LLVMConstInt(irT_bool, b, false))
-#define /* LLVMV */ ir_int(i)    (LLVMConstInt(irT_int, i, true))
-#define /* LLVMv */ ir_float(f)  (LLVMConstReal(irT_float, f))
+extern     LLVMV    ir_zerobool   ;
+extern     LLVMV    ir_zeroint    ;
+extern     LLVMV    ir_zerofloat  ;
+extern     LLVMV    ir_zerostring ;
+extern     LLVMV    ir_zeroptr    ;
+#define /* LLVMV */ ir_bool(b)    (LLVMConstInt(irT_bool, b, false))
+#define /* LLVMV */ ir_int(i)     (LLVMConstInt(irT_int, i, true))
+#define /* LLVMv */ ir_float(f)   (LLVMConstReal(irT_float, f))
 
 // -----------------------------------------------------------------------------
 
@@ -110,5 +108,10 @@ extern void irPT_cond_init(LLVMB, LLVMV cond);
 extern void irPT_cond_wait(LLVMB, LLVMV cond, LLVMV mutex);
 extern void irPT_cond_signal(LLVMB, LLVMV cond);
 extern void irPT_cond_broadcast(LLVMB, LLVMV cond);
+
+// -----------------------------------------------------------------------------
+
+// must be called before using the module
+extern void ir_setup(LLVMM);
 
 #endif

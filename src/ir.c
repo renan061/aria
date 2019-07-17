@@ -18,10 +18,11 @@ LLVMT irT_bool  = NULL;
 LLVMT irT_int   = NULL;
 LLVMT irT_float = NULL;
 
-LLVMV ir_zerobool  = NULL;
-LLVMV ir_zeroint   = NULL;
-LLVMV ir_zerofloat = NULL;
-LLVMV ir_zeroptr   = NULL;
+LLVMV ir_zerobool   = NULL;
+LLVMV ir_zeroint    = NULL;
+LLVMV ir_zerofloat  = NULL;
+LLVMV ir_zerostring = NULL;
+LLVMV ir_zeroptr    = NULL;
 
 // TODO: duplicated => also in backend.c
 static Type* __boolean;
@@ -52,10 +53,13 @@ void ir_setup(LLVMM M) {
     irT_float = LLVMDoubleType();
 
     // zero values
-    ir_zerobool  = ir_bool(false);
-    ir_zeroint   = ir_int(0);
-    ir_zerofloat = ir_float(0.0);
-    ir_zeroptr   = LLVMConstPointerNull(irT_pvoid);
+    ir_zerobool   = ir_bool(false);
+    ir_zeroint    = ir_int(0);
+    ir_zerofloat  = ir_float(0.0);
+    ir_zeroptr    = LLVMConstPointerNull(irT_pvoid);
+    ir_zerostring = LLVMAddGlobal(M, LLVMInt8Type(), "zerostring");
+
+    LLVMSetInitializer(ir_zerostring, LLVMConstInt(LLVMInt8Type(), '\0', true));
 
     { // printf
         LLVMT paramsT[1] = {irT_string};

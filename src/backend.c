@@ -46,9 +46,6 @@ static Type* __float;
 static Type* __string;
 static Type* __condition_queue;
 
-// auxiliary
-static LLVMV zerovalue(IRState*, Type*);
-
 // concatanates two strings (the returned string must be freed)
 static char* concat(char* a, char* b) {
     char* s;
@@ -58,10 +55,11 @@ static char* concat(char* a, char* b) {
     return s;
 }
 
-// LLVM (TODO: new module?)
-static LLVMT llvm_type(Type*);
-static LLVMT llvm_fn_type(Definition*, size_t);
+// auxiliary
+static LLVMT llvmtype(Type*);
+static LLVMV llvmzero(Type*);
 static LLVMT llvmstruct(LLVMT[], size_t, const char*);
+static LLVMT llvm_fn_type(Definition*, size_t);
 
 static List* inits = NULL;   // structures' static initializers
 static List* globals = NULL; // global values
@@ -120,7 +118,7 @@ static IRState* setup(void) {
     LLVMM M = LLVMModuleCreateWithName("main.aria");
     LLVMB B = LLVMCreateBuilder();
     IRState* irs = irs_new(M, B);
-    ir_setup(irs->M);
+    ir_setup(M);
 
     inits = list_new();
     globals = list_new();
@@ -203,7 +201,7 @@ static void backend_definition_capsa(IRState* irs, Definition* def) {
         backend_expression(irs, exp);
         capsa->V = exp->V;
     } else { // variables
-        LLVMT T = llvm_type(capsa->type);
+        LLVMT T = llvmtype(capsa->type);
         capsa->V = LLVMBuildAlloca(irs->B, T, capsa->id->name);
         if (exp) {
             backend_expression(irs, exp);
@@ -228,7 +226,7 @@ static void backend_definition_function(IRState* irs, Definition* def) {
 
     // checks if it's necessary to place an implicit return instruction
     if (irs->block) {
-        irs_return(irs, zerovalue(irs, def->function.type));
+        irs_return(irs, llvmzero(def->function.type));
     }
 
     irs->main = false;
@@ -266,7 +264,7 @@ static void backend_definition_constructor(IRState* irs, Definition* def) {
             backend_expression(irs, d->capsa.expression);
             expression = d->capsa.expression->V;
         } else {
-            expression = LLVMGetUndef(llvm_type(d->capsa.capsa->type));
+            expression = LLVMGetUndef(llvmtype(d->capsa.capsa->type));
         }
         LLVMBuildStore(irs->B, expression, d->capsa.capsa->V);
     }
@@ -325,7 +323,7 @@ static void backend_definition_monitor(IRState* irs, Definition* m) {
         for (int i = 0; i < fields_sz; i++) {
             Capsa* capsa = m->type->structure.attributes[i]->capsa.capsa;
             capsa->llvm_structure_index = STRUCT_IDX_FIELD0 + i;
-            structT[capsa->llvm_structure_index] = llvm_type(capsa->type);
+            structT[capsa->llvm_structure_index] = llvmtype(capsa->type);
         }
     
         m->type->T = llvmstruct(structT, struct_sz,m->type->structure.id->name);
@@ -431,7 +429,7 @@ static void initializefunction(IRState* irs, Definition* fn) {
 
 // auxiliary - adds a global value (to be initialized later)
 static void addglobal(IRState* irs, Definition* d) {
-    LLVMT T = llvm_type(d->capsa.capsa->type);
+    LLVMT T = llvmtype(d->capsa.capsa->type);
     d->capsa.capsa->V = LLVMAddGlobal(irs->M, T, d->capsa.capsa->id->name);
     LLVMSetInitializer(d->capsa.capsa->V, LLVMGetUndef(T));
     list_append(globals, d);
@@ -522,7 +520,7 @@ static LLVMV fnR(IRState* irs, Definition* fn, LLVMT selfT) {
         backend_block(irs, fn->function.block);
         // checks if it's necessary to place an implicit return instruction
         if (irs->block) {
-            irs_return(irs, zerovalue(irs, fn->function.type));
+            irs_return(irs, llvmzero(fn->function.type));
         }
     }
 
@@ -568,7 +566,7 @@ static LLVMV fnL(IRState* irs, Definition* fn, LLVMT selfT) {
 
     irPT_mutex_unlock(irs->B, mutex);
 
-    irs_return(irs, ret ? ret : zerovalue(irs, fn->function.type));
+    irs_return(irs, ret ? ret : llvmzero(fn->function.type));
 
     return fnL;
 }
@@ -1015,7 +1013,7 @@ static void backend_expression(IRState* irs, Expression* expression) {
         }
         // allocating memory for the array
         expression->V = LLVMBuildArrayMalloc(irs->B,
-            llvm_type(expression->type->array), ir_int(n), LLVM_TMP
+            llvmtype(expression->type->array), ir_int(n), LLVM_TMP
         );
         // setting the values inside the array
         n = 0;
@@ -1132,7 +1130,7 @@ static void backend_expression(IRState* irs, Expression* expression) {
             expression->V = LLVMBuildSIToFP(
                 irs->B,
                 expression->cast->V,
-                llvm_type(expression->type),
+                llvmtype(expression->type),
                 LLVM_TMP
             );
         } else if (from == __float && to == __integer) {
@@ -1140,7 +1138,7 @@ static void backend_expression(IRState* irs, Expression* expression) {
             expression->V = LLVMBuildFPToSI(
                 irs->B,
                 expression->cast->V,
-                llvm_type(expression->type),
+                llvmtype(expression->type),
                 LLVM_TMP
             );
         } else if (from->tag == TYPE_MONITOR && to->tag == TYPE_INTERFACE) {
@@ -1356,9 +1354,9 @@ static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
         LLVMT params[fc->argc]; // parameter types
         params[0] = irT_pvoid;
         FOREACH(Definition, p, fc->fn->function.parameters->next) {
-            params[i++] = llvm_type(p->capsa.capsa->type);
+            params[i++] = llvmtype(p->capsa.capsa->type);
         }
-        T = llvm_type(fc->fn->function.type); // return type
+        T = llvmtype(fc->fn->function.type); // return type
         T = LLVMFunctionType(T, params, fc->argc, false);
     }
 
@@ -1390,7 +1388,7 @@ static LLVMV backend_fc_array(IRState* irs, FunctionCall* fc) {
     backend_expression(irs, size);
     return LLVMBuildArrayMalloc(
         irs->B,
-        llvm_type(fc->type->array),
+        llvmtype(fc->type->array),
         size->V,
         LLVM_TMP
     );
@@ -1446,11 +1444,12 @@ static LLVMV ir_array_get(LLVMB B, LLVMV ptr, int i) {
 
 // ==================================================
 //
-//  LLVM
+//  Auxiliary
 //
 // ==================================================
 
-static LLVMT llvm_type(Type* t) {
+// <aria type> to <llvm type>
+static LLVMT llvmtype(Type* t) {
     assert(t);
     switch (t->tag) {
     case TYPE_VOID:                  return irT_void;
@@ -1461,8 +1460,8 @@ static LLVMT llvm_type(Type* t) {
         if (t == __string)           return irT_string;
         if (t == __condition_queue)  return irPTT_cond;
         UNREACHABLE;
-    case TYPE_ARRAY:                 return irT_array(llvm_type(t->array));
-    case TYPE_UNLOCKED:              return llvm_type(t->unlocked);
+    case TYPE_ARRAY:                 return irT_array(llvmtype(t->array));
+    case TYPE_UNLOCKED:              return llvmtype(t->unlocked);
     case TYPE_INTERFACE:             return irT_interface;
     case TYPE_MONITOR:               return irT_monitor;
     default:
@@ -1470,52 +1469,38 @@ static LLVMT llvm_type(Type* t) {
     }
 }
 
+// TODO: ConstantAggregateZero ?
+static LLVMV llvmzero(Type* t) {
+    switch (t->tag) {
+    case TYPE_VOID:
+        return NULL; // not unreachable
+    case TYPE_ID:
+        if (t == __boolean)         return ir_zerobool;
+        if (t == __integer)         return ir_zeroint;
+        if (t == __float)           return ir_zerofloat;
+        if (t == __string)          return ir_zerostring;
+        if (t == __condition_queue) return LLVMConstNull(irPTT_cond);
+        UNREACHABLE;
+    case TYPE_ARRAY:                return LLVMConstNull(llvmtype(t));
+    case TYPE_MONITOR:              return LLVMConstNull(llvmtype(t));
+    default:
+        UNREACHABLE;
+    }
+}
+
+static LLVMT llvmstruct(LLVMT Ts[], size_t size, const char* name) {
+    LLVMT T = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
+    LLVMStructSetBody(T, Ts, size, false);
+    return T;
+}
+
 // given a function definition, returns its LLVM type
 static LLVMT llvm_fn_type(Definition* fn, size_t psize) {
     int i = 0;
     LLVMT params[psize];
     FOREACH(Definition, p, fn->function.parameters) {
-        params[i++] = llvm_type(p->capsa.capsa->type);
+        params[i++] = llvmtype(p->capsa.capsa->type);
     }
-    LLVMT T = llvm_type(fn->function.type);
+    LLVMT T = llvmtype(fn->function.type);
     return LLVMFunctionType(T, params, psize, false);
-}
-
-// TODO: doc
-static LLVMT llvmstruct(LLVMT fields[], size_t size, const char* name) {
-    LLVMT type = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);
-    LLVMStructSetBody(type, fields, size, false); // TODO: packed?
-    return type;
-}
-
-// ==================================================
-//
-//  Auxiliary
-//
-// ==================================================
-
-// TODO: zeroinitalizer (ConstantAggregateZero ?)
-static LLVMV zerovalue(IRState* irs, Type* t) {
-    switch (t->tag) {
-    case TYPE_VOID:
-        return NULL; // not unreachable
-    case TYPE_ID:
-        if (t == __boolean) { return ir_zerobool;  }
-        if (t == __integer) { return ir_zeroint;   }
-        if (t == __float)   { return ir_zerofloat; }
-
-        if (t == __string) {
-            return LLVMBuildGlobalStringPtr(irs->B, "", LLVM_GLOBAL_STRING);
-        }
-        if (t == __condition_queue) {
-            return LLVMConstNull(irPTT_cond);
-        }
-        UNREACHABLE;
-    case TYPE_ARRAY:
-        return LLVMConstNull(llvm_type(t));
-    case TYPE_MONITOR:
-        return LLVMConstNull(llvm_type(t));
-    default:
-        UNREACHABLE;
-    }
 }
