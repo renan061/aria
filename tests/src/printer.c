@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 
 #include "ast.h"
 #include "macros.h"
@@ -291,7 +291,7 @@ static void print_ast_statement(Statement* statement) {
         break;
     case STATEMENT_SPAWN: {
         Definition* function = statement->spawn->fn;
-        
+
         printf("spawn function");
         if (function->function.parameters) {
             printf("(");

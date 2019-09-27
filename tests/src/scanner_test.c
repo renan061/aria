@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 
 #include "parser.h"
 #include "scanner.h"
@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     scanner_setup(argv[1]);
-    
+
     int token;
     do {
         token = yylex();

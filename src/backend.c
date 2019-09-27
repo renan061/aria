@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdbool.h>
-#include <strings.h>
+#include <string.h>
 #include <stdio.h> // TODO: remove
 
 #include <llvm-c/Core.h>
@@ -50,7 +50,7 @@ static Type* __condition_queue;
 static char* concat(char* a, char* b) {
     char* s;
     SMALLOC(s, strlen(a) + strlen(b));
-    strcpy(s, a); 
+    strcpy(s, a);
     strcat(s, b);
     return s;
 }
@@ -312,20 +312,20 @@ static void backend_definition_monitor(IRState* irs, Definition* m) {
         int fields_sz = m->type->structure.attributes_size;
         int struct_sz = STRUCT_IDX_FIELD0 + fields_sz;
         LLVMT structT[struct_sz];
-    
+
         // mutex & VMT
         structT[STRUCT_IDX_MUTEX] = irPTT_mutex;
         structT[STRUCT_IDX_VMT] = irT_ptr(LLVMArrayType(
             irT_pvoid, m->type->structure.methods_size
         ));
-    
+
         // fields
         for (int i = 0; i < fields_sz; i++) {
             Capsa* capsa = m->type->structure.attributes[i]->capsa.capsa;
             capsa->llvm_structure_index = STRUCT_IDX_FIELD0 + i;
             structT[capsa->llvm_structure_index] = llvmtype(capsa->type);
         }
-    
+
         m->type->T = llvmstruct(structT, struct_sz,m->type->structure.id->name);
     }
 
@@ -410,7 +410,7 @@ static void initializefunction(IRState* irs, Definition* fn) {
         params++;
     }
 
-    // creates the function prototype 
+    // creates the function prototype
     fn->V = LLVMAddFunction(irs->M,
         fn->function.id->name, llvm_fn_type(fn, params)
     );
