@@ -20,12 +20,11 @@ LLVM_LDFLAGS= $(shell llvm-config --ldflags)
 LLVM_LIBS= $(shell llvm-config --libs) $(shell llvm-config --system-libs)
 
 # Compiler settings.
+DEBUG=
 CC= gcc
-CFLAGS= -O2 -Wall -Werror -std=gnu11 $(LLVM_INCLUDEDIR)
-
+CFLAGS= -O2 -Wall -Werror -std=gnu11 $(LLVM_INCLUDEDIR) $(DEBUG)
 CXXC= clang++
-CXXFLAGS= $(LLVM_CXXFLAGS)
-
+CXXFLAGS= $(LLVM_CXXFLAGS) $(DEBUG)
 LDFLAGS= $(LLVM_LDFLAGS) $(LLVM_LIBS)
 
 # Objects.

@@ -131,7 +131,7 @@ struct Definition {
     DefinitionTag tag;
     Definition* next;
     LLVMV V; // TODO: move this inside definition->function
-    
+
     union {
         // DefinitionCapsa
         struct {
@@ -295,7 +295,7 @@ struct Expression {
     Expression *previous, *next;
     Type* type;
     LLVMV V;
-    
+
     union {
         struct {
             bool immutable;
@@ -340,7 +340,7 @@ struct FunctionCall {
     Expression* obj; // only used by methods (NULL for other types of calls)
 
     Id* id; // name of the function being called (NULL for constructors)
-    
+
     Expression* arguments; // list of function arguments
     int argc;              // initialized with -1
     Definition* fn;        // function definition used in the backend module

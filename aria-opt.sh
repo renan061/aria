@@ -5,4 +5,6 @@ clear                          && \
 llvm-dis aria.bc               && \
 opt -o aria-opt.bc -O2 aria.ll && \
 llvm-dis aria-opt.bc           && \
-lli aria-opt.ll
+llc -filetype=obj aria-opt.bc  && \
+gcc aria-opt.o -lpthread       && \
+./a.out

@@ -545,7 +545,7 @@ else
             $$ = NULL;
         }
     | TK_ELSE TK_IF expression block else
-        {           
+        {
             Statement* statement = ($5)
                 ? ast_statement_if_else($2, $3, $4, $5)
                 : ast_statement_if($2, $3, $4)
@@ -927,7 +927,7 @@ lower_ids_type
             }
             last->next = $3; // there is always at least one lower_id
         }
-    ; 
+    ;
 
 // used by function definitions
 parameter_list0

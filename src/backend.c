@@ -14,8 +14,6 @@
 
 /*
  * TODO
- *  - malloc error: mallocs que vc da na main podem ser perdidos quando a main
- *      termina e vc está usando esse malloc em outra thread?
  *  - free and destroy the mutex one day
  */
 
@@ -60,6 +58,10 @@ static LLVMT llvmtype(Type*);
 static LLVMV llvmzero(Type*);
 static LLVMT llvmstruct(LLVMT[], size_t, const char*);
 static LLVMT llvm_fn_type(Definition*, size_t);
+
+// TODO : move
+static LLVMV getvmt(LLVMB, LLVMV);
+static LLVMV ir_array_get(LLVMB, LLVMV, int);
 
 static List* inits = NULL;   // structures' static initializers
 static List* globals = NULL; // global values
@@ -503,11 +505,10 @@ static LLVMV fnR(IRState* irs, Definition* fn, LLVMT selfT) {
     // TODO: separate function for native functions
     if (fn->function.id->name == scanner_native[SCANNER_NATIVE_UNLOCKED]) {
         // NOTE: the acquire-value statement already calls lock/unlock
-        //       this implementation is left here for future use
+        //       this block is left here for future use
         // LLVMV mutex = monitormutex(irs->B, irs->self);
         if (fn->function.qualifiers & FQ_ACQUIRE) {
             // irPT_mutex_lock(irs->B, mutex);
-            // LLVMBuildRet(irs->B, fn->function.parameters->capsa.capsa->V);
             LLVMBuildRet(irs->B, fn->function.parameters->capsa.capsa->V);
         } else if (fn->function.qualifiers & FQ_RELEASE) {
             // irPT_mutex_unlock(irs->B, mutex);
@@ -883,52 +884,54 @@ static void backend_stmt_spawn(IRState* irs, Statement* stmt) {
 }
 
 static void backend_stmt_acquire_value(IRState* irs, Statement* stmt) {
-    Definition* value = stmt->acquire_value.value;
-    Capsa* capsa = value->capsa.capsa;
-    Expression* exp = value->capsa.expression;
-    Type* t = capsa->type->unlocked;
+    // calls the acquire function (m.acquire-f)
+    Definition* d = stmt->acquire_value.value;
+    backend_definition(irs, stmt->acquire_value.value);
+
+    // acquire value sv = m.f() { ... }
+    FunctionCall* f   = d->capsa.expression->function_call; // method
+    Expression*   m   = f->obj;                             // monitor object
+    Capsa*        sv  = d->capsa.capsa;                     // scoped value
 
     LLVMV V;
 
-    // calls the acquire function
-    backend_definition(irs, stmt->acquire_value.value);
-
-    // creates the proxy object
-    LLVMV obj = capsa->V;
+    // creates the proxy object for <sv>
+    Type* t = sv->type->unlocked;
     LLVMV proxy = LLVMBuildMalloc(irs->B, t->structure.proxyT, LLVM_TMP_PROXY);
+    // proxy.m = m
     V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OBJ, LLVM_TMP_OBJ);
-    LLVMBuildStore(irs->B, obj, V);
+    LLVMBuildStore(irs->B, sv->V, V);
+    // proxy.vmt = vmtP
     V = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_VMTP, LLVM_TMP_VMT);
     LLVMBuildStore(irs->B, t->structure.gP, V);
+    // proxy.ok = true
     LLVMV ok = LLVMBuildStructGEP(irs->B, proxy, PROXY_IDX_OK, LLVM_TMP_OK);
     LLVMBuildStore(irs->B, ir_bool(true), ok);
-    capsa->V = LLVMBuildBitCast(irs->B, proxy, irT_pvoid, LLVM_TMP_PROXY);
 
-    // locks <obj>
-    V = LLVMBuildBitCast(irs->B, obj, irT_ptr(t->T), LLVM_TMP_OBJ);
+    proxy = LLVMBuildBitCast(irs->B, proxy, irT_pvoid, LLVM_TMP_PROXY);
+
+    // locks <sv>
+    V = LLVMBuildBitCast(irs->B, sv->V, irT_ptr(t->T), LLVM_TMP_OBJ);
     LLVMV mutex = monitormutex(irs->B, V);
     irPT_mutex_lock(irs->B, mutex);
 
+    sv->V = proxy;
     backend_block(irs, stmt->acquire_value.block);
 
     // proxy.ok = false
     LLVMBuildStore(irs->B, ir_bool(false), ok);
-
-    // unlocks <obj>
+    // unlocks <sv>
     irPT_mutex_unlock(irs->B, mutex);
 
-    // calls the release function
-    Definition* pair = exp->function_call->fn->function.pair;
-    assert(pair);
-    V = value->capsa.expression->function_call->obj->type->structure.gR;
-    LLVMV indices[] = {ir_int(0), ir_int(pair->function.vmti)};
-    V = LLVMBuildGEP(irs->B, V, indices, 2, "release-ptr");
-    V = LLVMBuildLoad(irs->B, V, "release");
-    LLVMT params[] = {irT_pvoid};
-    LLVMT T = LLVMFunctionType(irT_void, params, 1, false);
-    V = LLVMBuildBitCast(irs->B, V, irT_ptr(T), "release-typed");
-    LLVMV args[] = {capsa->V};
-    LLVMBuildCall(irs->B, V, args, 1, LLVM_TMP_NONE);
+    // calls the release function (m.release-f)
+    Definition* release = f->fn->function.pair;
+    V = LLVMBuildBitCast(irs->B, m->V, irT_ptr(m->type->T), LLVM_TMP_PROXY);
+    LLVMV vmt = getvmt(irs->B, V);
+    LLVMV fn = ir_array_get(irs->B, vmt, release->function.vmti);
+    LLVMT T = llvm_fn_type(release, 1);
+    fn = LLVMBuildBitCast(irs->B, fn, irT_ptr(T), LLVM_TMP);
+    LLVMV args[] = {m->V};
+    LLVMBuildCall(irs->B, fn, args, 1, LLVM_TMP_NONE);
 }
 
 static void backend_stmt_block(IRState* irs, Statement* stmt) {
@@ -1303,9 +1306,6 @@ static LLVMV backend_fc_array(IRState*, FunctionCall*);
 static LLVMV* fcargs(IRState*, FunctionCall*);
 static LLVMV nativefc(IRState*, FunctionCall*);
 
-static LLVMV ir_array_get(LLVMB, LLVMV, int);
-static LLVMV getvmt(LLVMB, LLVMV);
-
 static LLVMV backend_function_call(IRState* irs, FunctionCall* fc) {
     switch (fc->tag) {
     case FUNCTION_CALL_BASIC:
@@ -1432,7 +1432,8 @@ static LLVMV nativefc(IRState* irs, FunctionCall* fc) {
 // TODO: doc
 static LLVMV getvmt(LLVMB B, LLVMV obj) {
     obj = LLVMBuildStructGEP(B, obj, STRUCT_IDX_VMT, LLVM_TMP);
-    return LLVMBuildLoad(B, obj, LLVM_TMP_VMT);
+    obj = LLVMBuildLoad(B, obj, LLVM_TMP_VMT);
+    return obj;
 }
 
 // returns (*ptr)[i], given <ptr> is a pointer to an array
