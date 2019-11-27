@@ -1,5 +1,5 @@
 
-input = assert(io.open("test.aria", "r"))
+input = assert(io.open("matrix.aria", "r"))
 tocopy = input:read("*all")
 input:close()
 
@@ -33,7 +33,7 @@ function writeArray(output, n, name)
 end
 
 -- changing matrixes' size
-n = 1280
+n = 80
 tocopy = tocopy:gsub("value n = %d+;", "value n = " .. n ..";" )
 
 -- prepending matrixes A and B

@@ -6,8 +6,6 @@ RM= rm -f
 ARIA= ../../bin/aria
 
 run:
-	# lua script.lua
-	cp code/$(TARGET).aria test.aria
 	lua addvalues.lua
 	$(ARIA) -b test.aria
 	llvm-dis aria.bc
