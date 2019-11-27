@@ -1,0 +1,6 @@
+aria
+test.aria
+*.ll
+*.bc
+*.o
+*.out

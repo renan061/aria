@@ -42,3 +42,4 @@ clean:
 	$(RM) *.s
 	cd src && $(MAKE) $@
 	cd tests && $(MAKE) $@
+	cd benchmarks && $(MAKE) $@

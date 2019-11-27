@@ -1,0 +1,43 @@
+
+monitor Array {
+    variable n: Integer;
+    variable array: [Float];
+
+    initializer(size: Integer) {
+        n = size;
+        array = [Float](n);
+    }
+
+    function get(i: Integer): Float    { return array[i]; }
+    function set(i: Integer, v: Float) { array[i] = v;    }
+
+    function dump {
+        print("Array = [");
+        for variable i = 0; i < n; i = i + 1 {
+            print("%.2f", array[i]);
+            if i + 1 < n {
+                print(", ");
+            }
+        }
+        print("]\n");
+    }
+}
+
+function main {
+    value n = 0; // size
+    value threads = 8;
+    value splice = n / threads;
+    value c = Array(n);
+    for variable t = 0; t < threads; t = t + 1 {
+        value thread = t;
+        spawn {
+            variable v = 0.0;
+            for variable i = thread * splice; i < splice; i = i + 1 {
+                for variable j = 0; j < n; j = j + 1 {
+                    v = v + a[i][j] * b[j];
+                }
+                c.set(i, v);
+            }
+        }
+    }
+}
