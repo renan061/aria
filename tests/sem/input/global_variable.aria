@@ -1,2 +1,0 @@
-// Global variables need to be Immutable
-value a = [Integer]();

@@ -1,4 +1,0 @@
-// In variable declarations
-function foo {
-	variable x: Id1;
-}

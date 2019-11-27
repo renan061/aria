@@ -1,5 +1,0 @@
-// Not a function
-function foo {
-	x := 1;
-	y := x();
-}

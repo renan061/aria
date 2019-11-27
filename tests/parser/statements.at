@@ -1,0 +1,141 @@
+--------------------------------------------------------------------------------
+-- Title
+The "acquire-value" statement
+-- Input
+function main {
+    acquire value a = m.f() {
+        // ...
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+The "acquire-value" statement only ID capsas
+-- Input
+function main {
+    acquire value a[0] = m.f() {
+        // ...
+    }
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+The "acquire-value" statement only accepts method calls
+-- Input
+function main {
+    acquire value a = f() {
+        // ...
+    }
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Simple statements
+-- Input
+function main {
+    // variable assignment
+    a = 1;
+    // compound assignment operators
+    a += 1;
+    a -= 1;
+    a *= 1;
+    a /= 1;
+    // function call
+    foo();
+    // wait-for-in
+    wait for true in queue;
+    // signal
+    signal queue;
+    // broadcast
+    broadcast queue;
+    // return without an expression
+    return;
+    // return with an expression
+    return true;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Compound statements
+-- Input
+function main {
+    // if
+    if true {}
+    // if-else if
+    if true {} else if false {}
+    // if-else
+    if true {} else {}
+    // if-else if-else
+    if true {} else if false {} else {}
+    // while 
+    while true {}
+    // for
+    for variable i = 0; i < n; i = i + 1 {
+        print("for");
+    }
+    for variable i: Integer = 0; i < n; i += 1 {
+        print("for");
+    }
+    // spawn
+    spawn {
+        print("spawn");
+    }
+    // block
+    {
+        block := "block";
+        print(block);
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Invalid "for" initialization
+-- Input
+function main {
+    for value i = 0; i < n; i++ {}
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Invalid "for" increment
+-- Input
+function main {
+    for value i = 0; i < n; signal i {}
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Invalid "for" ;
+-- Input
+function main {
+    for value i = 0; i < n; i = i + 1 /* Here */; {}
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Variable assignment
+-- Input
+function main {
+    // lower ID Variable
+    a = 1;
+    // indexed variable
+    a[0] = 1;
+    a[0][1] = 1;
+    a[0][1] = 1;
+    a[0][1][2] = 1;
+}
+-- Output
+OK

@@ -1,2 +1,0 @@
-line 3:
-	semantic error: invalid type for right side of the '==' ('[Integer]' is not an equatable type)

@@ -1,4 +1,0 @@
-// Invalid expression for unary not
-function foo {
-	if not 1 {}
-}

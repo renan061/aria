@@ -1,0 +1,30 @@
+
+function printMatrix(a: [[Float]], m, n: Integer) {
+    for variable i = 0; i < m; i = i + 1 {
+        print("| ");
+        for variable j = 0; j < n; j = j + 1 {
+            print("%.1f ", a[i][j]);
+        }
+        print("| \n");
+    }
+}
+
+function main {
+    value n = 10;
+
+    value c = [[Float]](n);
+    for variable i = 0; i < n; i = i + 1 {
+        c[i] = [Float](n);
+    }
+
+    variable aux: Float;
+    for variable i = 0; i < n; i = i + 1 {
+        for variable j = 0; j < n; j = j + 1 {
+            aux = 0;
+            for variable k = 0; k < n; k = k + 1 {
+				aux = aux + a[i][k] * b[k][j];
+			}
+            c[i][j] = aux;
+        }
+    }
+}

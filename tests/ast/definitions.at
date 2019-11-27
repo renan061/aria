@@ -1,0 +1,209 @@
+--------------------------------------------------------------------------------
+-- Title
+Variable Declarations (inside functions)
+-- Input
+function main {
+    variable a: Integer;
+    variable x, y: Integer;
+    variable i, j, k, l, m, n, o: Integer;
+    variable a: Integer = 1;
+    variable a = 1;
+    value a: Integer = 1;
+    value a = 1;
+}
+-- Output
+function main: Void {
+    variable a: Integer
+    variable x: Integer
+    variable y: Integer
+    variable i: Integer
+    variable j: Integer
+    variable k: Integer
+    variable l: Integer
+    variable m: Integer
+    variable n: Integer
+    variable o: Integer
+    variable a: Integer = (1)
+    variable a: ? = (1)
+    value a: Integer = (1)
+    value a: ? = (1)
+}
+--------------------------------------------------------------------------------
+-- Title
+Variable Definition (globals)
+-- Input
+value a = 1;
+value a: Integer = 1;
+-- Output
+value a: ? = (1)
+value a: Integer = (1)
+--------------------------------------------------------------------------------
+-- Title
+Function Definition
+-- Input
+// + return + parameters
+function foo(a: Byte): Integer {}
+// + return + parameters
+function foo(a: Byte, b: Byte, c: Byte): Integer {}
+// + return + parameters
+function foo(a, b, c: Byte): Integer {}
+// + return - parameters
+function foo: Integer {}
+// - return + parameters
+function foo(a: Byte) {}
+// - return + parameters
+function foo(a: Byte, b: Byte, c: Byte) {}
+// - return + parameters
+function foo(a, b, c: Byte) {}
+// - return - parameters
+function foo {}
+-- Output
+function foo(value a: Byte): Integer {
+}
+function foo(value a: Byte, value b: Byte, value c: Byte): Integer {
+}
+function foo(value a: Byte, value b: Byte, value c: Byte): Integer {
+}
+function foo: Integer {
+}
+function foo(value a: Byte): Void {
+}
+function foo(value a: Byte, value b: Byte, value c: Byte): Void {
+}
+function foo(value a: Byte, value b: Byte, value c: Byte): Void {
+}
+function foo: Void {
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor (empty)
+-- Input
+monitor Monitor {
+}
+-- Output
+monitor Monitor {
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor (variable declarations)
+-- Input
+monitor Monitor1 {
+    variable a: Boolean;
+}
+monitor Monitor2 {
+    variable a: Integer;
+
+    variable x, y: Float;
+
+    variable i, j, k, l, m, n, o: String;
+}
+-- Output
+monitor Monitor1 {
+    variable a: Boolean
+}
+monitor Monitor2 {
+    variable a: Integer
+    variable x: Float
+    variable y: Float
+    variable i: String
+    variable j: String
+    variable k: String
+    variable l: String
+    variable m: String
+    variable n: String
+    variable o: String
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor (variable definitions)
+-- Input
+monitor Monitor1 {
+    value a = true;
+}
+monitor Monitor2 {
+    variable a: Integer = 1;
+}
+monitor Monitor3 {
+    variable a: Float = 1.0;
+    value a: Float = 1.0;
+    variable a = 1.0;
+    value a = 1.0;
+}
+-- Output
+monitor Monitor1 {
+    value a: ? = (true)
+}
+monitor Monitor2 {
+    variable a: Integer = (1)
+}
+monitor Monitor3 {
+    variable a: Float = (1.000000)
+    value a: Float = (1.000000)
+    variable a: ? = (1.000000)
+    value a: ? = (1.000000)
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor (constructors)
+-- Input
+monitor Monitor {
+    initializer {}
+    initializer(a: Integer) {}
+    initializer(a, b: Float) {}
+}
+-- Output
+monitor Monitor {
+    initializer {
+    }
+    initializer(value a: Integer) {
+    }
+    initializer(value a: Float, value b: Float) {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor (functions - methods)
+-- Input
+monitor Monitor {
+    function foo {}
+    private function foo {}
+    function acquire foo {}
+    function release foo {}
+}
+-- Output
+monitor Monitor {
+    function foo: Void {
+    }
+    private function foo: Void {
+    }
+    function acquire foo: Void {
+    }
+    function release foo: Void {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Monitor
+-- Input
+monitor Monitor {
+    function foo {}
+    initializer {}
+    private function foo: Boolean {}
+    variable i, j: Integer;
+    function bar(a: Integer): Float {}
+    value k = 1;
+}
+-- Output
+monitor Monitor {
+    function foo: Void {
+    }
+    initializer {
+    }
+    private function foo: Boolean {
+    }
+    variable i: Integer
+    variable j: Integer
+    function bar(value a: Integer): Float {
+    }
+    value k: ? = (1)
+}

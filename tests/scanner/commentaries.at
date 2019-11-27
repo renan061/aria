@@ -1,0 +1,91 @@
+--------------------------------------------------------------------------------
+-- Title
+Open commentary
+-- Input
+/* Opened the commentary and did not close it...
+-- Output
+line 2:
+    scanner error: open commentary
+--------------------------------------------------------------------------------
+-- Title
+Line commentary
+-- Input
+//
+and
+// something
+and
+// // // nested
+and // same line
+-- Output
+TK_AND
+TK_AND
+TK_AND
+--------------------------------------------------------------------------------
+-- Title
+Single and empty line commentary in file
+-- Input
+//
+-- Output
+--------------------------------------------------------------------------------
+-- Title
+Multiline commentary
+-- Input
+/* something */ and
+/*
+    line one
+    // single line commentary
+    line two
+*/
+/*or*/ or/**/))
+/**/
+not
+/*asdawe123123"string inside commentary"asdasd*/
+-- Output
+TK_AND
+TK_OR
+)
+)
+TK_NOT
+--------------------------------------------------------------------------------
+-- Title
+Nested multiline commentaries are not implemented
+-- Input
+/*
+    /*
+        something
+    */
+*/
+-- Output
+*
+/
+--------------------------------------------------------------------------------
+-- Title
+Miscellaneous commentaries
+-- Input
+/**/
+/***/
+/****/
+/*/**/
+/*/*/**/
+/* This is a nice comment in Aria*/
+/*/t/t/asdp12837askldjasd/zxckHïkhc"(*9e['0 194*/
+// Nothing
+// More line commentary
+-- Output
+*
+*
+/
+--------------------------------------------------------------------------------
+-- Title
+Line counting
+-- Input
+/*
+2
+3
+4
+5
+*/
+"error
+-- Output
+line 7:
+    scanner error: open string

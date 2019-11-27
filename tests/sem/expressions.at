@@ -1,0 +1,133 @@
+--------------------------------------------------------------------------------
+-- Title
+Literal expressions
+-- Input
+function main {
+    // boolean
+    variable a = true;
+    a = false;
+    // integer
+    variable b = 1453;
+    // float
+    value c = 3.1415;
+    // string
+    value letter = "e";
+    value word = "string";
+    value spaced = "s p a c e d s t r i n g";
+    // array
+    value array = [1];
+}
+-- Output
+function main: Void {
+    variable a: Boolean = (true: Boolean)
+    a: Boolean = (false: Boolean)
+    variable b: Integer = (1453: Integer)
+    value c: Float = (3.141500: Float)
+    value letter: String = ("e": String)
+    value word: String = ("string": String)
+    value spaced: String = ("s p a c e d s t r i n g": String)
+    value array: [Integer] = ([(1: Integer)]: [Integer])
+}
+--------------------------------------------------------------------------------
+-- Title
+Variable (capsa) expressions
+-- Input
+function main {
+    value word = "string";
+    value capsa = word;
+}
+-- Output
+function main: Void {
+    value word: String = ("string": String)
+    value capsa: String = (word: String)
+}
+--------------------------------------------------------------------------------
+-- Title
+Function call expressions
+-- Input
+function main: Boolean {
+    value loop = main();
+}
+-- Output
+function main: Boolean {
+    value loop: Boolean = (main(): Boolean)
+}
+--------------------------------------------------------------------------------
+-- Title
+Binary expressions
+-- Input
+function main {
+    variable a: Boolean;
+
+    a = true or false;
+    a = false and true;
+    a = 1 == 1;
+    a = 1 != 1;
+    a = 1 <= 1;
+    a = 1 >= 1;
+    a = 1 < 1;
+    a = 1 > 1;
+
+    variable b: Float;
+
+    b = 1 + 1;
+    b = 1.0 - 1;
+    b = 1 * 1.0;
+    b = 1.0 / 1.0;
+}
+-- Output
+function main: Void {
+    variable a: Boolean
+    a: Boolean = ((true: Boolean) or: Boolean (false: Boolean))
+    a: Boolean = ((false: Boolean) and: Boolean (true: Boolean))
+    a: Boolean = ((1: Integer) ==: Boolean (1: Integer))
+    a: Boolean = ((1: Integer) !=: Boolean (1: Integer))
+    a: Boolean = ((1: Integer) <=: Boolean (1: Integer))
+    a: Boolean = ((1: Integer) >=: Boolean (1: Integer))
+    a: Boolean = ((1: Integer) <: Boolean (1: Integer))
+    a: Boolean = ((1: Integer) >: Boolean (1: Integer))
+    variable b: Float
+    b: Float = (((1: Integer) +: Integer (1: Integer)) as: Float)
+    b: Float = ((1.000000: Float) -: Float ((1: Integer) as: Float))
+    b: Float = (((1: Integer) as: Float) *: Float (1.000000: Float))
+    b: Float = ((1.000000: Float) /: Float (1.000000: Float))
+}
+--------------------------------------------------------------------------------
+-- Title
+Type Cast (Integer to Float)
+-- Input
+function main {
+    a := 1 as Float;
+}
+-- Output
+function main: Void {
+    value a: Float = ((1: Integer) as: Float)
+}
+--------------------------------------------------------------------------------
+-- Title
+Type Cast (Monitor to Interface)
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    initializer {}
+    function string: String { return "a printable monitor"; }
+}
+function main {
+    value a = Monitor() as Printable;
+}
+-- Output
+interface Printable {
+    function string(value self: Printable): String;
+}
+monitor Monitor: Printable {
+    function Monitor: Monitor {
+    }
+    function string(value self: Monitor): String {
+        return ("a printable monitor": String)
+    }
+}
+function main: Void {
+    value a: Printable = ((Monitor(): Monitor) as: Printable)
+}

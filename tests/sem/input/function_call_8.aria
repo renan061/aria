@@ -1,8 +1,0 @@
-// Too few arguments to function call
-monitor Stack {
-	initializer(i: Integer, f: Float) {}
-}
-
-function foo {
-	x := Stack(1.0);
-}

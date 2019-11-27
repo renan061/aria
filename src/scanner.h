@@ -1,31 +1,30 @@
 #if !defined(scanner_h)
 #define scanner_h
 
-/*
- * The token type to be used in other modules.
- */
+// the token type to be used in other modules
 typedef unsigned int Token;
 
-/*
- * Used by the parser to get the next token.
- */
+// used by the parser to get the next token
 extern int yylex(void);
 
-/*
- * TODO
- */
-#define SCANNER_NATIVE_BOOLEAN			0
-#define SCANNER_NATIVE_INTEGER			1
-#define SCANNER_NATIVE_FLOAT			2
-#define SCANNER_NATIVE_STRING			3
-#define SCANNER_NATIVE_CONDITION_QUEUE	4
-extern const char* native_types[5];
+// TODO
+typedef enum ScannerNativeIndex {
+    SCANNER_NATIVE_BOOLEAN = 0,
+    SCANNER_NATIVE_CONDITION_QUEUE,
+    SCANNER_NATIVE_FLOAT,
+    SCANNER_NATIVE_INTEGER,
+    SCANNER_NATIVE_MAIN,
+    SCANNER_NATIVE_SELF,
+    SCANNER_NATIVE_STRING,
+    SCANNER_NATIVE_UNLOCKED
+} ScannerNativeIndex;
 
-/*
- * Setup and Clean should be called before starting
- * to use the scanner and after finishing doing so,
- * respectively.
- */
+#define SCANNER_NATIVE_SIZE 8
+
+extern const char* scanner_native[SCANNER_NATIVE_SIZE];
+
+// <setup> and <clean> should be called before starting to use the
+// scanner and after finishing doing so, respectively
 extern void scanner_setup(const char* file);
 extern void scanner_clean(void);
 

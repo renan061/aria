@@ -1,9 +1,9 @@
 #if !defined(backend_h)
-#define errs_h
+#define backend_h
 
 #include "ast.h"
 
-// TODO: Doc
-extern LLVMModuleRef backend_compile(AST*);
+// TODO: doc
+extern LLVMM compile(AST*);
 
 #endif

@@ -1,0 +1,89 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+function main {
+    value a = 1;
+    variable b: Boolean;
+    b = a > 2;
+}
+-- Output
+function main: Void {
+    value a: Integer = (1: Integer)
+    variable b: Boolean
+    b: Boolean = ((a: Integer) >: Boolean (2: Integer))
+}
+--------------------------------------------------------------------------------
+-- Title
+Unusual assignments that do not cause errors
+-- Input
+// assigning to an indexed expression that is not a variable expression is ok
+function f: [Integer] {
+    f()[0] = 1;
+}
+function main {
+    // assigning to an array value's index is ok
+    value a = [Integer](10);
+    a[0] = 1;
+}
+-- Output
+function f: [Integer] {
+    ((f(): [Integer])[(0: Integer)]: Integer) = (1: Integer)
+}
+function main: Void {
+    value a: [Integer] = ([Integer]((10: Integer)): [Integer])
+    ((a: [Integer])[(0: Integer)]: Integer) = (1: Integer)
+}
+--------------------------------------------------------------------------------
+-- Title
+Assigning with an expression of type Void
+-- Input
+function main {
+    value a = main();
+}
+-- Output
+line 2:
+    semantic error: can't assign to expression of type Void
+--------------------------------------------------------------------------------
+-- Title
+Assigning with an expression of the wrong type
+-- Input
+function main {
+    variable a: Integer;
+    a = true;
+}
+-- Output
+line 3:
+    semantic error: type error (expected 'Integer', got 'Boolean')
+--------------------------------------------------------------------------------
+-- Title
+Trying to reassign a value 
+-- Input
+function main {
+    value a = 0;
+    a = 1;
+}
+-- Output
+line 3:
+    semantic error: can't assign to 'a' since it was declared as a value
+--------------------------------------------------------------------------------
+-- Title
+Trying to assign to a parameter
+-- Input
+function f(p: Integer) {
+    p = 1;
+}
+-- Output
+line 2:
+    semantic error: can't assign to 'p' since it was declared as a value
+--------------------------------------------------------------------------------
+-- Title
+Trying to assign to an element inside an immutable array
+-- Input
+function main {
+    value array = Immutable [true, false];
+    array[0] = false;
+}
+-- Output
+line 3:
+    semantic error: can't assign to immutable arrays

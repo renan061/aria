@@ -1,6 +1,0 @@
-// Monitor functions can only have parameters with safe types
-monitor M {
-	function foo(array: [String]) {
-		return;
-	}
-}

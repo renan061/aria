@@ -1,0 +1,26 @@
+--------------------------------------------------------------------------------
+-- Title
+Variable ID
+-- Input
+function main {
+    var = a;
+}
+-- Output
+function main: Void {
+    var = (a)
+}
+--------------------------------------------------------------------------------
+-- Title
+Variable Indexed
+-- Input
+function main {
+    var = a[1];
+    var = a[1][1][1];
+    var = foo()[1][1][1];
+}
+-- Output
+function main: Void {
+    var = (((a)[(1)]))
+    var = (((((((a)[(1)]))[(1)]))[(1)]))
+    var = (((((((foo())[(1)]))[(1)]))[(1)]))
+}

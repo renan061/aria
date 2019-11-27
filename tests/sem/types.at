@@ -1,0 +1,218 @@
+--------------------------------------------------------------------------------
+-- Title
+Unlocked type
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    variable m: M!;
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+function main: Void {
+    variable m: M!
+}
+--------------------------------------------------------------------------------
+-- Title
+Normal types can't be used as their unlocked types
+-- Input
+monitor M {
+    initializer {}
+}
+function main(m: M!) {
+    main(M());
+}
+-- Output
+line 5:
+    semantic error: type error (expected 'M!', got 'M')
+--------------------------------------------------------------------------------
+-- Title
+Unlocked types can't be used as their normal types
+-- Input
+monitor M {
+    initializer {}
+}
+function main(m: M) {
+    acquire value u = M().unlocked() {
+        main(u);
+    }
+}
+-- Output
+line 6:
+    semantic error: type error (expected 'M', got 'M!')
+--------------------------------------------------------------------------------
+-- Title
+Unlocked types are unsafe
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    acquire value m = M().f() {
+        spawn {
+            print(m);
+        }
+    }
+}
+-- Output
+line 9:
+    semantic error: can't access a value of unsafe type inside a spawn block (only immutables and monitors)
+--------------------------------------------------------------------------------
+-- Title
+Unlocked types don't have constructors
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    variable m = M!();
+}
+-- Output
+line 5:
+    semantic error: unlocked types don't have constructors
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (variable declaration)
+-- Input
+function main {
+    variable a: T;
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (function return type)
+-- Input
+function f: T {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (parameter)
+-- Input
+function f(a: T) {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (constructor call)
+-- Input
+function main {
+    value a = T();
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type (unlocked)
+-- Input
+function main {
+    value a = T!();
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (variable declaration)
+-- Input
+function main {
+    variable a: [[[T]]];
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (function return type)
+-- Input
+function f: [[T]] {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (parameter)
+-- Input
+function f(array: [T]) {
+    // ...
+}
+-- Output
+line 1:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (array constructor call)
+-- Input
+function main {
+    value a = [T](10);
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Unknown type for array (unlocked)
+-- Input
+function main {
+    value a = [T!](10);
+}
+-- Output
+line 2:
+    semantic error: unknown type 'T'
+--------------------------------------------------------------------------------
+-- Title
+Normal types can't be used as their immutable types
+-- Input
+function main {
+    variable a: Immutable [String] = ["invalid"];
+}
+-- Output
+line 2:
+    semantic error: type error (expected 'Immutable [String]', got '[String]')
+--------------------------------------------------------------------------------
+-- Title
+Immutable types can't be used as their normal types
+-- Input
+function main {
+    variable a: [String] = Immutable ["invalid"];
+}
+-- Output
+line 2:
+    semantic error: type error (expected '[String]', got 'Immutable [String]')
+--------------------------------------------------------------------------------
+-- Title
+ConditionQueue constructor has no parameters (1)
+-- Input
+function main {
+    value queue = ConditionQueue(1);
+}
+-- Output
+line 2:
+    semantic error: ConditionQueue constructor has no parameters
+--------------------------------------------------------------------------------
+-- Title
+ConditionQueue constructor has no parameters (2)
+-- Input
+function main {
+    value queue = ConditionQueue(false, "string");
+}
+-- Output
+line 2:
+    semantic error: ConditionQueue constructor has no parameters

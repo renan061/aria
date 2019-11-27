@@ -1,0 +1,57 @@
+--------------------------------------------------------------------------------
+-- Title
+Redeclaration of a variable
+-- Input
+function main {
+    variable a: Integer;
+    value a = 1;
+}
+-- Output
+line 3:
+    semantic error: redeclaration of name 'a'
+--------------------------------------------------------------------------------
+-- Title
+Redeclaration of a function
+-- Input
+function main {
+    // ...
+}
+function main: String {
+    // ...
+}
+-- Output
+line 4:
+    semantic error: redeclaration of name 'main'
+--------------------------------------------------------------------------------
+-- Title
+Redeclaration of a variable inside a monitor
+-- Input
+monitor M {
+    variable a: Integer;
+    variable a: [Integer];
+}
+-- Output
+line 3:
+    semantic error: redeclaration of name 'a'
+--------------------------------------------------------------------------------
+-- Title
+Redeclaration of a function inside a monitor
+-- Input
+monitor M {
+    function f {}
+    function f(a: Boolean) {}
+}
+-- Output
+line 3:
+    semantic error: redeclaration of name 'f'
+--------------------------------------------------------------------------------
+-- Title
+Redeclaration of a function inside an interface
+-- Input
+interface I {
+    function f(a: Boolean);
+    function f: String;
+}
+-- Output
+line 3:
+    semantic error: redeclaration of name 'f'

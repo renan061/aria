@@ -1,0 +1,171 @@
+--------------------------------------------------------------------------------
+-- Title
+Implementing the Any interface
+-- Input
+interface Any {}
+monitor Monitor: Any {
+    initializer {}
+    function foo {}
+}
+-- Output
+interface Any {
+}
+monitor Monitor: Any {
+    function Monitor: Monitor {
+    }
+    function foo(value self: Monitor): Void {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Implementing the Printable interface
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    variable a: Integer;
+    function string: String { return "a printable monitor"; }
+    initializer {}
+}
+-- Output
+interface Printable {
+    function string(value self: Printable): String;
+}
+monitor Monitor: Printable {
+    variable a: Integer
+    function string(value self: Monitor): String {
+        return ("a printable monitor": String)
+    }
+    function Monitor: Monitor {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Implementing the Dog interface
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor M: Dog {
+    function catch(ball: Integer) {}
+    function bark: String { return "Woof!"; }
+    initializer {}
+}
+function main {
+    value m = M();
+    value dog = m as Dog;
+    dog.catch(5);
+    dog.bark();
+}
+-- Output
+interface Dog {
+    function catch(value self: Dog, value ball: Integer): Void;
+    function bark(value self: Dog): String;
+}
+monitor M: Dog {
+    function catch(value self: M, value ball: Integer): Void {
+    }
+    function bark(value self: M): String {
+        return ("Woof!": String)
+    }
+    function M: M {
+    }
+}
+function main: Void {
+    value m: M = (M(): M)
+    value dog: Dog = ((m: M) as: Dog)
+    (dog: Dog).catch((dog: Dog), (5: Integer)): Void
+    (dog: Dog).bark((dog: Dog)): String
+}
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Dog interface (absent function)
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    initializer {}
+    function bark: String {
+        return "Woof!";
+    }
+}
+-- Output
+line 5:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Dog interface (wrong parameter name)
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    initializer {}
+    function catch(notball: Integer) {}
+    function bark: String { return "Woof!"; }
+}
+-- Output
+line 5:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Dog interface (wrong parameter type)
+-- Input
+interface Dog {
+    function catch(ball: Integer);
+    function bark: String;
+}
+monitor Monitor: Dog {
+    initializer {}
+    function catch(ball: Boolean) {}
+    function bark: String { return "Woof!"; }
+}
+-- Output
+line 5:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Printable interface (extra parameter)
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    initializer {}
+    function string(a: Integer): String {
+        return "not a printable monitor";
+    }
+}
+-- Output
+line 4:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Failing to implement the Printable interface (wrong return type)
+-- Input
+interface Printable {
+    function string: String;
+}
+monitor Monitor: Printable {
+    initializer {}
+    function string: Integer {
+        return 1;
+    }
+}
+-- Output
+line 4:
+    semantic error: interface not implemented
+--------------------------------------------------------------------------------
+-- Title
+Redeclaring an interface
+-- Input
+interface Printable {}
+interface Printable {}
+-- Output
+line 2:
+    semantic error: redeclaration of name 'Printable'

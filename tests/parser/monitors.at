@@ -1,0 +1,67 @@
+--------------------------------------------------------------------------------
+-- Title
+Empty monitor
+-- Input
+monitor Monitor {}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Single property monitor
+-- Input
+monitor Monitor {
+    variable a: Integer;
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Mixed monitor (properties, methods and constructor)
+-- Input
+monitor Monitor {
+    value x = 1;
+    value y: Integer = 1;
+    variable b: Integer;
+    function foo {}
+    initializer {}
+    variable c: Integer;
+    function bar {}
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Private method and acquire-release function definitions
+-- Input
+monitor Monitor {
+    function foo {}
+    private function bar {}
+    function acquire bar {}
+    // private-acquire/release are valid in the parser, but
+    // invalid in the semantic analysis
+    private function acquire bar {}
+    private function release bar {}
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Constructor definition
+-- Input
+monitor Monitor {
+    initializer(a: Int) {
+        print(a);
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Invalid immutable qualifier with monitors
+-- Input
+function foo {
+    m := Immutable M();
+}
+-- Output
+line 0:
+    parser error: syntax error

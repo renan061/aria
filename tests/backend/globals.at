@@ -1,0 +1,10 @@
+--------------------------------------------------------------------------------
+-- Title
+Usage of globals in different scopes
+-- Input
+value x = 8 * 10;
+function f    { print("f x: %d\n"   , x);      }
+function main { print("main x: %d\n", x); f(); }
+-- Output
+main x: 80
+f x: 80

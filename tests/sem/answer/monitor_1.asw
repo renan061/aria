@@ -1,2 +1,0 @@
-line 8:
-	semantic error: a monitor's function can only return immutable or monitor types

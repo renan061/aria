@@ -1,4 +1,0 @@
-// Trying to call a method on non-monitor type
-function foo {
-	1.foo();
-}

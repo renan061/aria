@@ -1,4 +1,0 @@
-// Call to an array initializer with a type that does not exist
-function foo {
-	x := [B]();
-}

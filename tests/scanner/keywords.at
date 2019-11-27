@@ -1,0 +1,66 @@
+--------------------------------------------------------------------------------
+-- Title
+Keywords
+-- Input
+acquire
+and
+as
+broadcast
+else
+false
+for
+function
+if
+Immutable
+in
+initializer
+interface
+monitor
+not
+or
+private
+release
+return
+signal
+spawn
+structure
+true
+value
+variable
+wait
+while
+-- Output
+TK_ACQUIRE
+TK_AND
+TK_AS
+TK_BROADCAST
+TK_ELSE
+TK_FALSE
+TK_FOR
+TK_FUNCTION
+TK_IF
+TK_IMMUTABLE
+TK_IN
+TK_INITIALIZER
+TK_INTERFACE
+TK_MONITOR
+TK_NOT
+TK_OR
+TK_PRIVATE
+TK_RELEASE
+TK_RETURN
+TK_SIGNAL
+TK_SPAWN
+TK_STRUCTURE
+TK_TRUE
+TK_VALUE
+TK_VARIABLE
+TK_WAIT
+TK_WHILE
+--------------------------------------------------------------------------------
+-- Title
+Mixed keywords
+-- Input
+ifelsewhilereturn
+-- Output
+TK_LOWER_ID - ifelsewhilereturn

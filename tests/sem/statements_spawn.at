@@ -1,0 +1,101 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    value b = true;
+    value i = 1;
+    value f = 1.0;
+    value s = "string";
+    
+    spawn {    
+        print(b);
+    }
+    spawn {
+        print(i);
+        print(f);
+    }
+    spawn {
+        print(s);
+    }
+
+    variable m = M();
+    value safeArray = Immutable [1];
+    value safeMonitor = m;
+
+    spawn {
+        variable array: Immutable [Integer];
+        array = safeArray;
+        variable m = safeMonitor;
+    }
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+function main: Void {
+    value b: Boolean = (true: Boolean)
+    value i: Integer = (1: Integer)
+    value f: Float = (1.000000: Float)
+    value s: String = ("string": String)
+    spawn function(value b: Boolean) {
+        print((b: Boolean)): Integer
+    }((b: Boolean))
+    spawn function(value f: Float, value i: Integer) {
+        print((i: Integer)): Integer
+        print((f: Float)): Integer
+    }((f: Float), (i: Integer))
+    spawn function(value s: String) {
+        print((s: String)): Integer
+    }((s: String))
+    variable m: M = (M(): M)
+    value safeArray: Immutable [Integer] = (Immutable [(1: Integer)]: Immutable [Integer])
+    value safeMonitor: M = (m: M)
+    spawn function(value safeMonitor: M, value safeArray: Immutable [Integer]) {
+        variable array: Immutable [Integer]
+        array: Immutable [Integer] = (safeArray: Immutable [Integer])
+        variable m: M = (safeMonitor: M)
+    }((safeMonitor: M), (safeArray: Immutable [Integer]))
+}
+--------------------------------------------------------------------------------
+-- Title
+Calling spawn inside a monitor
+-- Input
+monitor M {
+    function f {
+        spawn {}
+    }
+}
+-- Output
+line 3:
+    semantic error: can't spawn inside monitors
+--------------------------------------------------------------------------------
+-- Title
+Spawn trying to access a variable
+-- Input
+function main {
+    variable i = 0;
+    spawn {
+        print(i);
+    }
+}
+-- Output
+line 4:
+    semantic error: can't access a variable inside a spawn block (only values)
+--------------------------------------------------------------------------------
+-- Title
+Spawn trying to access a value of unsafe type
+-- Input
+function main {
+    value array = [1, 2, 3];
+    spawn {
+        print(array);
+    }
+}
+-- Output
+line 4:
+    semantic error: can't access a value of unsafe type inside a spawn block (only immutables and monitors)
