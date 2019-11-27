@@ -6,95 +6,112 @@
 #include <llvm-c/Core.h>
 
 #include "ast.h"
-#include "athreads.h"
 
-#define LLVM_DEFAULT_ADDRESS_SPACE 0
+// global string names
+#define LLVM_GLOBAL_STRING "String"
 
-// Temporary Names
-#define LLVM_TEMPORARY              "_t_"
-#define LLVM_TEMPORARY_NONE         ""
-#define LLVM_TEMPORARY_MONITOR_LOCK LLVM_TEMPORARY "monitor_lock"
-#define LLVM_TEMPORARY_PHI          LLVM_TEMPORARY "phi"
-#define LLVM_TEMPORARY_VMT          LLVM_TEMPORARY "vmt"
+// temporary names
+#define LLVM_TMP        ("t")
+#define LLVM_TMP_NONE   ("")
+#define LLVM_TMP_PHI    ("phi")
+#define LLVM_TMP_VMT    ("vmt")
+#define LLVM_TMP_SELF   ("self")
+#define LLVM_TMP_OBJ    ("obj")
+#define LLVM_TMP_PROXY  ("proxy")
+#define LLVM_TMP_OK     ("ok")
+#define LLVM_TMP_RETURN ("ret")
 
-// Types
-#define LLVM_TYPE_POINTER(t)    (LLVMPointerType(t, LLVM_DEFAULT_ADDRESS_SPACE))
-#define LLVM_TYPE_POINTER_VOID  (LLVM_TYPE_POINTER(LLVMInt8Type()))
-#define LLVM_TYPE_VOID          (LLVMVoidType())
-#define LLVM_TYPE_BOOLEAN       (LLVMIntType(1))
-#define LLVM_TYPE_INTEGER       (LLVMInt32Type())
-#define LLVM_TYPE_DOUBLE        (LLVMDoubleType())
+// -----------------------------------------------------------------------------
 
-// Aria Types
-#define LLVM_ARIA_TYPE_VOID             LLVM_TYPE_VOID
-#define LLVM_ARIA_TYPE_BOOLEAN          LLVM_TYPE_BOOLEAN
-#define LLVM_ARIA_TYPE_INTEGER          LLVM_TYPE_INTEGER
-#define LLVM_ARIA_TYPE_FLOAT            LLVM_TYPE_DOUBLE
-#define LLVM_ARIA_TYPE_STRING           LLVM_TYPE_POINTER(LLVMInt8Type())
-#define LLVM_ARIA_TYPE_ARRAY(t)         LLVM_TYPE_POINTER(t)
-#define LLVM_ARIA_TYPE_INTERFACE        LLVM_TYPE_POINTER_VOID
-#define LLVM_ARIA_TYPE_MONITOR          LLVM_TYPE_POINTER_VOID
-#define LLVM_ARIA_TYPE_CONDITION_QUEUE  LLVM_TYPE_POINTER_PTHREAD_COND_T
+#define DEFAULT_ADDRESS_SPACE 0
 
-// ASK: Should SignExtend?
-// TODO: Not necessarily LLVM_ARIA_TYPES
+// types
+extern     LLVMT    irT_pvoid     ;
+extern     LLVMT    irT_void      ;
+extern     LLVMT    irT_bool      ;
+extern     LLVMT    irT_int       ;
+extern     LLVMT    irT_float     ;
+#define /* LLVMT */ irT_ptr(t)    (LLVMPointerType(t, DEFAULT_ADDRESS_SPACE))
+#define /* LLVMT */ irT_string    (irT_pvoid)
+#define /* LLVMT */ irT_array(t)  (irT_ptr(t))
+#define /* LLVMT */ irT_interface (irT_pvoid)
+#define /* LLVMT */ irT_monitor   (irT_pvoid)
 
-// Constants
-#define LLVM_CONSTANT_BOOLEAN(b)    LLVMConstInt(LLVM_ARIA_TYPE_BOOLEAN, b, 0)
-#define LLVM_CONSTANT_INTEGER(i)    LLVMConstInt(LLVM_ARIA_TYPE_INTEGER, i, 0)
-#define LLVM_CONSTANT_FLOAT(f)      LLVMConstReal(LLVM_ARIA_TYPE_FLOAT, f)
-#define LLVM_CONSTANT_TRUE          LLVM_CONSTANT_BOOLEAN(1)
-#define LLVM_CONSTANT_FALSE         LLVM_CONSTANT_BOOLEAN(0)
+// values
+extern     LLVMV    ir_zerobool   ;
+extern     LLVMV    ir_zeroint    ;
+extern     LLVMV    ir_zerofloat  ;
+extern     LLVMV    ir_zerostring ;
+extern     LLVMV    ir_zeroptr    ;
+#define /* LLVMV */ ir_bool(b)    (LLVMConstInt(irT_bool, b, false))
+#define /* LLVMV */ ir_int(i)     (LLVMConstInt(irT_int, i, true))
+#define /* LLVMv */ ir_float(f)   (LLVMConstReal(irT_float, f))
 
-// ==================================================
-//
-//  IRState
-//
-// ==================================================
+// -----------------------------------------------------------------------------
+
+// auxiliary functions
+extern LLVMV ir_printf(LLVMB, LLVMV*, int);
+extern LLVMV ir_malloc(LLVMB, size_t);
+extern LLVMV ir_exit(LLVMB B);
+extern LLVMV ir_cmp(LLVMB, LLVMIntPredicate, LLVMRealPredicate,
+    Expression*, Expression*);
+
+// -----------------------------------------------------------------------------
 
 typedef struct IRState {
-    LLVMModuleRef M;
-    LLVMBuilderRef B;
+    LLVMM M;
+    LLVMB B;
+
+    bool main;        // if inside the main function
+    bool initializer; // if inside an initializer
 
     // current function
-    LLVMValueRef function;
+    LLVMV function;
 
     // current basic block
     // must always be set after repositioning the builder
     // must always be set to NULL after adding a terminator instruction
-    LLVMBasicBlockRef block;
+    LLVMBB block; // TODO: rename to bb
 
-    // type of the structure currently being evaluated
+    // definition of the structure currently being evaluated
     // must always be set before evaluating a structure's definitions
     // must always be set to NULL after evaluating a structure's definitions
-    LLVMTypeRef structure_type;
+    Definition* structure;
 
     // TODO: gambiarra
-    LLVMValueRef self;
-
-    // if inside the main function
-    bool main;
-
-    // if inside an initializer
-    bool initializer;
+    LLVMV self;
 } IRState;
 
-extern IRState* ir_state_new(LLVMModuleRef, LLVMBuilderRef);
-extern void ir_state_done(IRState*);
-extern void ir_state_free(IRState*);
+extern IRState* irs_new(LLVMM, LLVMB);
+extern void     irs_done(IRState*);
+extern void     irs_destroy(IRState*);
+extern void     irs_return(IRState*, LLVMV);
+extern void     irsBB_start(IRState*, LLVMBB);
+extern void     irsBB_end(IRState*);
 
-// ==================================================
-//
-//  Functions
-//
-// ==================================================
+// -----------------------------------------------------------------------------
 
-extern void ir_setup(LLVMModuleRef);
+// pthreads
 
-extern LLVMValueRef ir_printf(LLVMBuilderRef, LLVMValueRef*, int);
-extern LLVMValueRef ir_malloc(LLVMBuilderRef, size_t);
+// types
+extern     LLVMT    irPTT_spawn;            // void* start_routine(void*)
+#define /* LLVMT */ irPTT_mutex (irT_pvoid) // *pthread_mutex_t => *void
+#define /* LLVMT */ irPTT_cond  (irT_pvoid) // *pthread_cond_t  => *void
 
-extern LLVMValueRef ir_cmp(LLVMBuilderRef, LLVMIntPredicate, LLVMRealPredicate,
-    Expression*, Expression*);
+// functions
+extern void irPT_create(LLVMB, LLVMV fn, LLVMV arg);
+extern void irPT_exit(LLVMB);
+extern void irPT_mutex_init(LLVMB, LLVMV mutex);
+extern void irPT_mutex_lock(LLVMB, LLVMV mutex);
+extern void irPT_mutex_unlock(LLVMB, LLVMV mutex);
+extern void irPT_cond_init(LLVMB, LLVMV cond);
+extern void irPT_cond_wait(LLVMB, LLVMV cond, LLVMV mutex);
+extern void irPT_cond_signal(LLVMB, LLVMV cond);
+extern void irPT_cond_broadcast(LLVMB, LLVMV cond);
+
+// -----------------------------------------------------------------------------
+
+// must be called before using the module
+extern void ir_setup(LLVMM);
 
 #endif

@@ -1,4 +1,0 @@
-// Invalid right expression for '=='
-function foo {
-	while true == 1.0 {}
-}

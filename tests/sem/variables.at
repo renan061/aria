@@ -1,0 +1,86 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+function main {
+    // declaring variables
+    variable status: Boolean;
+    variable m, n: Integer;
+    variable x, y, z: Float;
+
+    // definition variables and values
+    syntacticSugar := true;
+
+    value a1: Integer = 1;
+    value a2 = 1;
+
+    value b1: Float = 1;
+    value b2 = 1;
+
+    variable c1: Float = 1;
+    variable c2 = 1;
+
+    variable d1 = "string";
+    variable d2: String = d1;
+}
+-- Output
+function main: Void {
+    variable status: Boolean
+    variable m: Integer
+    variable n: Integer
+    variable x: Float
+    variable y: Float
+    variable z: Float
+    value syntacticSugar: Boolean = (true: Boolean)
+    value a1: Integer = (1: Integer)
+    value a2: Integer = (1: Integer)
+    value b1: Float = ((1: Integer) as: Float)
+    value b2: Integer = (1: Integer)
+    variable c1: Float = ((1: Integer) as: Float)
+    variable c2: Integer = (1: Integer)
+    variable d1: String = ("string": String)
+    variable d2: String = (d1: String)
+}
+--------------------------------------------------------------------------------
+-- Title
+Using an unknown (undeclared) variable
+-- Input
+function main {
+    value x = unknown;
+}
+-- Output
+line 2:
+    semantic error: unknown variable 'unknown' being used
+--------------------------------------------------------------------------------
+-- Title
+Using a non-variable identifier as a variable
+-- Input
+function f {}
+function main {
+    value x = f;
+}
+-- Output
+line 3:
+    semantic error: 'f' is not a variable
+--------------------------------------------------------------------------------
+-- Title
+Indexing an array with a non-integer type
+-- Input
+function main {
+    value x = ["array", "of", "strings"];
+    print(x["array"]);
+}
+-- Output
+line 3:
+    semantic error: type 'String' can't be used as an array index
+--------------------------------------------------------------------------------
+-- Title
+Indexing a variable of non-array type
+-- Input
+function main {
+    value not_an_array = false;
+    print(not_an_array[0]);
+}
+-- Output
+line 3:
+    semantic error: type 'Boolean' can't be used as an array

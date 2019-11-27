@@ -1,5 +1,40 @@
 --------------------------------------------------------------------------------
 -- Title
+The "acquire-value" statement
+-- Input
+function main {
+    acquire value a = m.f() {
+        // ...
+    }
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+The "acquire-value" statement only ID capsas
+-- Input
+function main {
+    acquire value a[0] = m.f() {
+        // ...
+    }
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+The "acquire-value" statement only accepts method calls
+-- Input
+function main {
+    acquire value a = f() {
+        // ...
+    }
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
 Simple statements
 -- Input
 function main {

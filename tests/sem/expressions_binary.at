@@ -1,0 +1,173 @@
+--------------------------------------------------------------------------------
+-- Title
+Unusual binary expressions that do not cause errors
+-- Input
+// equality between type A and type B (equivalent to A)
+function equivalent {
+    value b = 1 == 1.0;
+}
+-- Output
+function equivalent: Void {
+    value b: Boolean = (((1: Integer) as: Float) ==: Boolean (1.000000: Float))
+}
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-boolean) left expression for binary relation (or)
+-- Input
+function main {
+    if 1 or false {} else {}
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Integer' for the left side of the 'or' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-boolean) right expression for binary relation (or)
+-- Input
+function main {
+    while false or 0.0 {}
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Float' for the right side of the 'or' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-boolean) left expression for binary relation (and)
+-- Input
+function f {}
+function main {
+    if f() and true {}
+}
+-- Output
+line 3:
+    semantic error: invalid type 'Void' for the left side of the 'and' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-boolean) right expression for binary relation (and)
+-- Input
+function main {
+    for variable i = 0; false and [Integer](3); i += 1 {}
+}
+-- Output
+line 2:
+    semantic error: invalid type '[Integer]' for the right side of the 'and' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-equatable) left expression for equality (==) relation
+-- Input
+function main {
+    if main() == false {}
+}
+-- Output
+line 2:
+    semantic error: invalid type for left side of the '==' ('Void' is not an equatable type)
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-equatable) right expression for equality (!=) relation
+-- Input
+function main {
+    while true != [Integer](3) {}
+}
+-- Output
+line 2:
+    semantic error: invalid type for right side of the '!=' ('[Integer]' is not an equatable type)
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-equatable) expression types for equality (==) relation
+-- Input
+function main {
+    while false == 0 {}
+}
+-- Output
+line 2:
+    semantic error: incompatible types 'Boolean' and 'Integer' for '==' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-equatable) expression types for equality (!=) relation
+-- Input
+function main {
+    while 1 != true {}
+}
+-- Output
+line 2:
+    semantic error: incompatible types 'Integer' and 'Boolean' for '!=' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) right expression for binary relation (<=)
+-- Input
+function main {
+    value b = (3 - 1) <= "string";
+}
+-- Output
+line 2:
+    semantic error: invalid type 'String' for the right side of the '<=' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) left expression for binary relation (>=)
+-- Input
+function main {
+    value b = main() >= 1;
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Void' for the left side of the '>=' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) right expression for binary relation (<)
+-- Input
+function main {
+    value b = 1.0 < [[Integer]](3);
+}
+-- Output
+line 2:
+    semantic error: invalid type '[[Integer]]' for the right side of the '<' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) left expression for binary relation (>)
+-- Input
+function main {
+    value b = true > false;
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Boolean' for the left side of the '>' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) right expression for binary arithmetic operator (+)
+-- Input
+function main {
+    value n = (3 - 1) + "string";
+}
+-- Output
+line 2:
+    semantic error: invalid type 'String' for the right side of the '+' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) left expression for binary arithmetic operator (-)
+-- Input
+function main {
+    value n = main() - 1;
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Void' for the left side of the '-' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) right expression for binary arithmetic operator (*)
+-- Input
+function main {
+    value n = 1.0 * [[Integer]](3);
+}
+-- Output
+line 2:
+    semantic error: invalid type '[[Integer]]' for the right side of the '*' expression
+--------------------------------------------------------------------------------
+-- Title
+Invalid (non-numeric) left expression for binary arithmetic operator (/)
+-- Input
+function main {
+    value n = true / false;
+}
+-- Output
+line 2:
+    semantic error: invalid type 'Boolean' for the left side of the '/' expression

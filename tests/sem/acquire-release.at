@@ -1,0 +1,205 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+    private function acquire g: M {}
+    private function release g {}
+    function acquire h(a: Integer, b: Float): M {}
+    function release h {}
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function acquire f(value self: M): M {
+    }
+    function release f(value self: M): Void {
+    }
+    private function acquire g(value self: M): M {
+    }
+    private function release g(value self: M): Void {
+    }
+    function acquire h(value self: M, value a: Integer, value b: Float): M {
+    }
+    function release h(value self: M): Void {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Trying to define an acquire function outside a monitor definition
+-- Input
+function acquire f: M {}
+-- Output
+line 1:
+    semantic error: private and acquire-release functions must be defined inside a monitor
+--------------------------------------------------------------------------------
+-- Title
+Trying to define a release function outside a monitor definition
+-- Input
+function release f {}
+-- Output
+line 1:
+    semantic error: private and acquire-release functions must be defined inside a monitor
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must be defined together with the same name (acquire missing release)
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+}
+-- Output
+line 3:
+    semantic error: function needs its acquire-release pair
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must be defined together with the same name (release missing acquire)
+-- Input
+monitor M {
+    initializer {}
+    // ...
+    function release f {}
+}
+-- Output
+line 4:
+    semantic error: function needs its acquire-release pair
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must be defined together with the same name (private release missing private acquire)
+-- Input
+monitor M {
+    // /* A */ private function acquire a: M {}
+    /* . */ initializer {}
+    /* B */ function acquire b: M {}
+    /* C */ function release c {}
+    /* . */ function f {}
+    /* C */ function acquire c: M {}
+    /* D */ private function acquire d: M {}
+    /* B */ function release b {}
+    /* A */ private function release a {}
+    /* . */ private function g {}
+    /* D */ private function release d {}
+    /* . */ function h {}
+}
+-- Output
+line 10:
+    semantic error: function needs its acquire-release pair
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must be defined together with the same name (private acquire missing private release)
+-- Input
+monitor M {
+    /* A */ private function acquire a: M {}
+    /* . */ initializer {}
+    /* B */ function acquire b: M {}
+    /* C */ function release c {}
+    /* . */ function f {}
+    /* C */ function acquire c: M {}
+    /* D */ private function acquire d: M {}
+    /* B */ function release b {}
+    /* A */ private function release a {}
+    /* . */ private function g {}
+    // /* D */ private function release d {}
+    /* . */ function h {}
+}
+-- Output
+line 8:
+    semantic error: function needs its acquire-release pair
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must have the same visibility (1)
+-- Input
+monitor M {
+    private function release a {}
+    function acquire a: M {}
+    initializer {}
+}
+-- Output
+line 2:
+    semantic error: function needs its acquire-release pair
+--------------------------------------------------------------------------------
+-- Title
+An acquire-release pair must have the same visibility (2)
+-- Input
+monitor M {
+    initializer {}
+    // ...
+    // ...
+    function release a {}
+    private function acquire a: M {}
+}
+-- Output
+line 5:
+    semantic error: function needs its acquire-release pair
+--------------------------------------------------------------------------------
+-- Title
+The acquire function must always return a monitor type (1)
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: Boolean {}
+    function release f {}
+}
+-- Output
+line 3:
+    semantic error: an acquire function must always return a monitor type
+--------------------------------------------------------------------------------
+-- Title
+The acquire function must always return a monitor type (2)
+-- Input
+monitor M {
+    initializer {}
+    function release f {}
+    function acquire f {}
+}
+-- Output
+line 4:
+    semantic error: an acquire function must always return a monitor type
+--------------------------------------------------------------------------------
+-- Title
+The acquire function must always return a monitor type (2)
+-- Input
+monitor M {
+    function acquire f: [M] {}
+    initializer {}
+    function release f {}
+}
+-- Output
+line 2:
+    semantic error: an acquire function must always return a monitor type
+--------------------------------------------------------------------------------
+-- Title
+An acquire function can't be called without the acquire-value statement
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    value m = M();
+    m.f();
+}
+-- Output
+line 8:
+    semantic error: monitor 'M' has no defined method 'f'
+--------------------------------------------------------------------------------
+-- Title
+A release function can't be explicitly called
+-- Input
+monitor M {
+    initializer {}
+    function release f {}
+    function acquire f: M {}
+}
+function main {
+    value m = M();
+    m.f();
+}
+-- Output
+line 8:
+    semantic error: monitor 'M' has no defined method 'f'

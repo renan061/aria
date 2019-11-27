@@ -316,7 +316,7 @@ testCasts
 -----
 cast: integer to float (1.0)
 -----
-cast: float to integer (1)
+cast: float to integer (3)
 
 ----------------------------------------
 

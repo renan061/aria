@@ -2,8 +2,9 @@
 -- Title
 Keywords
 -- Input
-as
+acquire
 and
+as
 broadcast
 else
 false
@@ -18,6 +19,7 @@ monitor
 not
 or
 private
+release
 return
 signal
 spawn
@@ -28,8 +30,9 @@ variable
 wait
 while
 -- Output
-TK_AS
+TK_ACQUIRE
 TK_AND
+TK_AS
 TK_BROADCAST
 TK_ELSE
 TK_FALSE
@@ -44,6 +47,7 @@ TK_MONITOR
 TK_NOT
 TK_OR
 TK_PRIVATE
+TK_RELEASE
 TK_RETURN
 TK_SIGNAL
 TK_SPAWN

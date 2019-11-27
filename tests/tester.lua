@@ -25,7 +25,7 @@ function readTestCases(path)
 
     -- cases
     local file = assert(io.open(path, "r"))
-    local cases = {}
+    local cases = {n = 0}
 
     assert(file:read("*line") == testDivider, "expecting test divider")
     for line in file:lines() do
@@ -46,6 +46,7 @@ function readTestCases(path)
             if ln == testDivider then break end
             cases[title]["output"] = cases[title]["output"] .. ln .. "\n"
         end
+        cases.n = cases.n + 1
     end
 
     file:close()
@@ -86,15 +87,19 @@ end
 local directory = assert(arg[1], "must provide a directory")
 local binary = assert(arg[2], "must provide a binary")
 
+local i = 0
 for _, test in ipairs(listTests(directory)) do
     local testCases = readTestCases(test)
+    i = i + testCases.n
     for title, case in pairs(testCases) do
-        if not runTest(binary, case) then
+        if title == "n" then
+            -- continue
+        elseif not runTest(binary, case) then
             io.write("\nIn \"" .. test .. "\" failed [" .. title .. "]\n")
             return false
         end
     end
 end
 
-io.write("Ok " .. directory .. "\n")
+io.write("Ok ".. directory .. " [".. i .." tests]\n")
 return true

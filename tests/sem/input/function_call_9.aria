@@ -1,6 +1,0 @@
-// Too many arguments to function call
-function foo {}
-
-function bar {
-	x := foo(true);
-}

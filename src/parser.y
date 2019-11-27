@@ -53,11 +53,12 @@
 
 // tokens
 %token <ival>
-    '{' '}' '[' ']' '(' ')' '=' ';'
+    '{' '}' '[' ']' '(' ')' '=' ';' '!'
     TK_IMMUTABLE TK_VALUE TK_VARIABLE TK_FUNCTION TK_WHILE TK_WAIT
     TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
     TK_FALSE TK_STRUCTURE TK_MONITOR TK_PRIVATE TK_INITIALIZER
     TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG TK_INTERFACE
+    TK_ACQUIRE TK_RELEASE
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -77,6 +78,7 @@
     value_definition variable_definition
     capsa_definition_assignment
 %type <definition> // function declarations
+    id_parameters_type
     function_declaration
 %type <definition> // function definitions
     function_definition method_definition constructor_definition
@@ -101,7 +103,7 @@
     expression_list0 expression_list1
     expression primary_expression literal
 %type <function_call>
-    function_call
+    function_call method_call
 
 // operator precedence and associativity
 %left       <ival> TK_OR
@@ -253,14 +255,31 @@ capsa_definition_assignment
 //
 // ==================================================
 
-function_declaration
-    : TK_FUNCTION TK_LOWER_ID parameter_list0 ':' type
+id_parameters_type
+    : TK_LOWER_ID parameter_list0 ':' type
         {
-            $$ = ast_declaration_function($2, $3, $5);
+            $$ = ast_declaration_function($1, $2, $4);
         }
-    | TK_FUNCTION TK_LOWER_ID parameter_list0
+    | TK_LOWER_ID parameter_list0
         {
-            $$ = ast_declaration_function($2, $3, ast_type_void());
+            $$ = ast_declaration_function($1, $2, ast_type_void());
+        }
+    ;
+
+function_declaration
+    : TK_FUNCTION id_parameters_type
+        {
+            $$ = $2;
+        }
+    | TK_FUNCTION TK_ACQUIRE id_parameters_type
+        {
+            $$ = $3;
+            $$->function.qualifiers |= FQ_ACQUIRE;
+        }
+    | TK_FUNCTION TK_RELEASE id_parameters_type
+        {
+            $$ = $3;
+            $$->function.qualifiers |= FQ_RELEASE;
         }
     ;
 
@@ -274,11 +293,14 @@ function_definition
 method_definition
     : TK_PRIVATE function_definition
         {
-            $$ = ast_definition_method(true, $2);
+            $$ = $2;
+            $$->function.qualifiers |= FQ_PRIVATE;
+            $$->tag = DEFINITION_METHOD;
         }
     | function_definition
         {
-            $$ = ast_definition_method(false, $1);
+            $$ = $1;
+            $$->tag = DEFINITION_METHOD;
         }
     ;
 
@@ -309,7 +331,7 @@ type
         {
             $$ = ast_type_array($3);
 
-            // TODO: Recursive immutability
+            // TODO: recursive immutability
             Type* type = $$;
             while (type) {
                 switch (type->tag) {
@@ -330,6 +352,10 @@ type
                     assert(0); // TODO
                 }
             }
+        }
+    | type '!'
+        {
+            $$ = ast_type_unlocked($1);
         }
     ;
 
@@ -455,6 +481,16 @@ compound_statement
         {
             $$ = ast_statement_spawn($1, $2);
         }
+    | TK_ACQUIRE TK_VALUE TK_LOWER_ID '=' method_call block
+        {
+            // TODO: change this to allow `foo().method()` where `foo()`
+            //       returns a monitor
+            Capsa* capsa = ast_capsa_id($3);
+            capsa->value = true;
+            Expression* expression = ast_expression_function_call($5);
+            Definition* value = ast_definition_capsa(capsa, expression);
+            $$ = ast_statement_acquire_value($1, value, $6);
+        }
     | block
         {
             $$ = ast_statement_block($1);
@@ -509,7 +545,7 @@ else
             $$ = NULL;
         }
     | TK_ELSE TK_IF expression block else
-        {           
+        {
             Statement* statement = ($5)
                 ? ast_statement_if_else($2, $3, $4, $5)
                 : ast_statement_if($2, $3, $4)
@@ -672,14 +708,20 @@ literal
 //
 // ==================================================
 
+method_call
+    : primary_expression '.' TK_LOWER_ID '(' expression_list0 ')'
+        {
+            $$ = ast_call_method($4, $1, $3, $5);
+        }
+
 function_call
     : TK_LOWER_ID '(' expression_list0 ')'
         {
             $$ = ast_call($2, $1, $3);
         }
-    | primary_expression '.' TK_LOWER_ID '(' expression_list0 ')'
+    | method_call
         {
-            $$ = ast_call_method($4, $1, $3, $5);
+            $$ = $1;
         }
     | type '(' expression_list0 ')'
         {
@@ -885,7 +927,7 @@ lower_ids_type
             }
             last->next = $3; // there is always at least one lower_id
         }
-    ; 
+    ;
 
 // used by function definitions
 parameter_list0

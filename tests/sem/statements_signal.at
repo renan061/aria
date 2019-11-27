@@ -1,0 +1,54 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+monitor M {
+    value queue = ConditionQueue();
+    initializer {}
+    function f {
+        signal queue;
+    }
+}
+-- Output
+monitor M {
+    value queue: ConditionQueue = (ConditionQueue(): ConditionQueue)
+    function M: M {
+    }
+    function f(value self: M): Void {
+        signal (queue: ConditionQueue)
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Invalid signal outside a monitor
+-- Input
+function main {
+    signal ConditionQueue();
+}
+-- Output
+line 2:
+    semantic error: invalid use of 'signal' statement outside a monitor's body
+--------------------------------------------------------------------------------
+-- Title
+Invalid signal inside a monitor's initializer
+-- Input
+monitor M {
+    initializer {
+        signal ConditionQueue();
+    }
+}
+-- Output
+line 3:
+    semantic error: invalid use of 'signal' statement inside a monitor's initializer
+--------------------------------------------------------------------------------
+-- Title
+Invalid condition queue type
+-- Input
+monitor M {
+    function f {
+        signal 1.0;
+    }
+}
+-- Output
+line 3:
+    semantic error: 'signal' statement must receive an expression of type ConditionQueue

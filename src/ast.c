@@ -4,7 +4,7 @@
 
 #include "alloc.h"
 #include "ast.h"
-#include "errs.h"
+#include "macros.h"
 #include "parser.h" // for the tokens
 #include "scanner.h" // for native_types
 
@@ -32,13 +32,14 @@ Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
     MALLOC(d, Definition);
     d->tag = DECLARATION_FUNCTION;
     d->next = NULL;
-    d->llvm_value = NULL;
-    d->function.private = false;
+    d->V = NULL;
+    d->function.qualifiers = 0; // bitmap zero
     d->function.id = id;
     d->function.parameters = parameters;
     d->function.type = t;
     d->function.block = NULL;
-    d->function.vmt_index = -1;
+    d->function.vmti = -1;
+    d->function.pair = NULL;
     return d;
 }
 
@@ -47,7 +48,7 @@ Definition* ast_definition_capsa(Capsa* capsa, Expression* expression) {
     MALLOC(definition, Definition);
     definition->tag = DEFINITION_CAPSA;
     definition->next = NULL;
-    definition->llvm_value = NULL;
+    definition->V = NULL;
     definition->capsa.capsa = capsa;
     definition->capsa.expression = expression;
     return definition;
@@ -60,21 +61,14 @@ Definition* ast_definition_function(Definition* d, Block* block) {
     return d;
 }
 
-Definition* ast_definition_method(bool private, Definition* function) {
-    assert(function->tag == DEFINITION_FUNCTION);
-    function->tag = DEFINITION_METHOD;
-    function->function.private = private;
-    return function;
-}
-
 Definition* ast_definition_constructor(Definition* parameters, Block* block) {
     Definition* definition;
     MALLOC(definition, Definition);
     assert(block->tag == BLOCK);
     definition->tag = DEFINITION_CONSTRUCTOR;
     definition->next = NULL;
-    definition->llvm_value = NULL;
-    definition->function.private = false;
+    definition->V = NULL;
+    definition->function.qualifiers = 0; // bitmap zero
     definition->function.id = NULL;
     definition->function.parameters = parameters;
     definition->function.type = NULL;
@@ -93,7 +87,7 @@ Definition* ast_definition_type(Type* type) {
     MALLOC(definition, Definition);
     definition->tag = DEFINITION_TYPE;
     definition->next = NULL;
-    definition->llvm_value = NULL;
+    definition->V = NULL;
     definition->type = type;
     return definition;
 }
@@ -118,7 +112,7 @@ Id* ast_id(Line line, const char* name) {
 //
 // ==================================================
 
-// TODO: Test static
+// TODO: test static
 #define NATIVE_TYPE(v, i) \
     static Type* v = NULL; \
     if (!v) { \
@@ -126,7 +120,7 @@ Id* ast_id(Line line, const char* name) {
         v->tag = TYPE_ID; \
         v->primitive = true; \
         v->immutable = true; \
-        v->llvm_type = NULL; \
+        v->T = NULL; \
         v->id = ast_id(-1, scanner_native[i]); \
     } \
     return v; \
@@ -138,7 +132,7 @@ Type* ast_type_void(void) {
         type_void->tag = TYPE_VOID;
         type_void->primitive = true;
         type_void->immutable = true;
-        type_void->llvm_type = NULL;
+        type_void->T = NULL;
         type_void->id = NULL; // just in case
     }
     return type_void;
@@ -161,14 +155,14 @@ Type* ast_type_string(void) {
 }
 
 Type* ast_type_condition_queue(void) {
-    // TODO: Refactor
+    // TODO: refactor
     static Type* type_condition_queue = NULL;
     if (!type_condition_queue) {
         MALLOC(type_condition_queue, Type);
         type_condition_queue->tag = TYPE_ID;
         type_condition_queue->primitive = true;
         type_condition_queue->immutable = false;
-        type_condition_queue->llvm_type = NULL;
+        type_condition_queue->T = NULL;
         type_condition_queue->id = ast_id(
             -1, scanner_native[SCANNER_NATIVE_CONDITION_QUEUE]
         );
@@ -199,9 +193,20 @@ Type* ast_type_id(Id* id) {
     type->tag = TYPE_ID;
     type->primitive = false;
     type->immutable = false;
-    type->llvm_type = NULL;
+    type->T = NULL;
     type->id = id;
     return type;
+}
+
+Type* ast_type_unlocked(Type* type) {
+    Type* t;
+    MALLOC(t, Type);
+    t->tag = TYPE_UNLOCKED;
+    t->primitive = false;
+    t->immutable = false;
+    t->T = NULL;
+    t->unlocked = type;
+    return t;
 }
 
 Type* ast_type_array(Type* type) {
@@ -210,7 +215,7 @@ Type* ast_type_array(Type* type) {
     arrayType->tag = TYPE_ARRAY;
     arrayType->primitive = false;
     arrayType->immutable = false;
-    arrayType->llvm_type = NULL;
+    arrayType->T = NULL;
     arrayType->array = type;
     return arrayType;
 }
@@ -221,7 +226,7 @@ Type* ast_type_structure(Id* id, TypeTag ttag, Definition* defs, Type* itype) {
     type->tag = ttag;
     type->primitive = false;
     type->immutable = false;
-    type->llvm_type = NULL;
+    type->T = NULL;
     type->structure.id = id;
     type->structure.interface = itype;
     type->structure.definitions = defs;
@@ -230,6 +235,9 @@ Type* ast_type_structure(Id* id, TypeTag ttag, Definition* defs, Type* itype) {
     type->structure.methods = NULL;
     type->structure.methods_size = -1;
     type->structure.constructor = NULL;
+    type->structure.gR = NULL;
+    type->structure.gL = NULL;
+    type->structure.gP = NULL;
     return type;
 }
 
@@ -419,9 +427,20 @@ Statement* ast_statement_spawn(Line ln, Block* block) {
     statement->tag = STATEMENT_SPAWN;
     statement->line = ln;
     statement->spawn = ast_call(ln, NULL, NULL);
-    statement->spawn->function_definition = ast_definition_function(
+    statement->spawn->fn = ast_definition_function(
         ast_declaration_function(NULL, NULL, ast_type_void()), block
     );
+    return statement;
+}
+
+Statement* ast_statement_acquire_value(Line ln, Definition* v, Block* b) {
+    assert(b->tag == BLOCK);
+    Statement* statement;
+    MALLOC(statement, Statement);
+    statement->tag = STATEMENT_ACQUIRE_VALUE;
+    statement->line = ln;
+    statement->acquire_value.value = v;
+    statement->acquire_value.block = b;
     return statement;
 }
 
@@ -447,7 +466,7 @@ static Capsa* capsadefaults() {
     capsa->type = NULL;
     capsa->global = false;
     capsa->value = false;
-    capsa->llvm_value = NULL;
+    capsa->V = NULL;
     capsa->llvm_structure_index = -1;
     return capsa;
 }
@@ -491,7 +510,7 @@ Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
     expression->line = ln;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->literal.immutable = true;
     expression->literal.boolean = literal_boolean;
     return expression;
@@ -504,7 +523,7 @@ Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
     expression->line = ln;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->literal.immutable = true;
     expression->literal.integer = literal_integer;
     return expression;
@@ -517,7 +536,7 @@ Expression* ast_expression_literal_float(Line ln, double literal_float) {
     expression->line = ln;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->literal.immutable = true;
     expression->literal.float_ = literal_float;
     return expression;
@@ -530,24 +549,22 @@ Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
     expression->line = ln;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->literal.immutable = true;
     expression->literal.string = literal_string;
     return expression;
 }
 
-Expression* ast_expression_literal_array(Line ln, Expression* elements,
-    bool immutable) {
-
+Expression* ast_expression_literal_array(Line ln, Expression* xs, bool immut) {
     Expression* expression;
     MALLOC(expression, Expression);
     expression->tag = EXPRESSION_LITERAL_ARRAY;
     expression->line = ln;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
-    expression->literal.immutable = immutable;
-    expression->literal.array = elements;
+    expression->V = NULL;
+    expression->literal.immutable = immut;
+    expression->literal.array = xs;
     return expression;
 }
 
@@ -558,7 +575,7 @@ Expression* ast_expression_capsa(Capsa* capsa) {
     expression->line = capsa->line;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->capsa = capsa;
     return expression;
 }
@@ -570,7 +587,7 @@ Expression* ast_expression_function_call(FunctionCall* function_call) {
     expression->line = function_call->line;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->function_call = function_call;
     return expression;
 }
@@ -582,7 +599,7 @@ Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
     unaryExpression->line = ln;
     unaryExpression->previous = unaryExpression->next = NULL;
     unaryExpression->type = NULL;
-    unaryExpression->llvm_value = NULL;
+    unaryExpression->V = NULL;
     unaryExpression->unary.token = token;
     unaryExpression->unary.expression = expression;
     return unaryExpression;
@@ -597,7 +614,7 @@ Expression* ast_expression_binary(Line ln, Token t, Expression* l,
     expression->line = ln;
     expression->previous = expression->next = NULL;
     expression->type = NULL;
-    expression->llvm_value = NULL;
+    expression->V = NULL;
     expression->binary.token = t;
     expression->binary.left_expression = l;
     expression->binary.right_expression = r;
@@ -605,15 +622,12 @@ Expression* ast_expression_binary(Line ln, Token t, Expression* l,
 }
 
 Expression* ast_expression_cast(Line ln, Expression* expression, Type* type) {
-    // TODO: Remove when 'as' gets in the language
-    assert(expression->type != type);
-
     Expression* castExpression;
     MALLOC(castExpression, Expression);
     castExpression->tag = EXPRESSION_CAST;
     castExpression->line = ln;
     castExpression->type = type;
-    castExpression->llvm_value = NULL;
+    castExpression->V = NULL;
     castExpression->cast = expression;
 
     // rearranging the list (only for arguments)
@@ -643,11 +657,11 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
     function_call->tag = FUNCTION_CALL_BASIC;
     function_call->line = ln;
     function_call->type = NULL;
-    function_call->instance = NULL;
+    function_call->obj = NULL;
     function_call->id = id;
     function_call->arguments = arguments;
-    function_call->argument_count = -1;
-    function_call->function_definition = NULL;
+    function_call->argc = -1;
+    function_call->fn = NULL;
     return function_call;
 }
 
@@ -657,11 +671,11 @@ FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
     function_call->tag = FUNCTION_CALL_METHOD;
     function_call->line = ln;
     function_call->type = NULL;
-    function_call->instance = i;
+    function_call->obj = i;
     function_call->id = id;
     function_call->arguments = a;
-    function_call->argument_count = -1;
-    function_call->function_definition = NULL;
+    function_call->argc = -1;
+    function_call->fn = NULL;
     return function_call;
 }
 
@@ -671,10 +685,10 @@ FunctionCall* ast_call_constructor(Line ln, Type* type, Expression* arguments) {
     function_call->tag = FUNCTION_CALL_CONSTRUCTOR;
     function_call->line = ln;
     function_call->type = type;
-    function_call->instance = NULL;
+    function_call->obj = NULL;
     function_call->id = NULL;
     function_call->arguments = arguments;
-    function_call->argument_count = -1;
-    function_call->function_definition = NULL;
+    function_call->argc = -1;
+    function_call->fn = NULL;
     return function_call;
 }

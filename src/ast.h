@@ -7,7 +7,33 @@
 
 #include "scanner.h"
 
+// ==================================================
+//
+//  Auxiliary
+//
+// ==================================================
+
 typedef unsigned int Line; // TODO
+
+typedef unsigned int Bitmap;
+
+typedef enum FunctionQualifier {
+    FQ_PRIVATE  = 1 << 0,
+    FQ_ACQUIRE  = 1 << 1,
+    FQ_RELEASE  = 1 << 2
+} FunctionQualifier;
+
+// ==================================================
+//
+//  LLVM
+//
+// ==================================================
+
+typedef LLVMBuilderRef    LLVMB  ;
+typedef LLVMModuleRef     LLVMM  ;
+typedef LLVMTypeRef       LLVMT  ;
+typedef LLVMBasicBlockRef LLVMBB ;
+typedef LLVMValueRef      LLVMV  ;
 
 // ==================================================
 //
@@ -28,6 +54,7 @@ typedef enum TypeTag {
     TYPE_VOID,
     TYPE_ID,
     TYPE_ARRAY,
+    TYPE_UNLOCKED,
     TYPE_INTERFACE,
     TYPE_STRUCTURE,
     TYPE_MONITOR
@@ -35,7 +62,6 @@ typedef enum TypeTag {
 
 typedef enum BlockTag {
     BLOCK,
-    BLOCK_DECLARATION,
     BLOCK_DEFINITION,
     BLOCK_STATEMENT
 } BlockTag;
@@ -52,6 +78,7 @@ typedef enum StatementTag {
     STATEMENT_WHILE,
     STATEMENT_FOR,
     STATEMENT_SPAWN,
+    STATEMENT_ACQUIRE_VALUE,
     STATEMENT_BLOCK
 } StatementTag;
 
@@ -103,8 +130,8 @@ struct AST {
 struct Definition {
     DefinitionTag tag;
     Definition* next;
-    LLVMValueRef llvm_value;
-    
+    LLVMV V; // TODO: move this inside definition->function
+
     union {
         // DefinitionCapsa
         struct {
@@ -115,12 +142,13 @@ struct Definition {
         // DefinitionMethod
         // DefinitionConstructor
         struct {
-            bool private;
+            Bitmap qualifiers;
             Id* id;
             Definition* parameters;
             Type* type;
             Block* block;
-            int vmt_index; // default -1
+            int vmti; // default -1
+            Definition* pair; // acquire/release pair
         } function;
         // DefinitionType
         Type* type;
@@ -137,13 +165,15 @@ struct Type {
     bool primitive;
     bool immutable; // default false
 
-    LLVMTypeRef llvm_type; // TODO: always set
+    LLVMT T; // type
 
     union {
         // TypeID
         Id* id;
         // TypeArray
         Type* array;
+        // TypeUnlocked
+        Type* unlocked;
         // TypeInterface
         // TypeStructure
         // TypeMonitor
@@ -151,12 +181,15 @@ struct Type {
             Id* id;
             Type* interface;
             Definition* definitions;
-            // after semantics analysis
+            // after semantic analysis
             Definition** attributes;
             size_t attributes_size;
             Definition** methods;
             size_t methods_size;
             Definition* constructor;
+            // backend
+            LLVMV gR, gL, gP; // VMTs
+            LLVMT proxyT; // TODO: atc.c !!!
         } structure;
     };
 };
@@ -220,6 +253,11 @@ struct Statement {
         } for_;
         // StatementSpawn
         FunctionCall* spawn;
+        // StatementAcquireValue
+        struct {
+            Definition* value; // scoped value
+            Block* block;
+        } acquire_value;
         // StatementBlock
         Block* block;
     };
@@ -232,7 +270,7 @@ struct Capsa {
     Type* type; // default NULL
     bool global; // default false
     bool value; // default false
-    LLVMValueRef llvm_value; // default NULL
+    LLVMV V; // default NULL
     int llvm_structure_index; // default -1
 
     union {
@@ -256,21 +294,23 @@ struct Expression {
     Line line;
     Expression *previous, *next;
     Type* type;
-    LLVMValueRef llvm_value;
-    
+    LLVMV V;
+
     union {
         struct {
             bool immutable;
-            // ExpressionLiteralBoolean
-            bool boolean;
-            // ExpressionLiteralInteger
-            int integer;
-            // ExpressionLiteralFloat
-            double float_;
-            // ExpressionLiteralString
-            const char* string;
-            // ExpressionLiteralArray
-            Expression* array;
+            union {
+                // ExpressionLiteralBoolean
+                bool boolean;
+                // ExpressionLiteralInteger
+                int integer;
+                // ExpressionLiteralFloat
+                double float_;
+                // ExpressionLiteralString
+                const char* string;
+                // ExpressionLiteralArray
+                Expression* array;
+            };
         } literal;
         // ExpressionCapsa
         Capsa* capsa;
@@ -296,19 +336,14 @@ struct FunctionCall {
     FunctionCallTag tag;
     Line line;
 
-    // used by constructor calls before semantic analysis
-    Type* type;
-    // only used by methods (NULL for other types of calls)
-    Expression* instance;
-    // name of the function being called (NULL for constructors)
-    Id* id;
-    // list of function arguments
-    Expression* arguments;
-    // initialized with -1
-    int argument_count;
+    Type* type;      // used by constructor calls before semantic analysis
+    Expression* obj; // only used by methods (NULL for other types of calls)
 
-    // used in the backend module
-    Definition* function_definition;
+    Id* id; // name of the function being called (NULL for constructors)
+
+    Expression* arguments; // list of function arguments
+    int argc;              // initialized with -1
+    Definition* fn;        // function definition used in the backend module
 };
 
 // ==================================================
@@ -324,7 +359,6 @@ extern Definition* ast_declaration_function(Id*, Definition*, Type*);
 
 extern Definition* ast_definition_capsa(Capsa*, Expression*);
 extern Definition* ast_definition_function(Definition*, Block*);
-extern Definition* ast_definition_method(bool, Definition*);
 extern Definition* ast_definition_constructor(Definition*, Block*);
 extern Definition* ast_definition_type(Type*);
 
@@ -337,6 +371,7 @@ extern Type* ast_type_float(void);
 extern Type* ast_type_string(void);
 extern Type* ast_type_condition_queue(void);
 extern Type* ast_type_id(Id*);
+extern Type* ast_type_unlocked(Type*);
 extern Type* ast_type_array(Type*);
 extern Type* ast_type_structure(Id*, TypeTag, Definition*, Type*);
 
@@ -356,6 +391,7 @@ extern Statement* ast_statement_while(Line, Expression*, Block*);
 extern Statement* ast_statement_for(Line, Definition*, Expression*, Statement*,
     Block*);
 extern Statement* ast_statement_spawn(Line, Block*);
+extern Statement* ast_statement_acquire_value(Line, Definition*, Block*);
 extern Statement* ast_statement_block(Block*);
 
 extern Capsa* ast_capsa_id(Id*);

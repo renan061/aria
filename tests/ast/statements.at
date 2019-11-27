@@ -1,5 +1,19 @@
 --------------------------------------------------------------------------------
 -- Title
+Acquire Value
+-- Input
+function main {
+    acquire value a = m.f() {
+        // ...
+    }
+}
+-- Output
+function main: Void {
+    acquire value a: ? = ((m).f()) {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
 Assignment
 -- Input
 function main {

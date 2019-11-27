@@ -1,0 +1,75 @@
+--------------------------------------------------------------------------------
+-- Title
+The <unlocked> acquire release pair of functions
+-- Input
+monitor M {
+    initializer { /* empty */    }
+    function f  { print("F!\n"); }
+}
+function main {
+    print("Start\n");
+    acquire value m = M().unlocked() {
+        m.f();
+        print("Inside\n");
+    }
+    print("End\n");
+}
+-- Output
+Start
+F!
+Inside
+End
+--------------------------------------------------------------------------------
+-- Title
+Both acquire and release functions must be called
+-- Input
+monitor M {
+    initializer           { /* empty */                     }
+    function acquire f: M { print("Acquire\n"); return M(); }
+    function release f    { print("Release\n");             }
+}
+function main {
+    print("Start\n");
+    acquire value ignored = M().f() {
+        print("Inside\n");
+    }
+    print("End\n");
+}
+-- Output
+Start
+Acquire
+Inside
+Release
+End
+--------------------------------------------------------------------------------
+-- Title
+Scoped values can not escape their blocks (runtime error)
+-- Input
+monitor M {
+    variable n: Integer;
+    initializer(i: Integer) { n = i;                               }
+    function f              { print("M.f => %d\n", n);             }
+    function acquire x: M   { print("Acquire\n"); return M(n + 1); }
+    function release x      { print("Release\n");                  }
+}
+function main {
+    value m = M(0);
+    variable cheater: M!;
+    print("Start\n");
+    m.f();
+    acquire value m = m.x() {
+        m.f();
+        cheater = m;
+        cheater.f();
+    }
+    cheater.f();
+    print("Fim\n");
+}
+-- Output
+Start
+M.f => 0
+Acquire
+M.f => 1
+M.f => 1
+Release
+runtime error: proxy function not ok

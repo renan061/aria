@@ -8,34 +8,26 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h> // TODO: Remove
+#include <stdio.h> // TODO: remove
 #include <string.h>
 
+#include "macros.h"
 #include "alloc.h"
 #include "ast.h"
 #include "errs.h"
+#include "list.h"
 #include "parser.h" // for the tokens
-#include "scanner.h" // because of scanner_native[self]
+#include "scanner.h" // because of scanner_native
 #include "symtable.h"
 
 // TODO: move this somewhere else
 #define structuretype(t) (t->tag == TYPE_STRUCTURE || t->tag == TYPE_MONITOR)
 #define insidestructure(s) (s->structure && structuretype(s->structure))
 #define insidemonitor(s) (s->structure && s->structure->tag == TYPE_MONITOR)
-#define FOREACH(Type, e, e0) for (Type* e = e0; e; e = e->next)
 
-// TODO: Look for assert(NULL) in the code
-
-// TODO: Also check if TODOERR errors have matching tests
+// TODO: also check if TODOERR errors have matching tests
 #define TODOERR(line, err) \
     printf("line %d:\n\tsemantic error: %s\n", line, err); exit(1); \
-
-// TODO
-#define PREPEND(Type, head, element) do { \
-    Type* _temporary = head; \
-    head = element; \
-    head->next = _temporary; \
-} while (0); \
 
 // stores important information about the current state of the semantic analysis
 typedef struct SemanticState {
@@ -51,6 +43,13 @@ typedef struct SemanticState {
     // <true> if currently analysing a monitor's initializer, <false> otherwise
     bool initializer;
 
+    // <true> if can call an acquire function, <false> otherwise
+    bool can_acquire;
+
+    // <true> if currently analysing an acquire-value statement, <false>
+    // otherwise (switches to <false> when jumps to a function call)
+    bool acquire_value;
+
     // the spawn scope if currently analysing a spawn block, NULL otherwise
     struct {
         Scope* scope;
@@ -58,7 +57,7 @@ typedef struct SemanticState {
     } spawn;
 } SS;
 
-// Native types
+// primitive types
 static Type* __void;
 static Type* __boolean;
 static Type* __integer;
@@ -66,7 +65,7 @@ static Type* __float;
 static Type* __string;
 static Type* __condition_queue;
 
-// Functions that analyse the abstract syntax tree recursively
+// functions that analyse the abstract syntax tree recursively
 static void sem_definition(SS*, Definition*);
 static void sem_block(SS*, Block*);
 static void sem_statement(SS*, Statement*);
@@ -74,7 +73,7 @@ static void sem_capsa(SS*, Capsa**);
 static void sem_expression(SS*, Expression*);
 static void sem_function_call(SS*, FunctionCall*);
 
-// Auxiliary functions that deal with type analysis
+// auxiliary functions that deal with type analysis
 static void linktype(SymbolTable*, Type**);
 static void assignment(Capsa*, Expression**);
 static bool typeequals(Type*, Type*);
@@ -87,13 +86,11 @@ static bool equatabletype(Type*);
 static bool safetype(Type*);
 
 // TODO
-// static void freetype(Type*);
 static void freetypeid(Type*);
-// static void freetypearray(Type*);
 
-// Auxiliary functions that deal with errors
+// auxiliary functions that deal with errors
 static void err_redeclaration(Id*);
-static void err_unkown_type_name(Id*);
+static void err_unknown_type(Id*);
 static void err_invalid_condition_type(Expression*);
 static void err_type(Line, Type*, Type*);
 static void err_assignment_value(Statement*);
@@ -112,7 +109,7 @@ static void err_function_call_few_args(Line);
 static void err_function_call_excess_args(Line);
 static void err_function_call_no_monitor(Line);
 static void err_function_call_private(Line, Id*, Type*);
-static void err_function_call_no_method(Line, Type*, Id*);
+static void err_function_call_no_method(Line, Type*, Id*, bool);
 static void err_monitor_statements(Line, const char*);
 static void err_monitor_statements_constructor(Line, const char*);
 static void err_monitor_function_type(Line);
@@ -158,6 +155,7 @@ void sem_analyse(AST* ast) {
         /* current monitor      */ NULL,
         /* return type          */ NULL,
         /* inside initializer   */ false,
+        /* inside acquire-value */ false,
     };
     ss.spawn.scope = NULL;
     ss.spawn.function_call = NULL;
@@ -185,6 +183,8 @@ void sem_analyse(AST* ast) {
     assert(!ss.structure);
     assert(!ss.return_);
     assert(!ss.initializer);
+    assert(!ss.can_acquire);
+    assert(!ss.acquire_value);
     assert(!ss.spawn.scope);
     assert(!ss.spawn.function_call);
 }
@@ -241,6 +241,10 @@ static void semfunction(SS*, Definition*);
 static void semstructure(SS*, Definition*);
 static bool functionequals(Definition*, Definition*);
 static void interfacecheck(SS*, Type*, Type*);
+static void prependunlocked(Definition*, FunctionQualifier);
+static void prependself(SS*, Definition*);
+static void acquirecheck(Definition*);
+static ListValue armatch(ListValue, ListValue);
 
 static void sem_definition(SS* ss, Definition* def) {
     switch (def->tag) {
@@ -282,6 +286,11 @@ static void sem_definition(SS* ss, Definition* def) {
 static void sem_definition_capsa(SS* ss, Definition* def) {
     Capsa* capsa = def->capsa.capsa;
 
+    // checkes if it's a definition (not a declaration)
+    if (def->capsa.expression) {
+        sem_expression(ss, def->capsa.expression);
+    }
+
     // checks if the variable is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(capsa->id);
@@ -294,22 +303,11 @@ static void sem_definition_capsa(SS* ss, Definition* def) {
 
     // deals with the variable's definition and it's type inference (if any)
     if (def->capsa.expression) {
-        sem_expression(ss, def->capsa.expression);
         assignment(capsa, &def->capsa.expression);
         if (capsa->global && !safetype(capsa->type)) {
             TODOERR(capsa->line, "global values must have safe types");
         }
     }
-}
-
-// auxiliary
-// adds <self> as the first parameter to the function
-static void prependself(SS* ss, Definition* def) {
-    Line line = def->function.id->line;
-    Capsa* self = astself(line);
-    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
-    Definition* self_definition = ast_definition_capsa(self, NULL);
-    PREPEND(Definition, def->function.parameters, self_definition);
 }
 
 static void sem_declaration_function(SS* ss, Definition* def) {
@@ -319,7 +317,14 @@ static void sem_declaration_function(SS* ss, Definition* def) {
 }
 
 static void sem_definition_function(SS* ss, Definition* def) {
-    assert(!def->function.private);
+    assert(!insidemonitor(ss));
+
+    if (def->function.qualifiers) { // not a normal function without qualifiers
+        TODOERR(def->function.id->line,
+            "private and acquire-release functions must "
+            "be defined inside a monitor"
+        );
+    }
 
     // checks if the function is being redeclared
     if (!symtable_insert(ss->table, def)) {
@@ -342,11 +347,6 @@ static void sem_definition_method(SS* ss, Definition* def) {
     // checks if the method is being redeclared
     if (!symtable_insert(ss->table, def)) {
         err_redeclaration(def->function.id);
-    }
-
-    // checks if the function's return type is safe
-    if (!safetype(def->function.type)) {
-        err_monitor_function_type(def->function.id->line);
     }
 
     // gets the function's return type from the symbol table
@@ -385,7 +385,14 @@ static void sem_definition_structure(SS* ss, Definition* def) {
 }
 
 static void sem_definition_monitor(SS* ss, Definition* def) {
+    // prepending the <unlocked> acquire-release
+    // pair of functions to the monitor
+    prependunlocked(def, FQ_RELEASE);
+    prependunlocked(def, FQ_ACQUIRE);
+
+    // generic interface/record/monitor analysis
     semstructure(ss, def);
+
     // checks interface implementation
     if (def->type->structure.interface) {
         linktype(ss->table, &def->type->structure.interface);
@@ -435,7 +442,7 @@ static void semstructure(SS* ss, Definition* def) {
     }
 
     // FIXME: still possible to call a structure function from inside structure
-    // functions without adding "self." or "dog."
+    //        functions without adding "self." or "dog."
     // functions
     FOREACH(Definition, d, def->type->structure.definitions) {
         switch (d->tag) {
@@ -446,6 +453,9 @@ static void semstructure(SS* ss, Definition* def) {
             case DEFINITION_METHOD:
                 sem_definition(ss, d);
                 def->type->structure.methods_size++;
+                if (d->function.qualifiers & FQ_ACQUIRE) {
+                    acquirecheck(d);
+                }
                 break;
             case DEFINITION_CONSTRUCTOR:
                 def->type->structure.constructor = d;
@@ -455,7 +465,11 @@ static void semstructure(SS* ss, Definition* def) {
         }
     }
     if (def->type->tag == TYPE_MONITOR) {
-        assert(def->type->structure.constructor); // TODO: user error message
+        if (!def->type->structure.constructor) {
+            TODOERR(def->type->structure.id->line,
+                "structure must define an initializer"
+            );
+        }
         sem_definition(ss, def->type->structure.constructor);
     }
     symtable_leave_scope(ss->table);
@@ -478,13 +492,19 @@ static void semstructure(SS* ss, Definition* def) {
         case DEFINITION_CAPSA:
             def->type->structure.attributes[i_attributes++] = d;
             break;
+        case DEFINITION_METHOD:
+            // checks if all methods return types are safe (can't be placed
+            // inside `sem_definition_method` in case one of the methods returns
+            // the current monitor type)
+            if (!safetype(d->function.type)) {
+                err_monitor_function_type(d->function.id->line);
+            }
+            // fallthrough
         case DECLARATION_FUNCTION:
             // fallthrough
         case DEFINITION_FUNCTION:
-            // fallthrough
-        case DEFINITION_METHOD:
             def->type->structure.methods[i_methods] = d;
-            d->function.vmt_index = i_methods++;
+            d->function.vmti = i_methods++; // TODO: backend.c
             break;
         case DEFINITION_CONSTRUCTOR:
             break;
@@ -494,6 +514,37 @@ static void semstructure(SS* ss, Definition* def) {
     }
     assert(i_attributes == def->type->structure.attributes_size);
     assert(i_methods == def->type->structure.methods_size);
+
+    { // checks for acquire-release pairs of functions
+        List* ars = list_new(); // list with acquire-release functions
+    
+        // filling the list
+        for (int i = 0; i < i_methods; i++) {
+            Definition* d = def->type->structure.methods[i];
+            Bitmap bm = d->function.qualifiers;
+            if (bm & FQ_ACQUIRE || bm & FQ_RELEASE) {
+                list_append(ars, d);
+            }
+        }
+    
+        // removing pairs from the list
+        for (int i = 0; i < i_methods; i++) {
+            Definition* d = def->type->structure.methods[i];
+            if (list_remove(ars, &armatch, d)) { // removes match
+                list_remove(ars, NULL, d); // removes self if found a match
+            }
+        }
+    
+        // checking if the list is empty
+        if (!list_empty(ars)) {
+            Definition* d = (Definition*) ars->first->value;
+            TODOERR(d->function.id->line,
+                "function needs its acquire-release pair"
+            );
+        }
+    
+        list_destroy(ars);
+    }
 }
 
 // auxiliary - compares method declaration with interface function declaration
@@ -545,6 +596,63 @@ static void interfacecheck(SS* ss, Type* interface, Type* type) {
             TODOERR(type->structure.id->line, "interface not implemented");
         }
     }
+}
+
+// auxiliary - adds <unlocked> as functions of the monitor
+static void prependunlocked(Definition* m, FunctionQualifier fq) {
+    Line ln = m->type->structure.id->line;
+    Type* return_type = (fq == FQ_ACQUIRE)
+        ? ast_type_id(ast_id(ln, m->type->structure.id->name))
+        : __void
+        ;
+    Definition* unlocked = ast_declaration_function(
+        ast_id(ln, scanner_native[SCANNER_NATIVE_UNLOCKED]), NULL, return_type
+    );
+    unlocked = ast_definition_function(unlocked, ast_block(ln, NULL));
+    unlocked->tag = DEFINITION_METHOD;
+    unlocked->function.qualifiers |= fq;
+    PREPEND(Definition, m->type->structure.definitions, unlocked);
+}
+
+// auxiliary - adds <self> as the first parameter to the function
+static void prependself(SS* ss, Definition* def) {
+    Line line = def->function.id->line;
+    Capsa* self = astself(line);
+    self->type = ast_type_id(ast_id(line, ss->structure->structure.id->name));
+    Definition* self_definition = ast_definition_capsa(self, NULL);
+    PREPEND(Definition, def->function.parameters, self_definition);
+}
+
+// checks if the acquire function returns a monitor type
+static void acquirecheck(Definition* method) {
+    if (method->function.type->tag != TYPE_MONITOR) {
+        TODOERR(method->function.id->line,
+            "an acquire function must always return a monitor type"
+        );
+    }
+}
+
+// auxiliary - called inside function `semstructure`
+// compares function definitions and checks if they are an acquire-release pair
+static ListValue armatch(ListValue x, ListValue y) {
+    Definition* a = (Definition*) x;
+    Definition* b = (Definition*) y;
+    if (a->function.id->name != b->function.id->name) { // different names
+        return NULL;
+    }
+
+    Bitmap am = a->function.qualifiers;
+    Bitmap bm = b->function.qualifiers;
+    if ((am & FQ_PRIVATE) != (bm & FQ_PRIVATE) || // incompatible `private` tag
+        (am & FQ_ACQUIRE) == (bm & FQ_ACQUIRE) || // bot are `acquire`
+        (am & FQ_RELEASE) == (bm & FQ_RELEASE)) { // both are `release`
+        return NULL;
+    }
+
+    a->function.pair = b;
+    b->function.pair = a;
+
+    return x;
 }
 
 // ==================================================
@@ -600,10 +708,10 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
         }
     }
 
-    // TODO: this is messy (define lambdas someday)
+    // TODO: this is messy [and wrong] (define lambdas someday)
     if (from_outside_spawn_scope && !capsa->global) {
         FunctionCall* call = state->spawn.function_call;
-        Definition* function = call->function_definition;
+        Definition* function = call->fn;
         Type* type = definition->capsa.capsa->type;
 
         Capsa* parameter_capsa = ast_capsa_id(
@@ -622,14 +730,14 @@ static void sem_capsa_id(SS* state, Capsa** capsa_pointer) {
         );
         argument->type = type;
 
-        if (call->argument_count == -1) {
+        if (call->argc == -1) {
             call->arguments = argument;
-            call->argument_count = 1;
+            call->argc = 1;
             function->function.parameters = parameter;
-        } else if (call->argument_count > 0) {
+        } else if (call->argc > 0) {
             argument->next = call->arguments;
             call->arguments = argument;
-            call->argument_count++;
+            call->argc++;
             parameter->next = function->function.parameters;
             function->function.parameters = parameter;
         } else {
@@ -656,12 +764,12 @@ static void sem_capsa_attribute(SS* ss, Capsa** capsa_pointer) {
     capsa->type = attribute->type;
 }
 
-static void sem_capsa_indexed(SS* state, Capsa** capsa_pointer) {
+static void sem_capsa_indexed(SS* ss, Capsa** capsa_pointer) {
     Capsa* capsa = *capsa_pointer;
     assert(!capsa->type);
 
-    sem_expression(state, capsa->indexed.array);
-    sem_expression(state, capsa->indexed.index);
+    sem_expression(ss, capsa->indexed.array);
+    sem_expression(ss, capsa->indexed.index);
     if (capsa->indexed.array->type->tag != TYPE_ARRAY) {
         err_capsa_array_type(capsa);
     }
@@ -712,6 +820,7 @@ static void sem_statement_if_else(SS*, Statement*);
 static void sem_statement_while(SS*, Statement*);
 static void sem_statement_for(SS*, Statement*);
 static void sem_statement_spawn(SS*, Statement*);
+static void sem_statement_acquire_value(SS*, Statement*);
 static void sem_statement_block(SS*, Statement*);
 
 static void sem_statement(SS* ss, Statement* stmt) {
@@ -748,6 +857,9 @@ static void sem_statement(SS* ss, Statement* stmt) {
         break;
     case STATEMENT_SPAWN:
         sem_statement_spawn(ss, stmt);
+        break;
+    case STATEMENT_ACQUIRE_VALUE:
+        sem_statement_acquire_value(ss, stmt);
         break;
     case STATEMENT_BLOCK:
         sem_statement_block(ss, stmt);
@@ -787,9 +899,9 @@ static void sem_statement_wait_for_in(SS* ss, Statement* stmt) {
     }
     sem_expression(ss, stmt->wait_for_in.queue);
     if (stmt->wait_for_in.queue->type != __condition_queue) {
-        TODOERR(
-            stmt->line,
-            "wait-for-in second expression must be of type ConditionQueue"
+        TODOERR(stmt->line,
+            "'wait-for-in' statement's second expression must be "
+            "of type ConditionQueue"
         );
     }
 }
@@ -803,9 +915,9 @@ static void sem_statement_signal(SS* ss, Statement* stmt) {
     }
     sem_expression(ss, stmt->signal);
     if (stmt->signal->type != __condition_queue) {
-        TODOERR(
-            stmt->line,
-            "signal must receive expression of type ConditionQueue"
+        TODOERR(stmt->line,
+            "'signal' statement must receive an expression"
+            " of type ConditionQueue"
         );
     }
 }
@@ -819,9 +931,9 @@ static void sem_statement_broadcast(SS* ss, Statement* stmt) {
     }
     sem_expression(ss, stmt->broadcast);
     if (stmt->broadcast->type != __condition_queue) {
-        TODOERR(
-            stmt->line,
-            "broadcast must receive expression of type ConditionQueue"
+        TODOERR(stmt->line,
+            "'broadcast' statement must receive an expression"
+            " of type ConditionQueue"
         );
     }
 }
@@ -830,6 +942,10 @@ static void sem_statement_return(SS* ss, Statement* stmt) {
     // can't return inside a spawn block
     if (ss->spawn.scope) {
         err_return_inside_spawn(stmt->line);
+    }
+    // can't return inside an acquire-value block
+    if (ss->acquire_value) {
+        TODOERR(stmt->line, "can't return inside an acquire-value block");
     }
     // can't return an expression inside an initializer
     if (ss->initializer) {
@@ -904,11 +1020,33 @@ static void sem_statement_spawn(SS* ss, Statement* stmt) {
 
     ss->spawn.scope = symtable_enter_scope(ss->table);
     ss->spawn.function_call = stmt->spawn;
-    sem_block(ss, stmt->spawn->function_definition->function.block);
+    sem_block(ss, stmt->spawn->fn->function.block);
     symtable_leave_scope(ss->table);
 
     ss->spawn.scope = previous_spawn_scope;
     ss->spawn.function_call = previous_spawn_function_call;
+}
+
+static void sem_statement_acquire_value(SS* ss, Statement* stmt) {
+    bool previous;
+
+    symtable_enter_scope(ss->table);
+
+    previous = ss->can_acquire;
+    ss->can_acquire = true;
+    sem_definition(ss, stmt->acquire_value.value);
+    ss->can_acquire = previous;
+
+    Type* unlocked = stmt->acquire_value.value->capsa.capsa->type;
+    unlocked = ast_type_unlocked(unlocked);
+    stmt->acquire_value.value->capsa.capsa->type = unlocked;
+
+    previous = ss->acquire_value;
+    ss->acquire_value = true;
+    sem_block(ss, stmt->acquire_value.block);
+    ss->acquire_value = previous;
+
+    symtable_leave_scope(ss->table);
 }
 
 static void sem_statement_block(SS* ss, Statement* stmt) {
@@ -919,17 +1057,23 @@ static void sem_statement_block(SS* ss, Statement* stmt) {
 
 // ==================================================
 //
-//  TODO
+//  Expression
 //
 // ==================================================
 
 static void sem_expression_literal_array(SS*, Expression*);
+static void sem_expression_unary(SS*, Expression*);
+static void sem_expression_binary(SS*, Expression*);
+
 static void sem_expression_unary_minus(SS*, Expression*);
 static void sem_expression_unary_not(SS*, Expression*);
+
 static void sem_expression_binary_logic(SS*, Expression*);
 static void sem_expression_binary_equality(SS*, Expression*);
 static void sem_expression_binary_inequality(SS*, Expression*);
 static void sem_expression_binary_arithmetic(SS*, Expression*);
+
+static void semliteralarray(Expression*);
 
 static void sem_expression(SS* ss, Expression* exp) {
     switch (exp->tag) {
@@ -957,37 +1101,10 @@ static void sem_expression(SS* ss, Expression* exp) {
         exp->type = exp->function_call->type;
         break;
     case EXPRESSION_UNARY:
-        sem_expression(ss, exp->unary.expression);
-        switch (exp->unary.token) {
-        case '-':
-            sem_expression_unary_minus(ss, exp);    
-            break;
-        case TK_NOT:
-            sem_expression_unary_not(ss, exp);
-            break;
-        default:
-            UNREACHABLE;
-        }
+        sem_expression_unary(ss, exp);
         break;
     case EXPRESSION_BINARY:
-        sem_expression(ss, exp->binary.left_expression);
-        sem_expression(ss, exp->binary.right_expression);
-        switch (exp->binary.token) {
-        case TK_OR: case TK_AND:
-            sem_expression_binary_logic(ss, exp);
-            break;
-        case TK_EQUAL: case TK_NEQUAL:
-            sem_expression_binary_equality(ss, exp);
-            break;
-        case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
-            sem_expression_binary_inequality(ss, exp);
-            break;
-        case '+': case '-': case '*': case '/':
-            sem_expression_binary_arithmetic(ss, exp);
-            break;
-        default:
-            UNREACHABLE;
-        }
+        sem_expression_binary(ss, exp);
         break;
     case EXPRESSION_CAST:
         sem_expression(ss, exp->cast);
@@ -1003,10 +1120,9 @@ static void sem_expression_literal_array(SS* ss, Expression* exp) {
         sem_expression(ss, e);
         typecheck2(&exp->literal.array, &e);
     }
-    FOREACH(Expression, e, exp->literal.array->next) {
+    FOREACH(Expression, e, exp->literal.array->next) { // not redundant
         if (!typecheck2(&exp->literal.array, &e)) {
-            TODOERR(
-                exp->line,
+            TODOERR(exp->line,
                 "elements of an array literal must have equivalent types"
             );
         }
@@ -1014,10 +1130,43 @@ static void sem_expression_literal_array(SS* ss, Expression* exp) {
     exp->type = ast_type_array(exp->literal.array->type);
     if ((exp->type->immutable = exp->literal.immutable)) {
         FOREACH(Expression, e, exp->literal.array) {
-            for (Type* t = e->type; t->tag == TYPE_ARRAY; t = t->array) {
-                t->immutable = true;
-            }
+            semliteralarray(e);
         }
+    }
+}
+
+static void sem_expression_unary(SS* ss, Expression* exp) {
+    sem_expression(ss, exp->unary.expression);
+    switch (exp->unary.token) {
+    case '-':
+        sem_expression_unary_minus(ss, exp);    
+        break;
+    case TK_NOT:
+        sem_expression_unary_not(ss, exp);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+static void sem_expression_binary(SS* ss, Expression* exp) {
+    sem_expression(ss, exp->binary.left_expression);
+    sem_expression(ss, exp->binary.right_expression);
+    switch (exp->binary.token) {
+    case TK_OR: case TK_AND:
+        sem_expression_binary_logic(ss, exp);
+        break;
+    case TK_EQUAL: case TK_NEQUAL:
+        sem_expression_binary_equality(ss, exp);
+        break;
+    case TK_LEQUAL: case TK_GEQUAL: case '<': case '>':
+        sem_expression_binary_inequality(ss, exp);
+        break;
+    case '+': case '-': case '*': case '/':
+        sem_expression_binary_arithmetic(ss, exp);
+        break;
+    default:
+        UNREACHABLE;
     }
 }
 
@@ -1078,181 +1227,246 @@ static void sem_expression_binary_arithmetic(SS* ss, Expression* exp) {
     assert(exp->type);
 }
 
-// ==================================================
-//
-//  TODO
-//
-// ==================================================
+// -----------------------------------------------------------------------------
 
-// TODO: Doc
-// TODO: Currently checking only the first matching method
-// TODO: Currently no overloading
-static Definition* findmethod(FunctionCall* call) {
-    Definition* method_definition = NULL;
-    Type* structure = call->instance->type;
-
-    FOREACH(Definition, d, structure->structure.definitions) {
-        if (d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) {
-            if (d->function.id->name == call->id->name) {
-                if (d->function.private) {
-                    err_function_call_private(call->line, call->id, structure);
-                }
-                method_definition = d;
-                break;
-            }
+static void semliteralarray(Expression* e) {
+    if (e->type->tag != TYPE_ARRAY) {
+        return;
+    }
+    if (e->tag == EXPRESSION_LITERAL_ARRAY) {
+        if (!e->literal.immutable) {
+            e->literal.immutable = true;
+            e->type->immutable = true;
         }
+        return semliteralarray(e->literal.array);
     }
-
-    if (!method_definition) {
-        err_function_call_no_method(call->line, structure, call->id);
+    if (!e->type->immutable) {
+        TODOERR(e->line, "an immutable array can not contain a mutable array");
     }
-
-    return method_definition;
 }
 
-static void sem_function_call(SS* state, FunctionCall* call) {
-    // TODO: calculate argument_count here
+// ==================================================
+//
+//  FunctionCall
+//
+// ==================================================
 
+static void sem_function_call_basic(SS*, FunctionCall*);
+static void sem_function_call_method(SS*, FunctionCall*);
+static void sem_function_call_constructor(SS*, FunctionCall*);
+
+static void sem_function_call_constructor_native(SS*, FunctionCall*);
+static void sem_function_call_constructor_unlocked(SS*, FunctionCall*);
+static void sem_function_call_constructor_array(SS*, FunctionCall*);
+static void sem_function_call_constructor_monitor(SS*, FunctionCall*);
+
+static bool nativefunction(SS*, FunctionCall*);
+static void checkarguments(SS*, FunctionCall*);
+static Definition* findmethod(FunctionCall*, bool);
+
+#define countarguments(fc) do { \
+    fc->argc = 0; \
+    FOREACH(Expression, e, fc->arguments) { \
+        fc->argc++; \
+    } \
+} while (0); \
+
+static void sem_function_call(SS* ss, FunctionCall* call) {
     switch (call->tag) {
     case FUNCTION_CALL_BASIC:
-        // MEGA TODO: fix this master gambiarra
-        // comparar o ponteiro da definição de print (que pegou na symtable)
-        if (!strcmp(call->id->name, "print")) {
-            call->argument_count = 0;
-            FOREACH(Expression, e, call->arguments) {
-                sem_expression(state, e);
-                call->argument_count++;
-            }
-            call->type = __integer;
-            return;
-        }
-
-        call->function_definition = symtable_find(state->table, call->id);
-        if (!call->function_definition) {
-            err_function_call_unknown(call->id);
-        }
-        if (call->function_definition->tag != DEFINITION_FUNCTION &&
-            call->function_definition->tag != DEFINITION_METHOD) {
-            // TODO: Can't call constructor from inside a Monitor
-            err_function_call_misuse(call->id);
-        }
-
-        // Implicit self for method calls inside monitors
-        if (call->function_definition->tag == DEFINITION_METHOD) {
-            assert(insidemonitor(state));
-            PREPEND(Expression,
-                call->arguments,
-                ast_expression_capsa(astself(call->line))
-            );
-        }
-
-        call->type = call->function_definition->function.type;
-        free(call->id);
-        call->id = NULL;
-
-        // Can't call non-safe functions from inside a monitor
-        if (insidemonitor(state) && !safetype(call->type)) {
-            TODOERR(
-                call->line,
-                "can't call a function that returns a "
-                "non-safe type from inside a monitor"
-            );
-        }
-
+        sem_function_call_basic(ss, call);
         break;
     case FUNCTION_CALL_METHOD:
-        sem_expression(state, call->instance);
-        // TODO: interfaces and structures
-        if (call->instance->type->tag == TYPE_VOID ||
-            call->instance->type->tag == TYPE_ID ||
-            call->instance->type->tag == TYPE_ARRAY) {
-            err_function_call_no_monitor(call->line);
-        }
-        // OBS: Instance type is already linked
-
-        // finding the function definition in the monitor
-        call->function_definition = findmethod(call);
-        // prepending self to arguments
-        PREPEND(Expression, call->arguments, call->instance);
-        if (call->arguments->next) {
-            call->arguments->next->previous = call->instance;
-        }
-
-        call->type = call->function_definition->function.type;
-        free(call->id);
-        call->id = NULL;
+        sem_function_call_method(ss, call);
         break;
-    case FUNCTION_CALL_CONSTRUCTOR: // initializers and arrays
-        linktype(state->table, &call->type);
-
-        if (call->type->tag == TYPE_ID) {
-            if (call->type != __condition_queue) {
-                // TODO: Create test cases for this
-                TODOERR(call->line, "type has no known initializer");
-            }
-            // TODO: Check number of arguments passed (must be zero)
-            call->argument_count = 0;
-            return;
-        }
-
-        // Array constructors must have no arguments or one numeric argument
-        if (call->type->tag == TYPE_ARRAY) {
-            call->argument_count = 0;
-            FOREACH(Expression, e, call->arguments) {
-                call->argument_count++;
-            }
-            if (call->argument_count == 0) { // defaults to 8
-                call->argument_count = 1;
-                call->arguments = ast_expression_literal_integer(call->line, 8);
-                call->arguments->type = __integer;
-            } else if (call->argument_count == 1) {
-                sem_expression(state, call->arguments);
-                typecheck1(__integer, &call->arguments);
-            } else {
-                err_function_call_array_constructor(
-                    call->line,
-                    call->argument_count
-                );
-            }
-            return;
-        }
-
-        // finding the monitor's constructor parameters
-        FOREACH(Definition, d, call->type->structure.definitions) {
-            if (d->tag == DEFINITION_CONSTRUCTOR) {
-                // TODO: Currently checking only the first matching constructor
-                // TODO: Currently no overloading
-                call->function_definition = d;
-                break;
-            }
-        }
-        
-        if (!call->function_definition) {
-            err_function_call_no_constructor(
-                call->line, call->type->structure.id
-            );
-        }
+    case FUNCTION_CALL_CONSTRUCTOR:
+        sem_function_call_constructor(ss, call);
         break;
     default:
         UNREACHABLE;
     }
+}
 
-    assert(call->function_definition);
-    Definition* parameter = call->function_definition->function.parameters;
+static void sem_function_call_basic(SS* ss, FunctionCall* call) {
+    if (nativefunction(ss, call)) {
+        return;
+    }
+
+    // looks for the function definition in the table of symbols
+    call->fn = symtable_find(ss->table, call->id);
+    if (!call->fn) {
+        err_function_call_unknown(call->id);
+    }
+    call->type = call->fn->function.type;
+
+    // checks for calls over types that are not functions
+    DefinitionTag tag = call->fn->tag;
+    if (tag != DEFINITION_FUNCTION && tag != DEFINITION_METHOD) {
+        err_function_call_misuse(call->id);
+    }
+
+    // prepends <self> for method calls inside monitors
+    if (call->fn->tag == DEFINITION_METHOD) {
+        assert(insidemonitor(ss));
+        PREPEND(Expression,
+            call->arguments,
+            ast_expression_capsa(astself(call->line))
+        );
+    }
+
+    // frees <call->id>
+    // <call->type> already contains the id with the function's name
+    free(call->id);
+    call->id = NULL;
+
+    // checks for non-safe function calls inside a monitor
+    if (insidemonitor(ss) && !safetype(call->type)) {
+        TODOERR(call->line,
+            "can't call a function that returns a "
+            "non-safe type from inside a monitor"
+        );
+    }
+
+    checkarguments(ss, call);
+}
+
+static void sem_function_call_method(SS* ss, FunctionCall* call) {
+    sem_expression(ss, call->obj);
+    assert(call->obj->type); // instance type should be linked already
+
+    // can only call methods over interfaces, records, and monitors
+    if (call->obj->type->tag == TYPE_VOID      ||
+        call->obj->type->tag == TYPE_ID        ||
+        call->obj->type->tag == TYPE_ARRAY     ||
+        call->obj->type->tag == TYPE_STRUCTURE) {
+        err_function_call_no_monitor(call->line);
+    }
+
+    // finds the function's definition in the monitor and sets the call's type
+    call->fn = findmethod(call, ss->can_acquire);
+    call->type = call->fn->function.type;
+
+    // prepends <self> to arguments
+    PREPEND(Expression, call->arguments, call->obj);
+    if (call->arguments->next) {
+        call->arguments->next->previous = call->obj;
+    }
+
+    // frees <call->id>
+    // <call->type> already contains the id with the function's name
+    free(call->id);
+    call->id = NULL;
+
+    checkarguments(ss, call);
+}
+
+static void sem_function_call_constructor(SS* ss, FunctionCall* call) {
+    linktype(ss->table, &call->type);
+
+    switch (call->type->tag) {
+    case TYPE_ID:
+        sem_function_call_constructor_native(ss, call);
+        break;
+    case TYPE_UNLOCKED:
+        sem_function_call_constructor_unlocked(ss, call);
+        break;
+    case TYPE_ARRAY:
+        sem_function_call_constructor_array(ss, call);
+        break;
+    case TYPE_MONITOR:
+        sem_function_call_constructor_monitor(ss, call);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}   
+
+static void sem_function_call_constructor_native(SS* ss, FunctionCall* call) {
+    if (call->type == __condition_queue) {
+        countarguments(call);
+        if (call->argc != 0) {
+            TODOERR(call->line, "ConditionQueue constructor has no parameters");
+        }
+    } else {
+        UNREACHABLE;
+    }
+}
+
+static void sem_function_call_constructor_unlocked(SS* ss, FunctionCall* call) {
+    TODOERR(call->line, "unlocked types don't have constructors");
+}
+
+static void sem_function_call_constructor_array(SS* ss, FunctionCall* call) {
+    countarguments(call);
+    switch (call->argc) {
+    case 0:
+        // defaults to 8 (TODO: remove)
+        call->argc = 1;
+        call->arguments = ast_expression_literal_integer(call->line, 8);
+        call->arguments->type = __integer;
+        break;
+    case 1:
+        sem_expression(ss, call->arguments);
+        typecheck1(__integer, &call->arguments);
+        break;
+    default:
+        err_function_call_array_constructor(call->line, call->argc);
+    }
+}
+
+static void sem_function_call_constructor_monitor(SS* ss, FunctionCall* call) {
+    // finds the constructor inside the monitor (no overloading)
+    FOREACH(Definition, d, call->type->structure.definitions) {
+        if (d->tag == DEFINITION_CONSTRUCTOR) {
+            call->fn = d;
+            break;
+        }
+    }
+    
+    if (!call->fn) {
+        err_function_call_no_constructor(call->line, call->type->structure.id);
+    }
+
+    checkarguments(ss, call);
+}
+
+// -----------------------------------------------------------------------------
+
+// auxiliary - deals with native function calls
+static bool nativefunction(SS* ss, FunctionCall* call) {
+    // FIXME: compare pointer from the definition of print (from symtable)
+    if (!strcmp(call->id->name, "print")) {
+        call->argc = 0;
+        FOREACH(Expression, e, call->arguments) {
+            sem_expression(ss, e);
+            call->argc++;
+        }
+        call->type = __integer;
+        return true;
+    }
+    return false;
+}
+
+// auxiliary - compares parameters from the function's definition against
+// arguments from the function's call
+static void checkarguments(SS* ss, FunctionCall* call) {
+    assert(call->fn);
+
+    countarguments(call);
+
+    Definition* parameter = call->fn->function.parameters;
     Expression* argument = call->arguments;
     Expression** pointer = &call->arguments;
-    call->argument_count = 0;
 
-    // Skips comparing between the first parameter and argument of a method
+    // skips comparing between the first parameter and argument of a method
     if (call->tag == FUNCTION_CALL_METHOD) {
         assert(parameter && argument);
-        call->argument_count++;
         parameter = parameter->next;
         argument = (*pointer)->next;
         pointer = &argument;
     }
 
-    // Comparing arguments with parameters
+    // compares arguments with parameters
     while (parameter || argument) {
         if (parameter && !argument) {
             err_function_call_few_args(call->line);
@@ -1261,34 +1475,51 @@ static void sem_function_call(SS* state, FunctionCall* call) {
             err_function_call_excess_args(call->line);
         }
 
-        call->argument_count++;
-
-        sem_expression(state, argument);
+        sem_expression(ss, argument);
         typecheck1(parameter->capsa.capsa->type, pointer);
+
         parameter = parameter->next;
         argument = (*pointer)->next;
         pointer = &argument;
     }
 }
 
-// ==================================================
-//
-//  Auxiliary
-//
-// ==================================================
+// auxiliary - finds a function's definition inside a monitor
+static Definition* findmethod(FunctionCall* call, bool acquire) {
+    // TODO: currently checking only the first matching method & no overloading
 
-// static void freetype(Type* type) {
-//  switch (type->tag) {
-//  case TYPE_ID:
-//      freetypeid(type);
-//      break;
-//  case TYPE_ARRAY:
-//      freetypearray(type);
-//      break;
-//  default:
-//      UNREACHABLE;
-//  }
-// }
+    Definition* method_definition = NULL;
+    Type* structure = call->obj->type;
+    if (structure->tag == TYPE_UNLOCKED) {
+        structure = structure->unlocked;
+    }
+
+    FOREACH(Definition, d, structure->structure.definitions) {
+        if ((d->tag == DEFINITION_METHOD || d->tag == DECLARATION_FUNCTION) &&
+             d->function.id->name == call->id->name &&
+             !(d->function.qualifiers & FQ_RELEASE) &&
+             IFF(acquire, d->function.qualifiers & FQ_ACQUIRE)) {
+
+            if (d->function.qualifiers & FQ_PRIVATE) {
+                err_function_call_private(call->line, call->id, structure);
+            }
+            method_definition = d;
+            break;
+        }
+    }
+
+    if (!method_definition) {
+        err_function_call_no_method(call->line, structure, call->id, acquire);
+    }
+
+    return method_definition;
+}
+
+// ==================================================
+//
+//  Auxiliary TODO
+//
+// ==================================================
 
 static void freetypeid(Type* type) {
     assert(type->tag == TYPE_ID);
@@ -1298,17 +1529,6 @@ static void freetypeid(Type* type) {
     free(type->id);
     free(type);
 }
-
-// static void freetypearray(Type* type) {
-//  if (type->tag == TYPE_ID) {
-//      freetypeid(type);
-//      return;
-//  }
-
-//  assert(type->tag == TYPE_ARRAY);
-//  freetypearray(type->array);
-//  free(type);
-// }
 
 /*
  * Replaces an id-type for its declaration equivalent using the symbol table.
@@ -1325,13 +1545,22 @@ static void linktype(SymbolTable* table, Type** pointer) {
     case TYPE_ID: {
         Definition* definition = symtable_find(table, (*pointer)->id);
         if (!definition) {
-            err_unkown_type_name((*pointer)->id);
+            err_unknown_type((*pointer)->id);
         }
         assert(definition->tag == DEFINITION_TYPE);
         freetypeid(*pointer);
         *pointer = definition->type;
         break;
     }
+    case TYPE_UNLOCKED:
+        linktype(table, &(*pointer)->unlocked);
+        if (!((*pointer)->unlocked->tag == TYPE_MONITOR ||
+            (*pointer)->unlocked->tag == TYPE_INTERFACE )) {
+            TODOERR(-1,
+                "a unlocked type must be an interface or a monitor"
+            );
+        }
+        break;
     case TYPE_ARRAY:
         for (; (*pointer)->tag == TYPE_ARRAY; pointer = &(*pointer)->array);
         linktype(table, pointer);
@@ -1347,6 +1576,9 @@ static void linktype(SymbolTable* table, Type** pointer) {
  * Deals with errors internally.
  */
 static void assignment(Capsa* capsa, Expression** expression) {
+    if ((*expression)->type == __void) {
+        TODOERR(capsa->line, "can't assign to expression of type Void");
+    }
     if (capsa->type) {
         typecheck1(capsa->type, expression);
     } else { // when defining with implicit type
@@ -1358,6 +1590,11 @@ static void assignment(Capsa* capsa, Expression** expression) {
  * Checks for type equality between two types.
  */
 static bool typeequals(Type* type1, Type* type2) {
+    if (type1->tag == TYPE_UNLOCKED && type2->tag == TYPE_UNLOCKED) {
+        return typeequals(type1->unlocked, type2->unlocked);
+    } else if (type1->tag == TYPE_UNLOCKED || type2->tag == TYPE_UNLOCKED) {
+        return false;
+    }
     if (type1->immutable != type2->immutable) {
         return false;
     }
@@ -1367,7 +1604,6 @@ static bool typeequals(Type* type1, Type* type2) {
     if (type1->tag != TYPE_ARRAY || type2->tag != TYPE_ARRAY) {
         return false;
     }
-
     return typeequals(type1->array, type2->array);
 }
 
@@ -1376,19 +1612,19 @@ static bool typeequals(Type* type1, Type* type2) {
  * Performes casts if necessary.
  * Deals with errors internally.
  */
-static void typecheck1(Type* type, Expression** expression) {
-    // Checks equality
-    if (typeequals(type, (*expression)->type)) {
+static void typecheck1(Type* type, Expression** e) {
+    // checks equality
+    if (typeequals(type, (*e)->type)) {
         return;
     }
 
-    // Needs both to be numeric
-    if (!(numerictype(type) && numerictype((*expression)->type))) {
-        err_type((*expression)->line, type, (*expression)->type);
+    // implicitly casts from Integer to Float
+    if (!(type == __float && (*e)->type == __integer)) {
+        err_type((*e)->line, type, (*e)->type);
     }
 
-    // Performs casts
-    *expression = ast_expression_cast((*expression)->line, *expression, type);
+    // performs the cast
+    *e = ast_expression_cast((*e)->line, *e, type);
 }
 
 /* 
@@ -1422,7 +1658,7 @@ static Type* typecheck2(Expression** l, Expression** r) {
 }
 
 static bool indextype(Type* type) {
-    return type == __integer; // TODO: Float also
+    return type == __integer;
 }
 
 static bool numerictype(Type* type) {
@@ -1443,6 +1679,8 @@ static bool safetype(Type *type) {
             // fallthrough
         case TYPE_ID:
             return type->immutable;
+        case TYPE_UNLOCKED:
+            return false;
         case TYPE_ARRAY:
             return type->immutable && safetype(type->array);
         case TYPE_INTERFACE:
@@ -1463,7 +1701,7 @@ static bool safetype(Type *type) {
 //
 // ==================================================
 
-// Returns the string corresponding to the type
+// returns the string corresponding to the type
 static const char* typestring(Type* type) {
     assert(type);
     char* str;
@@ -1475,6 +1713,13 @@ static const char* typestring(Type* type) {
     case TYPE_ID:
         str = (char*) type->id->name;
         break;
+    case TYPE_UNLOCKED: {
+        const char* aux = typestring(type->unlocked);
+        MALLOC_ARRAY(str, char, strlen(aux) + 2);
+        strcpy(str, aux);
+        strcat(str, "!");
+        break;
+    }
     case TYPE_ARRAY: {
         unsigned int counter = 0;
         Type* t = type;
@@ -1536,7 +1781,7 @@ static const char* tokenstring(Token token) {
     }
 }
 
-// TODO: These errs with variadic functions
+// TODO: these errs with variadic functions
 
 // Creates a formatted error with one dynamic string
 static const char* err1(const char* format, const char* name) {
@@ -1575,8 +1820,8 @@ static void err_redeclaration(Id* id) {
     sem_error(id->line, err1("redeclaration of name '%s'", id->name));
 }
 
-static void err_unkown_type_name(Id* id) {
-    sem_error(id->line, err1("unkown type name '%s'", id->name));
+static void err_unknown_type(Id* id) {
+    sem_error(id->line, err1("unknown type '%s'", id->name));
 }
 
 static void err_invalid_condition_type(Expression* expression) {
@@ -1588,7 +1833,7 @@ static void err_invalid_condition_type(Expression* expression) {
 static void err_type(Line line, Type* type1, Type* type2) {
     const char* t1 = typestring(type1);
     const char* t2 = typestring(type2);
-    const char* err = err2("type error (expecting '%s', got '%s')", t1, t2);
+    const char* err = err2("type error (expected '%s', got '%s')", t1, t2);
     sem_error(line, err);
 }
 
@@ -1615,7 +1860,7 @@ static void err_return_void(Line line, Type* type) {
 }
 
 static void err_capsa_unknown(Id* id) {
-    const char* err = err1("unknown variable '%s' beeing used", id->name);
+    const char* err = err1("unknown variable '%s' being used", id->name);
     sem_error(id->line, err);
 }
 
@@ -1637,7 +1882,7 @@ static void err_capsa_array_index_type(Capsa* capsa) {
 }
 
 static void err_function_call_unknown(Id* id) {
-    const char* err = err1("unknown function '%s' beeing called", id->name);
+    const char* err = err1("unknown function '%s' being called", id->name);
     sem_error(id->line, err);
 }
 
@@ -1655,7 +1900,9 @@ static void err_function_call_array_constructor(Line line, unsigned int n) {
 }
 
 static void err_function_call_no_constructor(Line line, Id* id) {
-    const char* err = err1("monitor '%s' has no defined initializer", id->name);
+    const char* err = err1(
+        "monitor '%s' has no defined initializer", id->name
+    );
     sem_error(line, err);
 }
 
@@ -1677,10 +1924,12 @@ static void err_function_call_private(Line line, Id* id, Type* type) {
     sem_error(line, err);
 }
 
-static void err_function_call_no_method(Line line, Type* type, Id* id) {
-    const char* err = err2("monitor '%s' has no defined method '%s'",
-        typestring(type), id->name);
-    sem_error(line, err);
+static void err_function_call_no_method(Line line, Type* type, Id* id, bool a) {
+    char *str =  a // acquire
+        ? "monitor '%s' has no defined method 'acquire %s'"
+        : "monitor '%s' has no defined method '%s'"
+        ;
+    sem_error(line, err2(str, typestring(type), id->name));
 }
 
 static void err_monitor_statements(Line line, const char* statement) {
@@ -1723,8 +1972,8 @@ static const char* errors[] = {
     "invalid type '%s' for the left side of the '%s' expression",
     "invalid type '%s' for the right side of the '%s' expression",
 
-    "invalid type for left side of the '==' ('%s' is not an equatable type)",
-    "invalid type for right side of the '==' ('%s' is not an equatable type)",
+    "invalid type for left side of the '%s' ('%s' is not an equatable type)",
+    "invalid type for right side of the '%s' ('%s' is not an equatable type)",
     "incompatible types '%s' and '%s' for '%s' expression"
 };
 
@@ -1738,18 +1987,28 @@ static void err_expression(ErrorType type, Expression* e) {
         err = err1(errors[type], typestring(e->unary.expression->type));
         break;
     case ERR_EXPRESSION_LEFT:
-        err = err2(errors[type], typestring(e->binary.left_expression->type),
-            tokenstring(e->binary.token));
+        err = err2(errors[type],
+            typestring(e->binary.left_expression->type),
+            tokenstring(e->binary.token)
+        );
         break;
     case ERR_EXPRESSION_RIGHT:
-        err = err2(errors[type], typestring(e->binary.right_expression->type),
-            tokenstring(e->binary.token));
+        err = err2(errors[type],
+            typestring(e->binary.right_expression->type),
+            tokenstring(e->binary.token)
+        );
         break;
     case ERR_EXPRESSION_LEFT_EQUAL:
-        err = err1(errors[type], typestring(e->binary.left_expression->type));
+        err = err2(errors[type],
+            tokenstring(e->binary.token),
+            typestring(e->binary.left_expression->type)
+        );
         break;
     case ERR_EXPRESSION_RIGHT_EQUAL:
-        err = err1(errors[type], typestring(e->binary.right_expression->type));
+        err = err2(errors[type],
+            tokenstring(e->binary.token),
+            typestring(e->binary.right_expression->type)
+        );
         break;
     case ERR_EXPRESSION_TYPECHECK_EQUAL:
         err = err3(errors[type], typestring(e->binary.left_expression->type),

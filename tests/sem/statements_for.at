@@ -80,7 +80,7 @@ function main {
 }
 -- Output
 line 5:
-    semantic error: unknown variable 'i' beeing used
+    semantic error: unknown variable 'i' being used
 --------------------------------------------------------------------------------
 -- Title
 Scoping - invalid redeclaration of the "for" variable

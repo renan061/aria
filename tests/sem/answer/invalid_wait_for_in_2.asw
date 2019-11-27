@@ -1,2 +1,0 @@
-line 5:
-	semantic error: invalid use of 'wait-for-in' statement inside a monitor's initializer

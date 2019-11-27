@@ -31,11 +31,16 @@ monitor Monitor {
 OK
 --------------------------------------------------------------------------------
 -- Title
-Private method definition
+Private method and acquire-release function definitions
 -- Input
 monitor Monitor {
     function foo {}
     private function bar {}
+    function acquire bar {}
+    // private-acquire/release are valid in the parser, but
+    // invalid in the semantic analysis
+    private function acquire bar {}
+    private function release bar {}
 }
 -- Output
 OK

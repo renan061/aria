@@ -1,11 +1,7 @@
-obj/*.o
 bin/*
-temp/*
+tests/bin/*
 
-src/bison.c
-src/bison.h
-src/flex.c
-
+*.o
 *.bc
 
 test.aria

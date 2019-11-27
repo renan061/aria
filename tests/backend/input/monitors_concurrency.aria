@@ -1,213 +1,183 @@
 
 function printTestCaseDivider {
-	print("-----\n");
+    print("-----\n");
 }
 
 function printTestDivider {
-	print("\n----------------------------------------\n\n");
+    print("\n----------------------------------------\n\n");
 }
 
 function fakeWork {
-	variable i = 0;
-	while i < 1000000 {
-		i = i + 1;
-	}
+    variable i = 0;
+    while i < 1000000 {
+        i = i + 1;
+    }
 }
 
 // ==================================================
 //
-//	Barrier
+//  Barrier
 //
 // ==================================================
 
 monitor Barrier {
-	variable queue = ConditionQueue();
-	variable current, counter: Integer;
+    variable queue = ConditionQueue();
+    variable current, counter: Integer;
 
-	initializer(n: Integer) {
-		current = 0;
-		counter = n;
-	}
+    initializer(n: Integer) {
+        current = 0;
+        counter = n;
+    }
 
-	function synchronize {
-		current = current + 1;
-		wait for current == counter in queue;
-		broadcast queue;
-	}
+    function synchronize {
+        current = current + 1;
+        wait for current == counter in queue;
+        broadcast queue;
+    }
 }
 
 function testBarrier {
-	print("testBarrier\n");
+    print("testBarrier\n");
 
-	{
-		printTestCaseDivider();
+    {
+        printTestCaseDivider();
 
-		counter := 3;
-		barrier := Barrier(counter + 1);
+        counter := 3;
+        barrier := Barrier(counter + 1);
 
-		variable i = 0;
-		while i < counter {
-			spawn {
-				fakeWork();
-				print("barrier: thread hit the barrier...\n");
-				barrier.synchronize();
-			}
-			i = i + 1;
-		}
+        variable i = 0;
+        while i < counter {
+            spawn {
+                fakeWork();
+                print("barrier: thread hit the barrier...\n");
+                barrier.synchronize();
+            }
+            i = i + 1;
+        }
 
-		barrier.synchronize();
-		print("barrier: past the barrier...\n");
-		printTestDivider();
-	}
+        barrier.synchronize();
+        print("barrier: past the barrier...\n");
+        printTestDivider();
+    }
 }
 
 // ==================================================
 //
-//	Monitor
+//  Monitor
 //
 // ==================================================
 
 monitor BasicMonitor {
-	variable declaredVar: Integer;
-	variable definedVar = 2.5;
-	value val = "aria";
+    variable declaredVar: Integer;
+    variable definedVar = 2.5;
+    value val = "aria";
 
-	initializer(n: Integer) {
-		print("monitor initializer: defined variable (%.1f)\n", definedVar);
-		print("monitor initializer: value (%s)\n", val);
-		declaredVar = n;
-		print(
-			"monitor initializer: declared variable after initializer (%d)\n",
-			declaredVar
-		);
-	}
+    initializer(n: Integer) {
+        print("monitor initializer: defined variable (%.1f)\n", definedVar);
+        print("monitor initializer: value (%s)\n", val);
+        declaredVar = n;
+        print(
+            "monitor initializer: declared variable after initializer (%d)\n",
+            declaredVar
+        );
+    }
 
-	private function privateMethod {
-		print("monitor method: private\n");
-	}
+    private function privateMethod {
+        print("monitor method: private\n");
+    }
 
-	function publicMethod {
-		print("monitor method: public\n");
-	}
+    function publicMethod {
+        print("monitor method: public\n");
+    }
 
-	function publicMethodThatCallsPrivate {
-		print("monitor method: public method that calls a private method\n");
-		privateMethod();
-	}
+    function publicMethodThatCallsPrivate {
+        print("monitor method: public method that calls a private method\n");
+        privateMethod();
+    }
 
-	function getInteger: Integer {
-		return declaredVar;
-	}
+    function getInteger: Integer {
+        return declaredVar;
+    }
 
-	function getFloat: Float {
-		return definedVar;
-	}
+    function getFloat: Float {
+        return definedVar;
+    }
 
-	function changeInternalVariables(i: Integer, f: Float) {
-		print("monitor variables: change (%d and %.1f)\n", i, f);
-		declaredVar = i;
-		definedVar = f;
-	}
+    function changeInternalVariables(i: Integer, f: Float) {
+        print("monitor variables: change (%d and %.1f)\n", i, f);
+        declaredVar = i;
+        definedVar = f;
+    }
 }
 
-// TODO: Initialization of immutable arrays
+monitor MutexMonitor {
+    variable steps: Immutable [String];
+    variable i = 0;
+    variable length: Integer;
 
-// -----
-// mutex: entering
-// mutex: step 1
-// mutex: leaving
-// mutex: entering
-// mutex: step 2
-// mutex: leaving
-// mutex: entering
-// mutex: step 3
-// mutex: leaving
-// mutex: entering
-// mutex: step 4
-// mutex: leaving
-// mutex: entering
-// mutex: step 5
-// mutex: leaving
+    initializer(strings: Immutable [String], n: Integer) {
+        steps = strings;
+        length = n;
+    }
 
-// monitor MutexMonitor {
-// 	variable steps: Immutable [String];
-// 	variable i = 0;
-// 	variable length: Integer;
-
-// 	initializer(strings: Immutable [String], n: Integer) {
-// 		steps = strings;
-// 		length = n;
-// 	}
-
-// 	function mutex {
-// 		print("mutex: entering\n");
-// 		fakeWork();
-// 		print("mutex: %s\n", steps[i]);
-// 		i = i + 1;
-// 		fakeWork();
-// 		print("mutex: leaving\n");
-// 	}
-// }
+    function mutex {
+        print("mutex: entering\n");
+        fakeWork();
+        print("mutex: %s\n", steps[i]);
+        i = i + 1;
+        fakeWork();
+        print("mutex: leaving\n");
+    }
+}
 
 function testMonitor {
-	print("testMonitor\n");
+    print("testMonitor\n");
 
-	{ // basic
-		// initializer
-		printTestCaseDivider();
-		m := BasicMonitor(10);
+    { // basic
+        // initializer
+        printTestCaseDivider();
+        m := BasicMonitor(10);
 
-		{ // methods
-			printTestCaseDivider();
-			m.publicMethod();
-			m.publicMethodThatCallsPrivate();
-		}
+        { // methods
+            printTestCaseDivider();
+            m.publicMethod();
+            m.publicMethodThatCallsPrivate();
+        }
 
-		{ // internal variables
-			printTestCaseDivider();
-			print("monitor variables: integer value %d\n", m.getInteger());
-			print("monitor variables: float value %.1f\n", m.getFloat());
-			m.changeInternalVariables(15, 15.5);
-			print("monitor variables: integer value %d\n", m.getInteger());
-			print("monitor variables: float value %.1f\n", m.getFloat());
-		}	
-	}
-	
-	// TODO: Initialization of immutable arrays
-	// { // mutex
-	// 	printTestCaseDivider();
+        { // internal variables
+            printTestCaseDivider();
+            print("monitor variables: integer value %d\n", m.getInteger());
+            print("monitor variables: float value %.1f\n", m.getFloat());
+            m.changeInternalVariables(15, 15.5);
+            print("monitor variables: integer value %d\n", m.getInteger());
+            print("monitor variables: float value %.1f\n", m.getFloat());
+        }   
+    }
+    
+    { // mutex
+        printTestCaseDivider();
 
-	// 	counter := 5;
-	// 	barrier := Barrier(counter + 1);
-	// 	strings := Immutable [String](counter);
+        counter := 5;
+        barrier := Barrier(counter + 1);
+        strings := Immutable ["step 1", "step 2", "step 3", "step 4", "step 5"];
+        m := MutexMonitor(strings, counter);
 
-	// 	variable i = 0;
-	// 	strings[0] = "step 1";
-	// 	strings[1] = "step 2";
-	// 	strings[2] = "step 3";
-	// 	strings[3] = "step 4";
-	// 	strings[4] = "step 5";
+        for variable i = 0; i < counter; i = i + 1 {
+            spawn {
+                m.mutex();
+                barrier.synchronize();
+            }
+        }
+        
+        barrier.synchronize();
+    }
 
-	// 	m := MutexMonitor(strings, counter);
-		
-	// 	i = 0;
-	// 	while i < counter {
-	// 		spawn {
-	// 			m.mutex();
-	// 			barrier.synchronize();
-	// 		}
-	// 		i = i + 1;
-	// 	}
-		
-	// 	barrier.synchronize();
-	// }
-
-	printTestDivider();
+    printTestDivider();
 }
 
 // ==================================================
 //
-//	Stack
+//  Stack
 //
 // ==================================================
 
@@ -229,7 +199,7 @@ monitor Stack {
     }
 
     function push(number: Integer) {
-    	print("test push %d\n", number);
+        print("test push %d\n", number);
         wait for notFull() in fullQueue;
         numbers[length] = number;
         length = length + 1;
@@ -247,53 +217,53 @@ monitor Stack {
 }
 
 function testStack {
-	print("testStack\n");
-	barrier := Barrier(2);
+    print("testStack\n");
+    barrier := Barrier(2);
 
-	{ // pop - wait for not empty
-		printTestCaseDivider();
+    { // pop - wait for not empty
+        printTestCaseDivider();
 
-		capacity := 1;
-		stack := Stack(capacity);
+        capacity := 1;
+        stack := Stack(capacity);
 
-		stack.push(1);
-		stack.pop();
-		spawn {
-			pop := stack.pop();
-			print("stack wait for not empty: pop (%d)\n", pop);
-			barrier.synchronize();
-		}
-		fakeWork();
-		print("stack wait for not empty: push\n");
-		stack.push(2);
-	}
+        stack.push(1);
+        stack.pop();
+        spawn {
+            pop := stack.pop();
+            print("stack wait for not empty: pop (%d)\n", pop);
+            barrier.synchronize();
+        }
+        fakeWork();
+        print("stack wait for not empty: push\n");
+        stack.push(2);
+    }
 
-	// TODO: More tests
+    // TODO: More tests
 
-	// variable i = 0;
-	// numberOfProducers := 2;
-	// while i < numberOfProducers {
-	// 	i = i + 1;
-	// }
+    // variable i = 0;
+    // numberOfProducers := 2;
+    // while i < numberOfProducers {
+    //  i = i + 1;
+    // }
 
-	// i = 0;
-	// numberOfConsumers := 5;
-	// while i < numberOfProducers {
-	// 	i = i + 1;
-	// }
+    // i = 0;
+    // numberOfConsumers := 5;
+    // while i < numberOfProducers {
+    //  i = i + 1;
+    // }
 
-	barrier.synchronize();
-	printTestDivider();
+    barrier.synchronize();
+    printTestDivider();
 }
 
 // ==================================================
 //
-//	Run all tests
+//  Run all tests
 //
 // ==================================================
 
 function main {
-	testBarrier();
-	testMonitor();
-	testStack();
+    testBarrier();
+    testMonitor();
+    testStack();
 }

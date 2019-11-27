@@ -1,0 +1,12 @@
+--------------------------------------------------------------------------------
+-- Title
+Returning explicitly inside an initializer
+-- Input
+monitor M {
+    initializer { return; }
+}
+function main {
+    print("Ok\n");
+}
+-- Output
+Ok

@@ -1,4 +1,0 @@
-// Invalid left expression for '-'
-function foo {
-	x := foo() - 1;
-}

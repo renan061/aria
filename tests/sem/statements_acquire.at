@@ -1,0 +1,138 @@
+--------------------------------------------------------------------------------
+-- Title
+Ok
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+    function g {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {
+        m.g();
+    }
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function acquire f(value self: M): M {
+    }
+    function release f(value self: M): Void {
+    }
+    function g(value self: M): Void {
+    }
+}
+function main: Void {
+    value m: M = (M(): M)
+    acquire value m: M! = ((m: M).f((m: M)): M) {
+        (m: M!).g((m: M!)): Void
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+An acquire-value statement can only call <acquire> functions
+-- Input
+monitor M {
+    initializer {}
+    function f: M {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {}
+}
+-- Output
+line 7:
+    semantic error: monitor 'M' has no defined method 'acquire f'
+--------------------------------------------------------------------------------
+-- Title
+Can't return from inside an acquire-value block
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {
+        return;
+    }
+}
+-- Output
+line 9:
+    semantic error: can't return inside an acquire-value block
+--------------------------------------------------------------------------------
+-- Title
+Can't return from nested acquire-value blocks
+-- Input
+monitor M {
+    initializer {}
+    function acquire f: M {}
+    function release f {}
+}
+function main {
+    value m = M();
+    acquire value m = m.f() {
+        acquire value m = m.f() {
+        }
+        return;
+    }
+}
+-- Output
+line 11:
+    semantic error: can't return inside an acquire-value block
+--------------------------------------------------------------------------------
+-- Title
+Monitors natively provide an acquire-release pair of functions called unlocked
+-- Input
+monitor M {
+    initializer {}
+}
+function main {
+    acquire value m = M().unlocked() {}
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+}
+function main: Void {
+    acquire value m: M! = ((M(): M).unlocked((M(): M)): M) {
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Can't redeclare the <unlocked> acquire-release pair of functions
+-- Input
+monitor M {
+    initializer {}
+    function acquire unlocked {}
+    function release unlocked {}
+}
+-- Output
+line 3:
+    semantic error: redeclaration of name 'unlocked'
+--------------------------------------------------------------------------------
+-- Title
+Can define and call a non-acquire-release function named <unlocked>
+-- Input
+monitor M {
+    initializer {}
+    function unlocked {}
+}
+function main {
+    M().unlocked();
+}
+-- Output
+monitor M {
+    function M: M {
+    }
+    function unlocked(value self: M): Void {
+    }
+}
+function main: Void {
+    (M(): M).unlocked((M(): M)): Void
+}

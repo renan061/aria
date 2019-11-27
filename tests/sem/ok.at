@@ -1,0 +1,127 @@
+--------------------------------------------------------------------------------
+-- Title
+Function definition
+-- Input
+function f1 {}
+function f2: Boolean {}
+function f3(a: Boolean) {}
+function f4(a: Integer): Float {}
+function f5(a: String, b: Boolean, c: Integer) {}
+function f6(a: Float, b: String, c: Boolean): Integer {}
+function f7(a, b, c: Float) {}
+function f8(a: String, b, c, d: Boolean): Integer {}
+function f9(a: Float, b, c: String, d: Boolean) {}
+function f10: [[[String]]] {}
+-- Output
+function f1: Void {
+}
+function f2: Boolean {
+}
+function f3(value a: Boolean): Void {
+}
+function f4(value a: Integer): Float {
+}
+function f5(value a: String, value b: Boolean, value c: Integer): Void {
+}
+function f6(value a: Float, value b: String, value c: Boolean): Integer {
+}
+function f7(value a: Float, value b: Float, value c: Float): Void {
+}
+function f8(value a: String, value b: Boolean, value c: Boolean, value d: Boolean): Integer {
+}
+function f9(value a: Float, value b: String, value c: String, value d: Boolean): Void {
+}
+function f10: [[[String]]] {
+}
+--------------------------------------------------------------------------------
+-- Title
+Blocks
+-- Input
+function main {
+    {
+        value a = 1;
+        value b = 2;
+        variable c: Float;
+        if a > b {
+            c = a;
+        } else {
+            c = b;
+        }
+    }
+}
+-- Output
+function main: Void {
+    {
+        value a: Integer = (1: Integer)
+        value b: Integer = (2: Integer)
+        variable c: Float
+        if ((a: Integer) >: Boolean (b: Integer)) {
+            c: Float = ((a: Integer) as: Float)
+        } else {
+            c: Float = ((b: Integer) as: Float)
+        }
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
+Scoping
+-- Input
+function f: String {}
+
+function scoping: Boolean {}
+
+monitor M {
+    value a = [1];
+
+    initializer {}
+
+    private function scoping(a: Float): Float {
+        return a * 2;
+        f();
+    }
+
+    function f {
+        value b = a[0];
+        {
+            value b = scoping(1.0);
+        }
+        f();
+    }
+}
+
+monitor N {
+    initializer {}
+    function f {
+        value a = scoping();
+        f();
+    }
+}
+-- Output
+function f: String {
+}
+function scoping: Boolean {
+}
+monitor M {
+    value a: [Integer] = ([(1: Integer)]: [Integer])
+    function M: M {
+    }
+    private function scoping(value self: M, value a: Float): Float {
+        return ((a: Float) *: Float ((2: Integer) as: Float))
+        f(): String
+    }
+    function f(value self: M): Void {
+        value b: Integer = (((a: [Integer])[(0: Integer)]: Integer))
+        {
+            value b: Float = (scoping((self: M), (1.000000: Float)): Float)
+        }
+        f((self: M)): Void
+    }
+}
+monitor N {
+    function N: N {
+    }
+    function f(value self: N): Void {
+        value a: Boolean = (scoping(): Boolean)
+        f((self: N)): Void
+    }
+}

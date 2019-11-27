@@ -91,7 +91,7 @@ function callManyParameters(a: Integer, b: Float, c: Integer): Integer {
 	variable number: Float;
 	number = a + c;
 	number = number * a - b - c;
-	return number;
+	return (number as Integer);
 }
 
 // Auxiliary
@@ -118,7 +118,7 @@ function testCall {
 
 	{ // many parameters
 		printTestCaseDivider();
-		print("call: many parameters (%d)\n", callManyParameters(1.5, 10, -0.5));
+		print("call: many parameters (%d)\n", callManyParameters(1, 10, -5));
 	}
 
 	{ // recursive
@@ -590,7 +590,7 @@ function testCasts {
 
 	{ // float to integer
 		printTestCaseDivider();
-		print("cast: float to integer (%.d)\n", functionReceivesInteger(1.0));	
+		print("cast: float to integer (%d)\n", 3.1415 as Integer);	
 	}
 
 	printTestDivider();

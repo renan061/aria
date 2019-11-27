@@ -5,7 +5,7 @@
 #include "scanner.h"
 #include "sem.h"
 
-#include "ast_printer.c"
+#include "printer.c"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {

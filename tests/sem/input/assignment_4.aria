@@ -1,4 +1,0 @@
-// Assigning to a parameter is not ok
-function foo(parameter: Integer) {
-	parameter = 1;
-}

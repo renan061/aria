@@ -1,14 +1,12 @@
 #include <assert.h>
-#include <stdio.h> // TODO: Remove
+#include <stdio.h> // TODO: remove
 
 #include "alloc.h"
 #include "errs.h"
+#include "macros.h"
 #include "symtable.h"
 
 #define ERR_SCOPE "symbol table: did not leave all scopes"
-
-// TODO: Move this somewhere else and look for assert(NULL) in the code
-#define UNREACHABLE assert(NULL)
 
 /*
  * TODO:
@@ -44,31 +42,22 @@ static const char* definitionstring(Definition* definition) {
     case DEFINITION_CAPSA:
         assert(definition->capsa.capsa->tag == CAPSA_ID);
         return definition->capsa.capsa->id->name;
-    case DECLARATION_FUNCTION:
-        // fallthrough
-    case DEFINITION_FUNCTION:
-        // fallthrough
-    case DEFINITION_METHOD:
-        // fallthrough
+    case DECLARATION_FUNCTION: // fallthrough
+    case DEFINITION_FUNCTION:  // fallthrough
+    case DEFINITION_METHOD:    // fallthrough
     case DEFINITION_CONSTRUCTOR:
         assert(definition->function.id);
         return definition->function.id->name;
     case DEFINITION_TYPE:
         switch (definition->type->tag) {
-        case TYPE_VOID:
-            UNREACHABLE;
-        case TYPE_ID:
-            return definition->type->id->name;
-        case TYPE_ARRAY:
-            UNREACHABLE;
-        case TYPE_INTERFACE:
-            // fallthrough
-        case TYPE_STRUCTURE:
-            // fallthrough
-        case TYPE_MONITOR:
-            return definition->type->structure.id->name;
-        default:
-            UNREACHABLE;
+        case TYPE_VOID:      UNREACHABLE;
+        case TYPE_ID:        return definition->type->id->name;
+        case TYPE_UNLOCKED:  UNREACHABLE;
+        case TYPE_ARRAY:     UNREACHABLE;
+        case TYPE_INTERFACE: // fallthrough
+        case TYPE_STRUCTURE: // fallthrough
+        case TYPE_MONITOR:   return definition->type->structure.id->name;
+        default:             UNREACHABLE;
         }
     default:
         UNREACHABLE;
@@ -157,10 +146,22 @@ Definition* symtable_find(SymbolTable* table, Id* id) {
 }
 
 bool symtable_insert(SymbolTable* table, Definition* definition) {
-    if (finddefinition(table->top_scope, definitionstring(definition))) {
-        return false; // repetition
+    Definition* found = finddefinition(
+        table->top_scope, definitionstring(definition)
+    );
+
+    if (found) { // repetition
+        // TODO: gambiarra
+        if (definition->tag == DECLARATION_FUNCTION ||
+            definition->tag == DEFINITION_FUNCTION  ||
+            definition->tag == DEFINITION_METHOD)   {
+            Bitmap bm1 = found->function.qualifiers & ~FQ_PRIVATE;
+            Bitmap bm2 = definition->function.qualifiers & ~FQ_PRIVATE;
+            return bm1 != bm2;
+        }
+        return false;
     }
-    
+
     Symbol* symbol;
     MALLOC(symbol, Symbol);
     symbol->next = table->top_scope->first_symbol;
