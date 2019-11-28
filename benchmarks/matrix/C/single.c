@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include <time.h>
 
-#define N 1000
+#define N 50000
+
+float **a, *b, *r;
 
 void printarray(float array[N]) {
     printf("[");
@@ -17,27 +19,29 @@ void printarray(float array[N]) {
     printf("]\n");
 }
 
-void mul(float matrix[N][N], float array[N], float r[N]) {
+void mul(void) {
     for (int i = 0; i < N; i++) {
         r[i] = 0;
         for (int j = 0; j < N; j++) {
-            r[i] += matrix[i][j] * array[j];
+            r[i] += a[i][j] * b[j];
         }
     }
 }
 
 int main(void) {
-    float a[N][N], b[N], c[N];
-
     srand(time(NULL));
+    a = (float**)malloc(N * sizeof(float*));
+    b = (float*)malloc(N * sizeof(float));
+    r = (float*)malloc(N * sizeof(float));
     for (int i = 0; i < N; i++) {
+        a[i] = (float*)malloc(N * sizeof(float));
         b[i] = (rand() % 1000) / 10.0;
         for (int j = 0; j < N; j++) {
             a[i][j] = (rand() % 1000) / 10.0;
         }
     }
 
-    mul(a, b, c);
+    mul();
 
     return 0;
 }
