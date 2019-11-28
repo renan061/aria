@@ -22,3 +22,4 @@ clean:
 	$(RM) *.bc
 	$(RM) *.o
 	$(RM) *.out
+	cd C/ && $(MAKE) $@
