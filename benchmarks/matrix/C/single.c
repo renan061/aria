@@ -1,23 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
-#define N 50000
-
-float **a, *b, *r;
-
-void printarray(float array[N]) {
-    printf("[");
-    for (int i = 0;;) {
-        printf("%.2f", array[i]);
-        if (++i == N) {
-            break;
-        } else {
-            printf(", ");
-        }
-    }
-    printf("]\n");
-}
+#include "common.c"
 
 void mul(void) {
     for (int i = 0; i < N; i++) {
@@ -29,19 +13,12 @@ void mul(void) {
 }
 
 int main(void) {
-    srand(time(NULL));
-    a = (float**)malloc(N * sizeof(float*));
-    b = (float*)malloc(N * sizeof(float));
-    r = (float*)malloc(N * sizeof(float));
-    for (int i = 0; i < N; i++) {
-        a[i] = (float*)malloc(N * sizeof(float));
-        b[i] = (rand() % 1000) / 10.0;
-        for (int j = 0; j < N; j++) {
-            a[i][j] = (rand() % 1000) / 10.0;
-        }
+    init();
+    for (int i = 0; i < RUNS; i++) {
+        START;
+        mul();
+        END;
     }
-
-    mul();
-
+    stats();
     return 0;
 }
