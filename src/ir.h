@@ -49,8 +49,12 @@ extern     LLVMV    ir_zeroptr    ;
 
 // -----------------------------------------------------------------------------
 
-// auxiliary functions
+// native functions
 extern LLVMV ir_printf(LLVMB, LLVMV*, int);
+extern LLVMV ir_rand(LLVMB);
+extern LLVMV ir_srand(LLVMB, LLVMV);
+
+// auxiliary functions
 extern LLVMV ir_malloc(LLVMB, size_t);
 extern LLVMV ir_exit(LLVMB B);
 extern LLVMV ir_cmp(LLVMB, LLVMIntPredicate, LLVMRealPredicate,

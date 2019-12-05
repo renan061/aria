@@ -5,9 +5,10 @@
 #include <float.h>
 #include <time.h>
 
+// configuration
 #define N           10000
 #define NTHREADS    8
-#define RUNS        10
+#define RUNS        100
 
 #define SINGLE 0
 #define MULTI  1
@@ -15,8 +16,10 @@
 #define START   double start = gettime();
 #define END     partials[now][i]  = gettime() - start;
 
+// -----------------------------------------------------------------------------
+
 int now; // SINGLE or NOW
-float **a, *b, *r;
+int **a, *b, *r;
 double partials[2][RUNS];
 int size = N / NTHREADS;
 
@@ -86,20 +89,20 @@ double gettime(void) {
 void init(void) {
     double start = gettime();
     srand(time(NULL));
-    a = (float**)malloc(N * sizeof(float*));
-    b = (float*)malloc(N * sizeof(float));
-    r = (float*)malloc(N * sizeof(float));
+    a = (int**)malloc(N * sizeof(int*));
+    b = (int*)malloc(N * sizeof(int));
+    r = (int*)malloc(N * sizeof(int));
     for (int i = 0; i < N; i++) {
-        a[i] = (float*)malloc(N * sizeof(float));
-        b[i] = (rand() % 1000) / 10.0;
+        a[i] = (int*)malloc(N * sizeof(int));
+        b[i] = rand();
         for (int j = 0; j < N; j++) {
-            a[i][j] = (rand() % 1000) / 10.0;
+            a[i][j] = rand();
         }
     }
     double mem = gettime() - start;
 
     printf("\n");
-    printf("\tMem: %f sec\n", mem);
+    printf("\tMemory: %f sec\n", mem);
     printf("\n");
 }
 

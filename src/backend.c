@@ -1422,6 +1422,10 @@ static LLVMV nativefc(IRState* irs, FunctionCall* fc) {
     LLVMV* args = fcargs(irs, fc);
     if (!strcmp(fc->id->name, "print")) {
         V = ir_printf(irs->B, args, fc->argc);
+    } else if (!strcmp(fc->id->name, "rand")) {
+        V = ir_rand(irs->B);
+    } else if (!strcmp(fc->id->name, "srand")) {
+        V = ir_srand(irs->B, args[0]);
     } else {
         UNREACHABLE;
     }

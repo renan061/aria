@@ -517,7 +517,7 @@ static void semstructure(SS* ss, Definition* def) {
 
     { // checks for acquire-release pairs of functions
         List* ars = list_new(); // list with acquire-release functions
-    
+
         // filling the list
         for (int i = 0; i < i_methods; i++) {
             Definition* d = def->type->structure.methods[i];
@@ -526,7 +526,7 @@ static void semstructure(SS* ss, Definition* def) {
                 list_append(ars, d);
             }
         }
-    
+
         // removing pairs from the list
         for (int i = 0; i < i_methods; i++) {
             Definition* d = def->type->structure.methods[i];
@@ -534,7 +534,7 @@ static void semstructure(SS* ss, Definition* def) {
                 list_remove(ars, NULL, d); // removes self if found a match
             }
         }
-    
+
         // checking if the list is empty
         if (!list_empty(ars)) {
             Definition* d = (Definition*) ars->first->value;
@@ -542,7 +542,7 @@ static void semstructure(SS* ss, Definition* def) {
                 "function needs its acquire-release pair"
             );
         }
-    
+
         list_destroy(ars);
     }
 }
@@ -558,7 +558,7 @@ static bool functionequals(Definition* ifunction, Definition* method) {
         return false;
     }
 
-    // same parameters    
+    // same parameters
     Definition* p2 = method->function.parameters;
     assert(p2);
     p2 = p2->next; // skipping <self> (also skips <self> for ifunction)
@@ -956,7 +956,7 @@ static void sem_statement_return(SS* ss, Statement* stmt) {
         }
     }
     // can't return empty when the function expects a return type
-    if (ss->return_ != __void && !stmt->return_) {  
+    if (ss->return_ != __void && !stmt->return_) {
         err_return_void(stmt->line, ss->return_);
     }
     if (stmt->return_) {
@@ -1139,7 +1139,7 @@ static void sem_expression_unary(SS* ss, Expression* exp) {
     sem_expression(ss, exp->unary.expression);
     switch (exp->unary.token) {
     case '-':
-        sem_expression_unary_minus(ss, exp);    
+        sem_expression_unary_minus(ss, exp);
         break;
     case TK_NOT:
         sem_expression_unary_not(ss, exp);
@@ -1269,7 +1269,7 @@ static Definition* findmethod(FunctionCall*, bool);
     FOREACH(Expression, e, fc->arguments) { \
         fc->argc++; \
     } \
-} while (0); \
+} while (0) \
 
 static void sem_function_call(SS* ss, FunctionCall* call) {
     switch (call->tag) {
@@ -1379,7 +1379,7 @@ static void sem_function_call_constructor(SS* ss, FunctionCall* call) {
     default:
         UNREACHABLE;
     }
-}   
+}
 
 static void sem_function_call_constructor_native(SS* ss, FunctionCall* call) {
     if (call->type == __condition_queue) {
@@ -1422,7 +1422,7 @@ static void sem_function_call_constructor_monitor(SS* ss, FunctionCall* call) {
             break;
         }
     }
-    
+
     if (!call->fn) {
         err_function_call_no_constructor(call->line, call->type->structure.id);
     }
@@ -1433,15 +1433,33 @@ static void sem_function_call_constructor_monitor(SS* ss, FunctionCall* call) {
 // -----------------------------------------------------------------------------
 
 // auxiliary - deals with native function calls
-static bool nativefunction(SS* ss, FunctionCall* call) {
+static bool nativefunction(SS* ss, FunctionCall* fc) {
+    countarguments(fc);
+
     // FIXME: compare pointer from the definition of print (from symtable)
-    if (!strcmp(call->id->name, "print")) {
-        call->argc = 0;
-        FOREACH(Expression, e, call->arguments) {
+    if (!strcmp(fc->id->name, "print")) {
+        fc->type = __integer;
+        FOREACH(Expression, e, fc->arguments) {
             sem_expression(ss, e);
-            call->argc++;
         }
-        call->type = __integer;
+        return true;
+    }
+    if (!strcmp(fc->id->name, "rand")) {
+        if (fc->argc != 0) {
+            TODOERR(fc->line, "function <rand> receives no arguments");
+        }
+        fc->type = __integer;
+        return true;
+    }
+    if (!strcmp(fc->id->name, "srand")) {
+        if (fc->argc != 1) {
+            TODOERR(fc->line, "function <srand> receives one argument");
+        }
+        sem_expression(ss, fc->arguments);
+        if (fc->arguments->type != __integer) {
+            TODOERR(fc->line, "function <srand> receives an Integer");
+        }
+        fc->type = __void;
         return true;
     }
     return false;
@@ -1586,7 +1604,7 @@ static void assignment(Capsa* capsa, Expression** expression) {
     }
 }
 
-/* 
+/*
  * Checks for type equality between two types.
  */
 static bool typeequals(Type* type1, Type* type2) {
@@ -1607,7 +1625,7 @@ static bool typeequals(Type* type1, Type* type2) {
     return typeequals(type1->array, type2->array);
 }
 
-/* 
+/*
  * Checks for type equivalence of one expression.
  * Performes casts if necessary.
  * Deals with errors internally.
@@ -1627,7 +1645,7 @@ static void typecheck1(Type* type, Expression** e) {
     *e = ast_expression_cast((*e)->line, *e, type);
 }
 
-/* 
+/*
  * Checks for type equivalence of two expressions.
  * Performes casts if necessary.
  * Returns NULL if types are incompatible.

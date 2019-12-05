@@ -30,11 +30,17 @@ static Type* __integer;
 static Type* __float;
 
 static const char* NAME_PRINTF = "printf";
+static const char* NAME_RAND   = "rand";
+static const char* NAME_SRAND  = "srand";
+
 static const char* NAME_MALLOC = "malloc";
 static const char* NAME_EXIT   = "exit";
 
-static LLVMV irT_malloc = NULL;
 static LLVMV irT_printf = NULL;
+static LLVMV irT_rand   = NULL;
+static LLVMV irT_srand  = NULL;
+
+static LLVMV irT_malloc = NULL;
 static LLVMV irT_exit   = NULL;
 
 static void irPT_setup(LLVMM);
@@ -62,20 +68,27 @@ void ir_setup(LLVMM M) {
     LLVMSetInitializer(ir_zerostring, LLVMConstInt(LLVMInt8Type(), '\0', true));
 
     { // printf
-        LLVMT paramsT[1] = {irT_string};
-        LLVMT T = LLVMFunctionType(irT_int, paramsT, 1, true);
+        LLVMT T = LLVMFunctionType(irT_int, &irT_string, 1, true);
         irT_printf = LLVMAddFunction(M, NAME_PRINTF, T);
     }
-    
+
+    { // rand
+        LLVMT T = LLVMFunctionType(irT_int, NULL, 0, false);
+        irT_rand = LLVMAddFunction(M, NAME_RAND, T);
+    }
+
+    { // srand
+        LLVMT T = LLVMFunctionType(irT_void, &irT_int, 1, false);
+        irT_srand = LLVMAddFunction(M, NAME_SRAND, T);
+    }
+
     { // malloc
-        LLVMT paramsT[1] = {irT_int};
-        LLVMT T = LLVMFunctionType(irT_pvoid, paramsT, 1, false);
+        LLVMT T = LLVMFunctionType(irT_pvoid, &irT_int, 1, false);
         irT_malloc = LLVMAddFunction(M, NAME_MALLOC, T);
     }
 
     { // exit
-        LLVMT paramsT[1] = {irT_int};
-        LLVMT T = LLVMFunctionType(irT_void, paramsT, 1, false);
+        LLVMT T = LLVMFunctionType(irT_void, &irT_int, 1, false);
         irT_exit = LLVMAddFunction(M, NAME_EXIT, T);
     }
 
@@ -86,6 +99,14 @@ void ir_setup(LLVMM M) {
 
 LLVMV ir_printf(LLVMB B, LLVMV* args, int n) {
     return LLVMBuildCall(B, irT_printf, args, n, LLVM_TMP_NONE);
+}
+
+LLVMV ir_rand(LLVMB B) {
+    return LLVMBuildCall(B, irT_rand, NULL, 0, LLVM_TMP_NONE);
+}
+
+LLVMV ir_srand(LLVMB B, LLVMV arg) {
+    return LLVMBuildCall(B, irT_srand, &arg, 1, LLVM_TMP_NONE);
 }
 
 LLVMV ir_malloc(LLVMB B, size_t size) {
@@ -226,7 +247,7 @@ static void irPT_setup(LLVMM M) {
         LLVMT T = LLVMFunctionType(irT_void, Ts, 1, false);
         irPTT_exit = LLVMAddFunction(M, NAME_PT_EXIT, T);
     }
-        
+
     { // pthread_mutex_init
         LLVMT Ts[] = {irPTT_mutex, irT_pvoid};
         LLVMT T = LLVMFunctionType(irT_int, Ts, 2, false);
