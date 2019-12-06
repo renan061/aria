@@ -1462,6 +1462,13 @@ static bool nativefunction(SS* ss, FunctionCall* fc) {
         fc->type = __void;
         return true;
     }
+    if (!strcmp(fc->id->name, "getTime")) {
+        if (fc->argc != 0) {
+            TODOERR(fc->line, "function <getTime> receives no arguments");
+        }
+        fc->type = __float;
+        return true;
+    }
     return false;
 }
 

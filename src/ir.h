@@ -53,6 +53,7 @@ extern     LLVMV    ir_zeroptr    ;
 extern LLVMV ir_printf(LLVMB, LLVMV*, int);
 extern LLVMV ir_rand(LLVMB);
 extern LLVMV ir_srand(LLVMB, LLVMV);
+extern LLVMV ir_getTime(LLVMB);
 
 // auxiliary functions
 extern LLVMV ir_malloc(LLVMB, size_t);

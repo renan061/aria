@@ -31,6 +31,7 @@ typedef enum FunctionQualifier {
 
 typedef LLVMBuilderRef    LLVMB  ;
 typedef LLVMModuleRef     LLVMM  ;
+typedef LLVMContextRef    LLVMC  ;
 typedef LLVMTypeRef       LLVMT  ;
 typedef LLVMBasicBlockRef LLVMBB ;
 typedef LLVMValueRef      LLVMV  ;
