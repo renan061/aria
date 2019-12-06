@@ -52,6 +52,9 @@ function main {
     a := b;
     // function call
     a := foo();
+    // list comprehension
+    a := [x | x in 0...5];
+    a := [f(i) | i in f(x)...f(y)];
     // parenthesized
     a := (1 - 1);
 }

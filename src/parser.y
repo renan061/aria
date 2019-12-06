@@ -13,7 +13,7 @@
     #include "errs.h"
     #include "scanner.h"
 
-    // Auxiliary macro to use with lists
+    // auxiliary macro to use with lists
     #define APPEND(type, assignable, list, elem) do { \
         if (!list) { \
             assignable = elem; \
@@ -58,7 +58,7 @@
     TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
     TK_FALSE TK_STRUCTURE TK_MONITOR TK_PRIVATE TK_INITIALIZER
     TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG TK_INTERFACE
-    TK_ACQUIRE TK_RELEASE
+    TK_ACQUIRE TK_RELEASE TK_RANGE
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -664,6 +664,11 @@ primary_expression
     | function_call
         {
             $$ = ast_expression_function_call($1);
+        }
+
+    | '[' expression '|' TK_LOWER_ID TK_IN expression TK_RANGE expression ']'
+        {
+            $$ = ast_expression_comprehension($1, $2, $4, $6, $8);
         }
     | '(' expression ')'
         {

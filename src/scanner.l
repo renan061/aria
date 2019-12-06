@@ -26,6 +26,7 @@
  * variable/function declarations ONLY.
  */
 %{
+
 #include <assert.h>
 
 #include "alloc.h"
@@ -100,6 +101,7 @@ string      "\""(\\.|[^\\"])*"\""
 "-="            return TOKEN(TK_SUB_ASG);
 "*="            return TOKEN(TK_MUL_ASG);
 "/="            return TOKEN(TK_DIV_ASG);
+"..."           return TOKEN(TK_RANGE);
 
 "acquire"       return TOKEN(TK_ACQUIRE); // keywords
 "as"            return TOKEN(TK_AS);

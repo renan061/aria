@@ -1100,6 +1100,22 @@ static void sem_expression(SS* ss, Expression* exp) {
         sem_function_call(ss, exp->function_call);
         exp->type = exp->function_call->type;
         break;
+    case EXPRESSION_LIST_COMPREHENSION:
+        sem_expression(ss, exp->comprehension.lower);
+        typecheck1(__integer, &exp->comprehension.lower);
+        sem_expression(ss, exp->comprehension.upper);
+        typecheck1(__integer, &exp->comprehension.upper);
+        symtable_enter_scope(ss->table);
+        sem_definition(ss, exp->comprehension.i);
+        sem_expression(ss, exp->comprehension.e);
+        symtable_leave_scope(ss->table);
+        if (exp->comprehension.e->type == __void) {
+            TODOERR(exp->line,
+                "error: invalid Void element in list comprehension"
+            );
+        }
+        exp->type = ast_type_array(exp->comprehension.e->type);
+        break;
     case EXPRESSION_UNARY:
         sem_expression_unary(ss, exp);
         break;

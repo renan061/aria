@@ -592,6 +592,26 @@ Expression* ast_expression_function_call(FunctionCall* function_call) {
     return expression;
 }
 
+Expression* ast_expression_comprehension(Line ln, Expression* e,
+    Id* i, Expression* lower, Expression* upper) {
+
+    Expression* exp;
+    MALLOC(exp, Expression);
+    exp->tag = EXPRESSION_LIST_COMPREHENSION;
+    exp->line = ln;
+    exp->previous = exp->next = NULL;
+    exp->type = NULL;
+    exp->V = NULL;
+    exp->comprehension.e = e;
+    Capsa* capsa = ast_capsa_id(i);
+    capsa->type = ast_type_integer();
+    capsa->value = true;
+    exp->comprehension.i = ast_definition_capsa(capsa, lower);
+    exp->comprehension.lower = lower;
+    exp->comprehension.upper = upper;
+    return exp;
+}
+
 Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
     Expression* unaryExpression;
     MALLOC(unaryExpression, Expression);

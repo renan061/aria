@@ -48,3 +48,14 @@ Member operators
 .
 -- Output
 .
+--------------------------------------------------------------------------------
+-- Title
+Range operators
+-- Input
+. ... . ....
+-- Output
+.
+TK_RANGE
+.
+TK_RANGE
+.

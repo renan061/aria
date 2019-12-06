@@ -1047,6 +1047,44 @@ static void backend_expression(IRState* irs, Expression* expression) {
     case EXPRESSION_FUNCTION_CALL:
         expression->V = backend_function_call(irs, expression->function_call);
         break;
+    case EXPRESSION_LIST_COMPREHENSION: {
+        backend_expression(irs, expression->comprehension.upper);
+        expression->comprehension.i->capsa.capsa->value = false;
+        backend_definition(irs, expression->comprehension.i);
+        LLVMV n = LLVMBuildSub(irs->B,
+            expression->comprehension.upper->V,
+            expression->comprehension.lower->V,
+            LLVM_TMP
+        );
+        expression->V = LLVMBuildArrayMalloc(irs->B,
+            llvmtype(expression->type->array), n, LLVM_TMP
+        );
+        LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+        LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+        LLVMBB bbend = LLVMAppendBasicBlock(irs->function, BB_END);
+        LLVMBuildBr(irs->B, bbcond);
+        irsBB_end(irs);
+        // cond
+        irsBB_start(irs, bbcond);
+        LLVMV iptr = expression->comprehension.i->capsa.capsa->V;
+        LLVMV i = LLVMBuildLoad(irs->B, iptr, LLVM_TMP);
+        LLVMV cmp = LLVMBuildICmp(irs->B, LLVMIntSLT, i, n, LLVM_TMP);
+        LLVMBuildCondBr(irs->B, cmp, bbloop, bbend);
+        irsBB_end(irs);
+        // loop
+        irsBB_start(irs, bbloop);
+        LLVMV indices[] = {i};
+        LLVMV ptr = LLVMBuildGEP(irs->B, expression->V, indices, 1, LLVM_TMP);
+        backend_expression(irs, expression->comprehension.e);
+        LLVMBuildStore(irs->B, expression->comprehension.e->V, ptr);
+        i = LLVMBuildAdd(irs->B, i, ir_int(1), LLVM_TMP);
+        LLVMBuildStore(irs->B, i, iptr);
+        LLVMBuildBr(irs->B, bbcond);
+        irsBB_end(irs);
+        // end
+        irsBB_start(irs, bbend);
+        break;
+    }
     case EXPRESSION_UNARY:
         switch (expression->unary.token) {
         case '-':

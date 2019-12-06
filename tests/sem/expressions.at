@@ -54,6 +54,50 @@ function main: Boolean {
 }
 --------------------------------------------------------------------------------
 -- Title
+List comprehension expressions
+-- Input
+function main {
+    value array = [i | i in 0...10];
+}
+-- Output
+function main: Void {
+    value array: [Integer] = ([(i: Integer) |
+        value i: Integer in
+        (0: Integer)..(10: Integer)
+    ])
+}
+--------------------------------------------------------------------------------
+-- Title
+List comprehension expressions (lower type not Integer)
+-- Input
+function main {
+    value array = [i | i in true...10];
+}
+-- Output
+line 2:
+    semantic error: type error (expected 'Integer', got 'Boolean')
+--------------------------------------------------------------------------------
+-- Title
+List comprehension expressions (upper type not Integer)
+-- Input
+function main {
+    value array = [i | i in 0...1.0];
+}
+-- Output
+line 2:
+    semantic error: type error (expected 'Integer', got 'Float')
+--------------------------------------------------------------------------------
+-- Title
+List comprehension expressions (invalid element expression)
+-- Input
+function main {
+    value array = [main() | i in 0...1];
+}
+-- Output
+line 2:
+    semantic error: error: invalid Void element in list comprehension
+--------------------------------------------------------------------------------
+-- Title
 Binary expressions
 -- Input
 function main {

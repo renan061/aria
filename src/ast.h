@@ -97,6 +97,7 @@ typedef enum ExpressionTag {
     EXPRESSION_LITERAL_ARRAY,
     EXPRESSION_CAPSA,
     EXPRESSION_FUNCTION_CALL,
+    EXPRESSION_LIST_COMPREHENSION,
     EXPRESSION_UNARY,
     EXPRESSION_BINARY,
     EXPRESSION_CAST
@@ -317,6 +318,13 @@ struct Expression {
         Capsa* capsa;
         // ExpressionFunctionCall
         FunctionCall* function_call;
+        // ExpressionListComprehension
+        struct {
+            Expression* e;
+            Definition* i;
+            Expression* lower;
+            Expression* upper;
+        } comprehension;
         // ExpressionUnary
         struct {
             Token token;
@@ -406,6 +414,8 @@ extern Expression* ast_expression_literal_string(Line, const char*);
 extern Expression* ast_expression_literal_array(Line, Expression*, bool);
 extern Expression* ast_expression_capsa(Capsa*);
 extern Expression* ast_expression_function_call(FunctionCall*);
+extern Expression* ast_expression_comprehension(Line, Expression*,
+    Id*, Expression*, Expression*);
 extern Expression* ast_expression_unary(Line, Token, Expression*);
 extern Expression* ast_expression_binary(Line, Token, Expression*, Expression*);
 extern Expression* ast_expression_cast(Line, Expression*, Type*);

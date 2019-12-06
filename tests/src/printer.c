@@ -395,6 +395,23 @@ static void print_ast_expression(Expression* expression) {
         print_ast_function_call(expression->function_call);
         printtype(expression->type);
         break;
+    case EXPRESSION_LIST_COMPREHENSION:
+        printf("[");
+        print_ast_expression(expression->comprehension.e);
+        printf(" |\n");
+        tabs++;
+        identation();
+        print_ast_definition(expression->comprehension.i);
+        printf(" in\n");
+        identation();
+        print_ast_expression(expression->comprehension.lower);
+        printf("..");
+        print_ast_expression(expression->comprehension.upper);
+        tabs--;
+        printf("\n");
+        identation();
+        printf("]");
+        break;
     case EXPRESSION_UNARY:
         printtoken(expression->unary.token);
         print_ast_expression(expression->unary.expression);

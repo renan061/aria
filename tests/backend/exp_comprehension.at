@@ -1,0 +1,8 @@
+--------------------------------------------------------------------------------
+-- Title
+Returning explicitly inside an initializer
+-- Input
+function main {
+    value array = [i | i in 0...10];
+}
+-- Output
