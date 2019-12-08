@@ -124,7 +124,7 @@ LLVMV ir_printf(LLVMB B, LLVMV* args, int n) {
 }
 
 LLVMV ir_rand(LLVMB B) {
-    return LLVMBuildCall(B, irV_printf, NULL, 0, LLVM_TMP_NONE);
+    return LLVMBuildCall(B, irV_rand, NULL, 0, LLVM_TMP_NONE);
 }
 
 LLVMV ir_srand(LLVMB B, LLVMV arg) {

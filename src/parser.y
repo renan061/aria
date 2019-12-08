@@ -102,6 +102,7 @@
 %type <expression>
     expression_list0 expression_list1
     expression primary_expression literal
+    list_comprehension_expression list_comprehension
 %type <function_call>
     function_call method_call
 
@@ -666,13 +667,32 @@ primary_expression
             $$ = ast_expression_function_call($1);
         }
 
-    | '[' expression '|' TK_LOWER_ID TK_IN expression TK_RANGE expression ']'
+    | list_comprehension_expression
         {
-            $$ = ast_expression_comprehension($1, $2, $4, $6, $8);
+            $$ = $1;
         }
     | '(' expression ')'
         {
             $$ = $2;
+        }
+    ;
+
+list_comprehension_expression
+    : list_comprehension
+        {
+            $$ = $1;
+        }
+    | TK_IMMUTABLE list_comprehension
+        {
+            $2->comprehension.immutable = true;
+            $$ = $2;
+        }
+    ;
+
+list_comprehension
+    : '[' expression '|' TK_LOWER_ID TK_IN expression TK_RANGE expression ']'
+        {
+            $$ = ast_expression_comprehension($1, $2, $4, $6, $8);
         }
     ;
 

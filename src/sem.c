@@ -1111,10 +1111,16 @@ static void sem_expression(SS* ss, Expression* exp) {
         symtable_leave_scope(ss->table);
         if (exp->comprehension.e->type == __void) {
             TODOERR(exp->line,
-                "error: invalid Void element in list comprehension"
+                "invalid Void element in list comprehension"
             );
         }
         exp->type = ast_type_array(exp->comprehension.e->type);
+        if ((exp->type->immutable = exp->comprehension.immutable) &&
+            !exp->type->array->immutable) {
+            TODOERR(exp->line,
+                "immutable list comprehension must have immutable elements"
+            );
+        }
         break;
     case EXPRESSION_UNARY:
         sem_expression_unary(ss, exp);

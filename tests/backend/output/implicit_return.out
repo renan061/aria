@@ -2,4 +2,4 @@ implicitlyReturnsBoolean: 0
 implicitlyReturnsInteger: 0
 implicitlyReturnsFloat: 0.0
 implicitlyReturnsString: 
-implicitlyReturnsArray: (nil)
+implicitlyReturnsArray: 0x0

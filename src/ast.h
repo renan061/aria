@@ -324,6 +324,7 @@ struct Expression {
             Definition* i;
             Expression* lower;
             Expression* upper;
+            bool immutable; // default false
         } comprehension;
         // ExpressionUnary
         struct {

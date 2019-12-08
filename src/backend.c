@@ -1062,23 +1062,29 @@ static void backend_expression(IRState* irs, Expression* expression) {
         LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
         LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
         LLVMBB bbend = LLVMAppendBasicBlock(irs->function, BB_END);
+        // loop header
+        LLVMV iptr = expression->comprehension.i->capsa.capsa->V;
+        LLVMV jptr = LLVMBuildAlloca(irs->B, irT_int, LLVM_TMP);
+        LLVMBuildStore(irs->B, ir_int(0), jptr);
         LLVMBuildBr(irs->B, bbcond);
         irsBB_end(irs);
         // cond
         irsBB_start(irs, bbcond);
-        LLVMV iptr = expression->comprehension.i->capsa.capsa->V;
         LLVMV i = LLVMBuildLoad(irs->B, iptr, LLVM_TMP);
-        LLVMV cmp = LLVMBuildICmp(irs->B, LLVMIntSLT, i, n, LLVM_TMP);
+        LLVMV j = LLVMBuildLoad(irs->B, jptr, LLVM_TMP);
+        LLVMV cmp = LLVMBuildICmp(irs->B, LLVMIntSLT, j, n, LLVM_TMP);
         LLVMBuildCondBr(irs->B, cmp, bbloop, bbend);
         irsBB_end(irs);
         // loop
         irsBB_start(irs, bbloop);
-        LLVMV indices[] = {i};
-        LLVMV ptr = LLVMBuildGEP(irs->B, expression->V, indices, 1, LLVM_TMP);
         backend_expression(irs, expression->comprehension.e);
+        LLVMV indices[] = {j};
+        LLVMV ptr = LLVMBuildGEP(irs->B, expression->V, indices, 1, LLVM_TMP);
         LLVMBuildStore(irs->B, expression->comprehension.e->V, ptr);
         i = LLVMBuildAdd(irs->B, i, ir_int(1), LLVM_TMP);
+        j = LLVMBuildAdd(irs->B, j, ir_int(1), LLVM_TMP);
         LLVMBuildStore(irs->B, i, iptr);
+        LLVMBuildStore(irs->B, j, jptr);
         LLVMBuildBr(irs->B, bbcond);
         irsBB_end(irs);
         // end

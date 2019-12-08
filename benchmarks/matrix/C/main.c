@@ -7,7 +7,7 @@
 
 // configuration
 #define N           10000
-#define NTHREADS    8
+#define NTHREADS    4
 #define RUNS        100
 
 #define SINGLE 0
@@ -21,7 +21,7 @@
 int now; // SINGLE or NOW
 int **a, *b, *r;
 double partials[2][RUNS];
-int size = N / NTHREADS;
+int section = N / NTHREADS;
 
 double gettime(void);
 void init(void);
@@ -29,9 +29,10 @@ void stats(void);
 void printarray(float array[N]);
 
 void* mul_multi(void* param) {
-    int range = *(int*)(param);
-    int limit = range + size;
-    for (int i = range; i < limit; i++) {
+    int thread = *(int*)(param);
+    int start = thread * section;
+    int end = start + section;
+    for (int i = start; i < end; i++) {
         r[i] = 0;
         for (int j = 0; j < N; j++) {
             r[i] += a[i][j] * b[j];
@@ -63,10 +64,10 @@ int main(void) {
     for (int i = 0; i < RUNS; i++) {
         START;
         pthread_t threads[NTHREADS];
-        int ranges[NTHREADS];
+        int ids[NTHREADS];
         for (int i = 0; i < NTHREADS; i++) {
-            ranges[i] = i * size;
-            pthread_create(&threads[i], NULL, mul_multi, &ranges[i]);
+            ids[i] = i;
+            pthread_create(&threads[i], NULL, mul_multi, &ids[i]);
         }
         for (int i = 0; i < NTHREADS; i++) {
             pthread_join(threads[i], NULL);
@@ -87,22 +88,22 @@ double gettime(void) {
 }
 
 void init(void) {
-    double start = gettime();
+    double t = gettime();
     srand(time(NULL));
     a = (int**)malloc(N * sizeof(int*));
     b = (int*)malloc(N * sizeof(int));
     r = (int*)malloc(N * sizeof(int));
     for (int i = 0; i < N; i++) {
         a[i] = (int*)malloc(N * sizeof(int));
-        b[i] = rand();
+        b[i] = rand() / 1000000;
         for (int j = 0; j < N; j++) {
-            a[i][j] = rand();
+            a[i][j] = rand() / 1000000;
         }
     }
-    double mem = gettime() - start;
+    t = gettime() - t;
 
     printf("\n");
-    printf("\tMemory: %f sec\n", mem);
+    printf("\tMemory: %f sec\n", t);
     printf("\n");
 }
 

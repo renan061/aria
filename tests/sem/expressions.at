@@ -57,12 +57,17 @@ function main: Boolean {
 List comprehension expressions
 -- Input
 function main {
-    value array = [i | i in 0...10];
+    value array1 = [i | i in 0...10];
+    value array2 = Immutable [i | i in 0...10];
 }
 -- Output
 function main: Void {
-    value array: [Integer] = ([(i: Integer) |
-        value i: Integer in
+    value array1: [Integer] = ([(i: Integer) |
+        value i: Integer = (0: Integer) in
+        (0: Integer)..(10: Integer)
+    ])
+    value array2: Immutable [Integer] = ([(i: Integer) |
+        value i: Integer = (0: Integer) in
         (0: Integer)..(10: Integer)
     ])
 }
@@ -95,7 +100,17 @@ function main {
 }
 -- Output
 line 2:
-    semantic error: error: invalid Void element in list comprehension
+    semantic error: invalid Void element in list comprehension
+--------------------------------------------------------------------------------
+-- Title
+List comprehension expressions (not recursively immutable)
+-- Input
+function main {
+    value array = Immutable [[1] | i in 0...1];
+}
+-- Output
+line 2:
+    semantic error: immutable list comprehension must have immutable elements
 --------------------------------------------------------------------------------
 -- Title
 Binary expressions

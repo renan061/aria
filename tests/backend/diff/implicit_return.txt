@@ -1,0 +1,4 @@
+5c5
+< implicitlyReturnsArray: (nil)
+---
+> implicitlyReturnsArray: 0x0

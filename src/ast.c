@@ -609,6 +609,7 @@ Expression* ast_expression_comprehension(Line ln, Expression* e,
     exp->comprehension.i = ast_definition_capsa(capsa, lower);
     exp->comprehension.lower = lower;
     exp->comprehension.upper = upper;
+    exp->comprehension.immutable = false;
     return exp;
 }
 
