@@ -3,4 +3,5 @@
 #
 
 clean:
-	cd matrix/ && $(MAKE) $@
+	cd matrix-C/ && $(MAKE) $@
+	cd matrix-Aria/ && $(MAKE) $@

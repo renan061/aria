@@ -7,7 +7,7 @@
 
 // configuration
 #define N           10000
-#define NTHREADS    4
+#define NTHREADS    8
 #define RUNS        10
 #define SUBRUNS     10
 
