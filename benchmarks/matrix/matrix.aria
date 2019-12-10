@@ -1,7 +1,7 @@
 
 // configuration
 value size    = 10000;
-value threads = 4;
+value threads = 8;
 value runs    = 100;
 
 value section = size / threads;
@@ -84,13 +84,15 @@ function main {
     value memory = getTime() - t;
 
     // single
+    variable r: Integer;
     for variable i = 0; i < runs; i = i + 1 {
         t = getTime();
         for variable i = 0; i < size; i = i + 1 {
-            c[i] = 0;
+            r = 0;
             for variable j = 0; j < size; j = j + 1 {
-                c[i] = c[i] + a[i][j] * b[j];
+                r = r + a[i][j] * b[j];
             }
+            c[i] = r;
         }
         partials[single][i] = getTime() - t;
     }
@@ -143,15 +145,10 @@ function main {
         for variable j = 0; j < runs; j = j + 1 {
             x = partials[i][j];
             avg[i] = avg[i] + x;
-            if x < min[i] {
-                min[i] = x;
-            }
-            if x > max[i] {
-                max[i] = x;
-            }
+            if x < min[i] { min[i] = x; }
+            if x > max[i] { max[i] = x; }
         }
         avg[i] = avg[i] / runs;
-
         diffmax = max[i] - avg[i];
         diffmin = avg[i] - min[i];
 

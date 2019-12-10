@@ -7,7 +7,7 @@
 
 // configuration
 #define N           10000
-#define NTHREADS    4
+#define NTHREADS    8
 #define RUNS        100
 
 #define SINGLE 0
@@ -32,21 +32,25 @@ void* mul_multi(void* param) {
     int thread = *(int*)(param);
     int start = thread * section;
     int end = start + section;
+    int x;
     for (int i = start; i < end; i++) {
-        r[i] = 0;
+        x = 0;
         for (int j = 0; j < N; j++) {
-            r[i] += a[i][j] * b[j];
+            x += a[i][j] * b[j];
         }
+        r[i] = x;
     }
     return NULL;
 }
 
 void mul_single(void) {
+    int x;
     for (int i = 0; i < N; i++) {
-        r[i] = 0;
+        x = 0;
         for (int j = 0; j < N; j++) {
-            r[i] += a[i][j] * b[j];
+            x += a[i][j] * b[j];
         }
+        r[i] = x;
     }
 }
 
