@@ -16,10 +16,5 @@ run:
 	perf stat -r 1000 ./a.out
 
 clean:
-	$(RM) aria
-	$(RM) test.aria
 	$(RM) *.ll
 	$(RM) *.bc
-	$(RM) *.o
-	$(RM) *.out
-	cd C/ && $(MAKE) $@
