@@ -7,19 +7,20 @@
 
 // configuration
 #define N           10000
-#define NTHREADS    8
-#define RUNS        100
+#define NTHREADS    4
+#define RUNS        10
+#define SUBRUNS     10
 
 #define SINGLE 0
 #define MULTI  1
 
 #define START   double start = gettime();
-#define END     partials[now][i]  = gettime() - start;
+#define END     partials[now][i] = gettime() - start;
 
 // -----------------------------------------------------------------------------
 
 int now; // SINGLE or NOW
-int **a, *b, *r;
+double *a, *b, *c[2];
 double partials[2][RUNS];
 int section = N / NTHREADS;
 
@@ -32,25 +33,30 @@ void* mul_multi(void* param) {
     int thread = *(int*)(param);
     int start = thread * section;
     int end = start + section;
-    int x;
+    int ioff;
+    double x;
+
     for (int i = start; i < end; i++) {
         x = 0;
+        ioff = i * N;
         for (int j = 0; j < N; j++) {
-            x += a[i][j] * b[j];
+            x += a[ioff + j] * b[j];
         }
-        r[i] = x;
+        c[SINGLE][i] = x;
     }
     return NULL;
 }
 
 void mul_single(void) {
-    int x;
+    int ioff;
+    double x;
     for (int i = 0; i < N; i++) {
         x = 0;
+        ioff = i * N;
         for (int j = 0; j < N; j++) {
-            x += a[i][j] * b[j];
+            x += a[ioff + j] * b[j];
         }
-        r[i] = x;
+        c[MULTI][i] = x;
     }
 }
 
@@ -60,23 +66,31 @@ int main(void) {
     now = SINGLE;
     for (int i = 0; i < RUNS; i++) {
         START;
-        mul_single();
+        for (int j = 0; j < SUBRUNS; j++) {
+            mul_single();
+        }
         END;
     }
 
     now = MULTI;
     for (int i = 0; i < RUNS; i++) {
         START;
-        pthread_t threads[NTHREADS];
-        int ids[NTHREADS];
-        for (int i = 0; i < NTHREADS; i++) {
-            ids[i] = i;
-            pthread_create(&threads[i], NULL, mul_multi, &ids[i]);
-        }
-        for (int i = 0; i < NTHREADS; i++) {
-            pthread_join(threads[i], NULL);
+        for (int j = 0; j < SUBRUNS; j++) {
+            pthread_t threads[NTHREADS];
+            int ids[NTHREADS];
+            for (int i = 0; i < NTHREADS; i++) {
+                ids[i] = i;
+                pthread_create(&threads[i], NULL, mul_multi, &ids[i]);
+            }
+            for (int i = 0; i < NTHREADS; i++) {
+                pthread_join(threads[i], NULL);
+            }
         }
         END;
+    }
+
+    for (int i = 0; i < N; i++) {
+        assert(c[SINGLE][i] == c[MULTI][i]);
     }
 
     stats();
@@ -93,15 +107,15 @@ double gettime(void) {
 
 void init(void) {
     double t = gettime();
-    srand(time(NULL));
-    a = (int**)malloc(N * sizeof(int*));
-    b = (int*)malloc(N * sizeof(int));
-    r = (int*)malloc(N * sizeof(int));
+    srand(time(0));
+    a = (double*)malloc(N * N * sizeof(double));
+    b = (double*)malloc(N *     sizeof(double));
+    c[SINGLE] = (double*)malloc(N * sizeof(double));
+    c[MULTI]  = (double*)malloc(N * sizeof(double));
     for (int i = 0; i < N; i++) {
-        a[i] = (int*)malloc(N * sizeof(int));
         b[i] = rand() / 1000000;
         for (int j = 0; j < N; j++) {
-            a[i][j] = rand() / 1000000;
+            a[i * N + j] = rand() / 1000000;
         }
     }
     t = gettime() - t;
@@ -117,7 +131,10 @@ void stats(void) {
     double max[2] = {0, 0};
     double x;
 
-    printf("\tRuns: %d\n\n", RUNS);
+    printf("\tSize: %d\n", N);
+    printf("\tRuns: %d\n", RUNS);
+    printf("\tSubruns: %d\n", SUBRUNS);
+    printf("\n");
 
     for (now = 0; now < 2; now++) {
         for (int i = 0; i < RUNS; i++) {

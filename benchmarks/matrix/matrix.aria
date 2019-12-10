@@ -1,8 +1,9 @@
 
 // configuration
 value size    = 10000;
-value threads = 8;
-value runs    = 100;
+value threads = 4;
+value runs    = 10;
+value subruns = 10;
 
 value section = size / threads;
 value single  = 0;
@@ -26,45 +27,15 @@ monitor Barrier {
 
 monitor Array {
     variable n: Integer;
-    variable array: [Integer];
+    variable array: [Float];
 
     initializer(size: Integer) {
         n = size;
-        array = [Integer](n);
+        array = [Float](n);
     }
 
-    function get(i: Integer): Integer    { return array[i]; }
-    function set(i: Integer, v: Integer) { array[i] = v;    }
-
-    function dump {
-        print("Array = [");
-        for variable i = 0; i < n; i = i + 1 {
-            print("%d", array[i]);
-            if i + 1 < n {
-                print(", ");
-            }
-        }
-        print("]\n");
-    }
-}
-
-function printArray(array: Immutable [Integer]) {
-    print("[");
-    for variable i = 0; i < size; i = i + 1 {
-        print("%d", array[i]);
-        if i < size - 1 {
-            print(", ");
-        }
-    }
-    print("]\n");
-}
-
-function printMatrix(matrix: Immutable [Immutable [Integer]]) {
-    print("[\n");
-    for variable i = 0; i < size; i = i + 1 {
-        printArray(matrix[i]);
-    }
-    print("]\n");
+    function get(i: Integer): Float    { return array[i]; }
+    function set(i: Integer, v: Float) { array[i] = v;    }
 }
 
 function main {
@@ -75,24 +46,29 @@ function main {
 
     // memory
     t = getTime();
-    value a = Immutable [
-        Immutable [rand() / 1000000 | j in 0...size]
-    | i in 0...size];
-    value b = Immutable [rand() / 1000000 | i in 0...size];
-    value c = [Integer](size);
+    value a = Immutable [(rand() / 1000000) as Float | i in 0...size * size];
+    value b = Immutable [(rand() / 1000000) as Float | i in 0...size       ];
+    // value a = Immutable [
+    //     [(rand() / 1000000) as Float | j in 0...size]
+    // | i in 0...size];
+    value c = [Float](size);
     value m = Array(size);
     value memory = getTime() - t;
 
     // single
-    variable r: Integer;
     for variable i = 0; i < runs; i = i + 1 {
         t = getTime();
-        for variable i = 0; i < size; i = i + 1 {
-            r = 0;
-            for variable j = 0; j < size; j = j + 1 {
-                r = r + a[i][j] * b[j];
+        variable r: Float;
+        variable ioff: Integer;
+        for variable x = 0; x < subruns; x = x + 1 {
+            for variable i = 0; i < size; i = i + 1 {
+                r = 0;
+                ioff = i * size;
+                for variable j = 0; j < size; j = j + 1 {
+                    r = r + a[i][j] * b[j];
+                }
+                c[i] = r;
             }
-            c[i] = r;
         }
         partials[single][i] = getTime() - t;
     }
@@ -100,24 +76,28 @@ function main {
     // multi
     for variable i = 0; i < runs; i = i + 1 {
         t = getTime();
-        value barrier = Barrier(threads + 1);
-        for variable i = 0; i < threads; i = i + 1 {
-            value thread = i;
-            spawn {
-                value start = thread * section;
-                value end = start + section;
-                variable r: Integer;
-                for variable i = start; i < end; i = i + 1 {
-                    r = 0;
-                    for variable j = 0; j < size; j = j + 1 {
-                        r = r + a[i][j] * b[j];
+        for variable x = 0; x < subruns; x = x + 1 {
+            value barrier = Barrier(threads + 1);
+            for variable i = 0; i < threads; i = i + 1 {
+                value thread = i;
+                spawn {
+                    value start = thread * section;
+                    value end = start + section;
+                    variable r: Float;
+                    variable ioff: Integer;
+                    for variable i = start; i < end; i = i + 1 {
+                        r = 0;
+                        ioff = i * size;
+                        for variable j = 0; j < size; j = j + 1 {
+                            r = r + a[i][j] * b[j];
+                        }
+                        m.set(i, r);
                     }
-                    m.set(i, r);
+                    barrier.synchronize();
                 }
-                barrier.synchronize();
             }
+            barrier.synchronize();
         }
-        barrier.synchronize();
         partials[multi][i] = getTime() - t;
     }
 
@@ -125,7 +105,7 @@ function main {
     for variable i = 0; i < size; i = i + 1 {
         if c[i] != m.get(i) {
             print("\n\t!!! ERROR (c != m) !!!\n");
-            i = size;
+            return;
         }
     }
 
@@ -138,7 +118,9 @@ function main {
     print("\n");
     print("\tMemory: %f sec\n", memory);
     print("\n");
+    print("\tSize: %d\n", size);
     print("\tRuns: %d\n", runs);
+    print("\tSubruns: %d\n", runs);
     print("\n");
 
     for variable i = 0; i < 2; i = i + 1 {
