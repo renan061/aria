@@ -1,0 +1,168 @@
+
+// configuration
+
+value rectangles = 80000000;
+value threads    = 8;
+value runs       = 10;
+value subruns    = 10;
+
+value x0 = 0.0;
+value xN = 16.0;
+
+// constants
+
+value result = 5706;
+
+value single  = 0;
+value multi   = 1;
+
+value threadRectangles = rectangles / threads;
+value section = (xN - x0) / rectangles;
+value halfSection = section / 2.0;
+
+// functions
+
+function f(x: Float): Float {
+    return 5 * x * x - 10 * x + 10;
+}
+
+function calcSingle: Float {
+    variable area = 0.0;
+    for variable x = x0; x < rectangles; x = x + 1 {
+        area = area + f(x * section + halfSection) * section;
+    }
+    return area;
+}
+
+function calcMulti(thread: Integer): Float {
+    value start: Float = thread * threadRectangles;
+    value end: Float = start + threadRectangles;
+    variable area = 0.0;
+    for variable x = start; x < end; x = x + 1 {
+        area = area + f(x * section + halfSection) * section;
+    }
+    return area;
+}
+
+// barrier monitor
+
+monitor Barrier {
+    variable queue = ConditionQueue();
+    variable current, counter: Integer;
+
+    initializer(n: Integer) {
+        current = 0;
+        counter = n;
+    }
+
+    function synchronize {
+        current = current + 1;
+        wait for current == counter in queue;
+        broadcast queue;
+    }
+}
+
+// area monitor
+
+monitor Area {
+    variable area = 0.0;
+
+    initializer {}
+
+    function add(v: Float) {
+        area = area + v;
+    }
+
+    function get: Float {
+        return area;
+    }
+}
+
+// main
+
+function main {
+    srand(93029);
+
+    value partials = [[Float](runs) | i in 0...2];
+    variable t: Float;
+
+    { // single
+        variable area: Float;
+        for variable i = 0; i < runs; i = i + 1 {
+            t = getTime();
+            for variable j = 0; j < subruns; j = j + 1 {
+                area = calcSingle();
+
+                // assert((int)area == result); TODO
+            }
+            partials[single][i] = getTime() - t;
+        }
+
+        if rectangles == 0 {
+            print("%f\n", area);
+        }
+    }
+
+    { // multi
+        value area = Area();
+        for variable i = 0; i < runs; i = i + 1 {
+            t = getTime();
+            for variable x = 0; x < subruns; x = x + 1 {
+                value barrier = Barrier(threads + 1);
+                for variable i = 0; i < threads; i = i + 1 {
+                    value thread = i;
+                    spawn {
+                        area.add(calcMulti(thread));
+                        barrier.synchronize();
+                    }
+                }
+                barrier.synchronize();
+                // TODO: area.get() == result
+            }
+            partials[multi][i] = getTime() - t;
+        }
+    }
+
+    // stats
+    value avg = [0.0, 0.0];
+    value min = [10000000000.0, 10000000000.0];
+    value max = [0.0, 0.0];
+    variable x, diffmax, diffmin: Float;
+
+    print("\n");
+    print("\tRectangles: %d\n", rectangles);
+    print("\tRuns: %d\n", runs);
+    print("\tSubruns: %d\n", subruns);
+    print("\n");
+
+    for variable i = 0; i < 2; i = i + 1 {
+        for variable j = 0; j < runs; j = j + 1 {
+            x = partials[i][j];
+            avg[i] = avg[i] + x;
+            if x < min[i] { min[i] = x; }
+            if x > max[i] { max[i] = x; }
+        }
+        avg[i] = avg[i] / runs;
+        diffmax = max[i] - avg[i];
+        diffmin = avg[i] - min[i];
+
+        print("\t");
+        if i == single {
+            print("SINGLE");
+        } else {
+            print("MULTI (%d threads)", threads);
+        }
+        print("\n");
+        print("\tAvg: %f sec\n", avg[i]);
+        print("\tMax: %f sec (+%f)\n", max[i], diffmax);
+        print("\tMin: %f sec (-%f)\n", min[i], diffmin);
+        print("\t- %f%%\n", diffmin / avg[i] * 100);
+        print("\t+ %f%%\n", diffmax / avg[i] * 100);
+        print("\n");
+    }
+
+    value speedup = avg[single] / avg[multi];
+    print("\tSpeedup: %.2f\n", speedup);
+    print("\tThread Efficiency: %.2f%%\n", speedup / threads * 100);
+    print("\n");
+}

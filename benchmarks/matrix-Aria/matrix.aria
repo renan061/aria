@@ -120,7 +120,7 @@ function main {
     print("\n");
     print("\tSize: %d\n", size);
     print("\tRuns: %d\n", runs);
-    print("\tSubruns: %d\n", runs);
+    print("\tSubruns: %d\n", subruns);
     print("\n");
 
     for variable i = 0; i < 2; i = i + 1 {
