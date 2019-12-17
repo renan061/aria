@@ -54,6 +54,7 @@ extern LLVMV ir_printf(LLVMB, LLVMV*, int);
 extern LLVMV ir_rand(LLVMB);
 extern LLVMV ir_srand(LLVMB, LLVMV);
 extern LLVMV ir_getTime(LLVMB);
+extern LLVMV ir_assert(LLVMB, LLVMV*);
 
 // auxiliary functions
 extern LLVMV ir_malloc(LLVMB, size_t);
@@ -118,5 +119,6 @@ extern void irPT_cond_broadcast(LLVMB, LLVMV cond);
 
 // must be called before using the module
 extern void ir_setup(LLVMM);
+extern void ir_init(LLVMB);
 
 #endif

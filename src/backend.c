@@ -121,6 +121,7 @@ static IRState* setup(void) {
     LLVMB B = LLVMCreateBuilder();
     IRState* irs = irs_new(M, B);
     ir_setup(M);
+    ir_init(B);
 
     inits = list_new();
     globals = list_new();
@@ -1345,6 +1346,7 @@ static void backend_condition(IRState* irs, Expression* expression,
 static LLVMV backend_fc_basic(IRState*, FunctionCall*);
 static LLVMV backend_fc_method(IRState*, FunctionCall*);
 static LLVMV backend_fc_condition_queue(IRState*, FunctionCall*);
+static LLVMV backend_fc_integer_conversion(IRState*, FunctionCall*);
 static LLVMV backend_fc_array(IRState*, FunctionCall*);
 
 static LLVMV* fcargs(IRState*, FunctionCall*);
@@ -1359,7 +1361,13 @@ static LLVMV backend_function_call(IRState* irs, FunctionCall* fc) {
     case FUNCTION_CALL_CONSTRUCTOR:
         switch (fc->type->tag) {
         case TYPE_ID: // ConditionQueue initializer
-            return backend_fc_condition_queue(irs, fc);
+            if (fc->type == __condition_queue) {
+                return backend_fc_condition_queue(irs, fc);
+            } else if (fc->type == __integer) {
+                return backend_fc_integer_conversion(irs, fc);
+            } else {
+                UNREACHABLE;
+            }
         case TYPE_ARRAY: // new array
             return backend_fc_array(irs, fc);
         case TYPE_MONITOR: // monitor constructor
@@ -1420,9 +1428,21 @@ static LLVMV backend_fc_method(IRState* irs, FunctionCall* fc) {
 }
 
 static LLVMV backend_fc_condition_queue(IRState* irs, FunctionCall* fc) {
-    assert(fc->type == __condition_queue);
     LLVMV V = ir_malloc(irs->B, sizeof(pthread_cond_t));
     irPT_cond_init(irs->B, V);
+    return V;
+}
+
+static LLVMV backend_fc_integer_conversion(IRState* irs, FunctionCall* fc) {
+    backend_expression(irs, fc->arguments);
+    LLVMV V = fc->arguments->V;
+    if (fc->arguments->type == __integer) {
+        // empty
+    } else if (fc->arguments->type == __float) {
+        V = LLVMBuildFPToSI(irs->B, V, irT_int, LLVM_TMP);
+    } else {
+        UNREACHABLE;
+    }
     return V;
 }
 
@@ -1472,6 +1492,8 @@ static LLVMV nativefc(IRState* irs, FunctionCall* fc) {
         V = ir_srand(irs->B, args[0]);
     } else if (!strcmp(fc->id->name, "getTime")) {
         V = ir_getTime(irs->B);
+    } else if (!strcmp(fc->id->name, "assert")) {
+        V = ir_assert(irs->B, args);
     } else {
         UNREACHABLE;
     }

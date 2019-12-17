@@ -35,6 +35,7 @@ static const char* NAME_RAND            = "rand";
 static const char* NAME_SRAND           = "srand";
 static const char* NAME_STRUCT_TIMESPEC = "struct_timespec";
 static const char* NAME_CLOCK_GETTIME   = "clock_gettime";
+static const char* NAME_ASSERT          = "assert";
 
 static const char* NAME_MALLOC = "malloc";
 static const char* NAME_EXIT   = "exit";
@@ -44,6 +45,7 @@ static LLVMV irV_rand            = NULL;
 static LLVMV irV_srand           = NULL;
 static LLVMT irT_struct_timespec = NULL;
 static LLVMV irV_clock_gettime   = NULL;
+static LLVMV irV_assert          = NULL;
 
 static LLVMV irV_malloc = NULL;
 static LLVMV irV_exit   = NULL;
@@ -104,6 +106,12 @@ void ir_setup(LLVMM M) {
         irV_clock_gettime = LLVMAddFunction(M, NAME_CLOCK_GETTIME, T);
     }
 
+    { // assert
+        LLVMT Ts[] = {irT_bool, irT_string};
+        T = LLVMFunctionType(irT_void, Ts, 2, false);
+        irV_assert = LLVMAddFunction(M, NAME_ASSERT, T);
+    }
+
     { // malloc
         T = LLVMFunctionType(irT_pvoid, &irT_int, 1, false);
         irV_malloc = LLVMAddFunction(M, NAME_MALLOC, T);
@@ -115,6 +123,28 @@ void ir_setup(LLVMM M) {
     }
 
     irPT_setup(M);
+}
+
+void ir_init(LLVMB B) {
+    { // assert
+        LLVMBB bbentry = LLVMAppendBasicBlock(irV_assert, "entry");
+        LLVMBB bberror = LLVMAppendBasicBlock(irV_assert, "error");
+        LLVMBB bbok = LLVMAppendBasicBlock(irV_assert, "ok");
+
+        LLVMPositionBuilderAtEnd(B, bbentry);
+        LLVMV param = LLVMGetParam(irV_assert, 0);
+        LLVMV cmp = LLVMBuildICmp(B, LLVMIntEQ, ir_bool(true), param, LLVM_TMP);
+        LLVMBuildCondBr(B, cmp, bbok, bberror);
+
+        LLVMPositionBuilderAtEnd(B, bbok);
+        LLVMBuildRetVoid(B);
+
+        LLVMPositionBuilderAtEnd(B, bberror);
+        LLVMV msg = LLVMGetParam(irV_assert, 1);
+        ir_printf(B, &msg, 1);
+        ir_exit(B);
+        LLVMBuildUnreachable(B);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -147,6 +177,10 @@ LLVMV ir_getTime(LLVMB B) {
     sec = LLVMBuildSIToFP(B, sec, irT_float, LLVM_TMP);
     sec = LLVMBuildFAdd(B, sec, nsec, LLVM_TMP);
     return sec;
+}
+
+LLVMV ir_assert(LLVMB B, LLVMV* args) {
+    return LLVMBuildCall(B, irV_assert, args, 2, LLVM_TMP_NONE);
 }
 
 LLVMV ir_malloc(LLVMB B, size_t size) {

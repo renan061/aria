@@ -1409,6 +1409,16 @@ static void sem_function_call_constructor_native(SS* ss, FunctionCall* call) {
         if (call->argc != 0) {
             TODOERR(call->line, "ConditionQueue constructor has no parameters");
         }
+    } else if (call->type == __integer) {
+        // TODO: test
+        countarguments(call);
+        if (call->argc != 1) {
+            TODOERR(call->line, "Integer() receives one parameter");
+        }
+        sem_expression(ss, call->arguments);
+        if (!numerictype(call->arguments->type)) {
+            TODOERR(call->line, "Integer() receives a numeric parameter");
+        }
     } else {
         UNREACHABLE;
     }
@@ -1478,9 +1488,7 @@ static bool nativefunction(SS* ss, FunctionCall* fc) {
             TODOERR(fc->line, "function <srand> receives one argument");
         }
         sem_expression(ss, fc->arguments);
-        if (fc->arguments->type != __integer) {
-            TODOERR(fc->line, "function <srand> receives an Integer");
-        }
+        typecheck1(__integer, &fc->arguments);
         fc->type = __void;
         return true;
     }
@@ -1489,6 +1497,17 @@ static bool nativefunction(SS* ss, FunctionCall* fc) {
             TODOERR(fc->line, "function <getTime> receives no arguments");
         }
         fc->type = __float;
+        return true;
+    }
+    if (!strcmp(fc->id->name, "assert")) {
+        if (fc->argc != 2) {
+            TODOERR(fc->line, "function <assert> receives two arguments");
+        }
+        sem_expression(ss, fc->arguments);
+        typecheck1(__boolean, &fc->arguments);
+        sem_expression(ss, fc->arguments->next);
+        typecheck1(__string, &fc->arguments->next);
+        fc->type = __void;
         return true;
     }
     return false;
