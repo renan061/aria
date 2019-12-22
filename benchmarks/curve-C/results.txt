@@ -1,0 +1,51 @@
+
+    Rectangles: 80000000
+	Runs: 10
+	Subruns: 10
+
+	SINGLE
+	Avg: 12.600698 sec
+	Max: 12.611740 sec (+0.011042)
+	Min: 12.594545 sec (-0.006153)
+	- 0.048831%
+	+ 0.087630%
+
+	MULTI (1 threads)
+	Avg: 12.569457 sec
+	Max: 12.575526 sec (+0.006070)
+	Min: 12.563920 sec (-0.005536)
+	- 0.044047%
+	+ 0.048289%
+
+	Speedup: 1.00
+	Thread Efficiency: 100.25%
+
+	MULTI (2 threads)
+	Avg: 6.310044 sec
+	Max: 6.314731 sec (+0.004688)
+	Min: 6.304146 sec (-0.005897)
+	- 0.093460%
+	+ 0.074288%
+
+	Speedup: 2.00
+	Thread Efficiency: 99.85%
+
+	MULTI (4 threads)
+	Avg: 3.352739 sec
+	Max: 3.456706 sec (+0.103968)
+	Min: 3.262937 sec (-0.089802)
+	- 2.678456%
+	+ 3.100973%
+
+	Speedup: 3.76
+	Thread Efficiency: 93.96%
+
+	MULTI (8 threads)
+	Avg: 2.724408 sec
+	Max: 2.735225 sec (+0.010817)
+	Min: 2.716244 sec (-0.008164)
+	- 0.299679%
+	+ 0.397028%
+
+	Speedup: 4.63
+	Thread Efficiency: 57.81%

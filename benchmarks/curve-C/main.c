@@ -7,7 +7,6 @@
 // configuration
 #define runs     10
 #define subruns  10
-#define threads  8
 
 const double x0 = 0;
 const double xN = 16;
@@ -17,14 +16,19 @@ const double rectangles = 80000000;
 
 // -----------------------------------------------------------------------------
 
+const int arraythreads[] = {1, 2, 4, 8};
+int threads;
+#define nthreads 4
+
 const int single = 0;
 const int multi  = 1;
 
-const int thread_rectangles = rectangles / threads;
 const double section = (xN - x0) / rectangles;
 const double halfsection = section / 2.0;
 
-double partials[2][runs];
+double partials[nthreads + 1][runs];
+
+int thread_rectangles;
 
 double f(double x);
 double gettime(void);
@@ -79,7 +83,11 @@ double calc_multi(void) {
 
 int main(void) {
     run(single, calc_single);
-    run(multi, calc_multi);
+    for (int i = 0; i < nthreads; i++) {
+        threads = arraythreads[i];
+        thread_rectangles = rectangles / threads;
+        run(i + 1, calc_multi);
+    }
     stats();
     return 0;
 }
@@ -109,9 +117,14 @@ void run(int type, double (*f)(void)) {
 }
 
 void stats(void) {
-    double avg[2] = {0, 0};
-    double min[2] = {DBL_MAX, DBL_MAX};
-    double max[2] = {0, 0};
+    int size = nthreads + 1;
+    double avg[size];
+    double min[size];
+    double max[size];
+    for (int i = 0; i < size; i++) {
+        avg[i] = max[i] = 0;
+        min[i] = DBL_MAX;
+    }
     double x;
 
     printf("\tRectangles: %d\n", (int)rectangles);
@@ -119,7 +132,7 @@ void stats(void) {
     printf("\tSubruns: %d\n", subruns);
     printf("\n");
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < size; i++) {
         for (int j = 0; j < runs; j++) {
             x = partials[i][j];
             avg[i] += x;
@@ -135,7 +148,7 @@ void stats(void) {
         if (i == single) {
             printf("SINGLE");
         } else {
-            printf("MULTI (%d threads)", threads);
+            printf("MULTI (%d threads)", arraythreads[i - 1]);
         }
         printf("\n");
         printf("\tAvg: %f sec\n", avg[i]);
@@ -144,10 +157,13 @@ void stats(void) {
         printf("\t- %f%%\n", diffmin / avg[i] * 100);
         printf("\t+ %f%%\n", diffmax / avg[i] * 100);
         printf("\n");
-    }
 
-    double speedup = avg[single] / avg[multi];
-    printf("\tSpeedup: %.2f\n", speedup);
-    printf("\tThread Efficiency: %.2f%%\n", speedup / threads * 100);
-    printf("\n");
+        if (i == single) { continue; }
+
+        double speedup = avg[single] / avg[i];
+        double efficiency = speedup / arraythreads[i - 1] * 100;
+        printf("\tSpeedup: %.2f\n", speedup);
+        printf("\tThread Efficiency: %.2f%%\n", efficiency);
+        printf("\n");
+    }
 }
