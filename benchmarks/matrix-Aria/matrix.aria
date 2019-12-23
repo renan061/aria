@@ -1,13 +1,13 @@
 
 // configuration
 value size    = 10000;
-value threads = 4;
 value runs    = 10;
-value subruns = 10;
+value subruns = 100;
 
-value section = size / threads;
-value single  = 0;
-value multi   = 1;
+value threads  = Immutable [1, 2, 4, 8];
+value nthreads = 4;
+
+// monitors
 
 monitor Barrier {
     variable queue = ConditionQueue();
@@ -38,16 +38,18 @@ monitor Array {
     function set(i: Integer, v: Float) { array[i] = v;    }
 }
 
+// functions
+
 function main {
     srand(93029);
 
-    value partials = [[Float](runs) | i in 0...2];
+    value partials = [[Float](runs) | i in 0...(nthreads + 1)];
     variable t: Float;
 
     // memory
     t = getTime();
     value a = Immutable [(rand() / 1000000) as Float | i in 0...size * size];
-    value b = Immutable [(rand() / 1000000) as Float | i in 0...size       ];
+    value b = Immutable [(rand() / 1000000) as Float | i in 0...size];
     // value a = Immutable [
     //     [(rand() / 1000000) as Float | j in 0...size]
     // | i in 0...size];
@@ -56,63 +58,67 @@ function main {
     value memory = getTime() - t;
 
     // single
-    for variable i = 0; i < runs; i = i + 1 {
+    for variable x = 0; x < runs; x = x + 1 {
         t = getTime();
         variable r: Float;
         variable ioff: Integer;
-        for variable x = 0; x < subruns; x = x + 1 {
+        for variable y = 0; y < subruns; y = y + 1 {
+            // algorithm
             for variable i = 0; i < size; i = i + 1 {
                 r = 0;
                 ioff = i * size;
                 for variable j = 0; j < size; j = j + 1 {
-                    r = r + a[i][j] * b[j];
+                    r = r + a[ioff + j] * b[j];
                 }
                 c[i] = r;
             }
         }
-        partials[single][i] = getTime() - t;
+        partials[0][x] = getTime() - t;
     }
 
     // multi
-    for variable i = 0; i < runs; i = i + 1 {
-        t = getTime();
-        for variable x = 0; x < subruns; x = x + 1 {
-            value barrier = Barrier(threads + 1);
-            for variable i = 0; i < threads; i = i + 1 {
-                value thread = i;
-                spawn {
-                    value start = thread * section;
-                    value end = start + section;
-                    variable r: Float;
-                    variable ioff: Integer;
-                    for variable i = start; i < end; i = i + 1 {
-                        r = 0;
-                        ioff = i * size;
-                        for variable j = 0; j < size; j = j + 1 {
-                            r = r + a[i][j] * b[j];
+    for variable k = 0; k < nthreads; k = k + 1 {
+        for variable x = 0; x < runs; x = x + 1 {
+            value threads = threads[k];
+            value section = size / threads;
+            t = getTime();
+            for variable y = 0; y < subruns; y = y + 1 {
+                // algorithm
+                value barrier = Barrier(threads + 1);
+                for variable i = 0; i < threads; i = i + 1 {
+                    value thread = i;
+                    spawn {
+                        value start = thread * section;
+                        value end = start + section;
+                        variable r: Float;
+                        variable ioff: Integer;
+                        for variable i = start; i < end; i = i + 1 {
+                            r = 0;
+                            ioff = i * size;
+                            for variable j = 0; j < size; j = j + 1 {
+                                r = r + a[ioff + j] * b[j];
+                            }
+                            m.set(i, r);
                         }
-                        m.set(i, r);
+                        barrier.synchronize();
                     }
-                    barrier.synchronize();
                 }
+                barrier.synchronize();
             }
-            barrier.synchronize();
+            partials[k + 1][x] = getTime() - t;
         }
-        partials[multi][i] = getTime() - t;
     }
 
     // validating
     for variable i = 0; i < size; i = i + 1 {
-        if c[i] != m.get(i) {
-            print("\n\t!!! ERROR (c != m) !!!\n");
-            return;
-        }
+        assert(c[i] == m.get(i), "c != m");
     }
 
     // stats
-    value avg = [0.0, 0.0];
-    value min = [10000000000.0, 10000000000.0];
-    value max = [0.0, 0.0];
+    value sz = nthreads + 1;
+    value avg = [0.0 | i in 0...sz];
+    value min = [10000000000.0 | i in 0...sz];
+    value max = [0.0 | i in 0...sz];
     variable x, diffmax, diffmin: Float;
 
     print("\n");
@@ -123,7 +129,7 @@ function main {
     print("\tSubruns: %d\n", subruns);
     print("\n");
 
-    for variable i = 0; i < 2; i = i + 1 {
+    for variable i = 0; i < (nthreads + 1); i = i + 1 {
         for variable j = 0; j < runs; j = j + 1 {
             x = partials[i][j];
             avg[i] = avg[i] + x;
@@ -135,10 +141,10 @@ function main {
         diffmin = avg[i] - min[i];
 
         print("\t");
-        if i == single {
+        if i == 0 {
             print("SINGLE");
         } else {
-            print("MULTI (%d threads)", threads);
+            print("MULTI (%d threads)", threads[i - 1]);
         }
         print("\n");
         print("\tAvg: %f sec\n", avg[i]);
@@ -147,14 +153,13 @@ function main {
         print("\t- %f%%\n", diffmin / avg[i] * 100);
         print("\t+ %f%%\n", diffmax / avg[i] * 100);
         print("\n");
-    }
 
-    value speedup = avg[single] / avg[multi];
-    print("\tSpeedup: %.2f\n", speedup);
-    print("\tThread Efficiency: %.2f%%\n", speedup / threads * 100);
-    print("\n");
-
-    if size == 0 {
-        print("%p\n", c);
+        if (i != 0) {
+            value speedup = avg[0] / avg[i];
+            value efficiency = speedup / threads[i - 1] * 100;
+            print("\tSpeedup: %.2f\n", speedup);
+            print("\tEfficiency: %.2f%%\n", efficiency);
+            print("\n");
+        }
     }
 }

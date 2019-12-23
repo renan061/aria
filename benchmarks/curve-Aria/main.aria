@@ -20,7 +20,7 @@ value halfSection = section / 2.0;
 
 // functions
 
-// 5x^2 + 10x + 10
+// 5x^2 - 10x + 10
 function f(x: Float): Float {
     return 5 * x * x - 10 * x + 10;
 }

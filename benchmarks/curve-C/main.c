@@ -163,7 +163,7 @@ void stats(void) {
         double speedup = avg[single] / avg[i];
         double efficiency = speedup / arraythreads[i - 1] * 100;
         printf("\tSpeedup: %.2f\n", speedup);
-        printf("\tThread Efficiency: %.2f%%\n", efficiency);
+        printf("\tEfficiency: %.2f%%\n", efficiency);
         printf("\n");
     }
 }

@@ -1,0 +1,53 @@
+
+    Memory: 0.777075 sec
+
+    Matrix Size: 10000
+    Runs: 10
+    Subruns: 100
+
+    SINGLE
+    Avg: 9.768963 sec
+    Max: 9.770987 sec (+0.002024)
+    Min: 9.764772 sec (-0.004191)
+    - 0.042902%
+    + 0.020718%
+
+    MULTI (1 threads)
+    Avg: 9.795117 sec
+    Max: 9.805788 sec (+0.010671)
+    Min: 9.786378 sec (-0.008739)
+    - 0.089214%
+    + 0.108941%
+
+    Speedup: 1.00
+    Efficiency: 99.73%
+
+    MULTI (2 threads)
+    Avg: 4.992208 sec
+    Max: 5.011426 sec (+0.019217)
+    Min: 4.986292 sec (-0.005917)
+    - 0.118518%
+    + 0.384948%
+
+    Speedup: 1.96
+    Efficiency: 97.84%
+
+    MULTI (4 threads)
+    Avg: 2.940136 sec
+    Max: 2.953848 sec (+0.013712)
+    Min: 2.925266 sec (-0.014870)
+    - 0.505747%
+    + 0.466386%
+
+    Speedup: 3.32
+    Efficiency: 83.07%
+
+    MULTI (8 threads)
+    Avg: 2.850443 sec
+    Max: 2.871080 sec (+0.020636)
+    Min: 2.839175 sec (-0.011269)
+    - 0.395330%
+    + 0.723971%
+
+    Speedup: 3.43
+    Efficiency: 42.84%
