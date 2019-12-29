@@ -1,0 +1,172 @@
+
+// configuration
+value size    = 100000000;
+value runs    = 10;
+value subruns = 10;
+
+value result = 887459712;
+
+// misc.
+value minFloat = 0.0;
+value maxFloat = 10000000000.0;
+
+// monitors
+
+monitor Array {
+    variable array: [Integer];
+
+    initializer(size: Integer) {
+        array = [i | i in 0...size];
+    }
+
+    function get(i: Integer): Integer {
+        return array[i];
+    }
+
+    function set(i: Integer, n: Integer) {
+        array[i] = n;
+    }
+
+    function sum: Integer {
+        variable x = 0;
+        for variable i = 0; i < size; i = i + 1 {
+            x = x + array[i];
+        }
+        return x;
+    }
+}
+
+// functions
+
+// regular
+function sumR(array: Immutable [Integer]): Integer {
+    variable x = 0;
+    for variable i = 0; i < size; i = i + 1 {
+        x = x + array[i];
+    }
+    // print("%d\n", x);
+    return x;
+}
+
+// monitor get
+function sumMG(array: Array): Integer {
+    variable x = 0;
+    for variable i = 0; i < size; i = i + 1 {
+        x = x + array.get(i);
+    }
+    return x;
+}
+
+// unlocked monitor
+function sumUM(array: Array): Integer {
+    variable x = 0;
+    acquire value m = array.unlocked() {
+        for variable i = 0; i < size; i = i + 1 {
+            x = x + m.get(i);
+        }
+    }
+    return x;
+}
+
+function stats(base: Float, partials: [Float]): Float {
+    variable x: Float;
+    variable avg = 0.0;
+    variable min = maxFloat;
+    variable max = minFloat;
+    for variable i = 0; i < runs; i = i + 1 {
+        x = partials[i];
+        avg = avg + x;
+        if x < min { min = x; }
+        if x > max { max = x; }
+    }
+    avg = avg / runs;
+
+    value p = 100 / avg;
+    value diffMax = (max - avg) * p;
+    value diffMin = (avg - min) * p;
+
+    print("\n");
+    print("\tAvg: %f sec\n", avg);
+    print("\tMax: %f sec (+ %.1f%%)\n", max, diffMax);
+    print("\tMin: %f sec (- %.1f%%)\n", min, diffMin);
+    if base != 0 {
+        print("\t=> %.2f slower\n", avg / base);
+    }
+    print("\n");
+
+    return avg;
+}
+
+// main
+
+function main {
+    variable partials = [Float](runs);
+    variable t, base: Float;
+
+    print("\n");
+
+    { // regular array
+        value array = Immutable [i | i in 0...size];
+        for variable i = 0; i < runs; i = i + 1 {
+            t = getTime();
+            for variable j = 0; j < subruns; j = j + 1 {
+                assert(sumR(array) == result, "sumR error\n");
+            }
+            partials[i] = getTime() - t;
+        }
+        print("\tREGULAR ARRAY\n");
+        base = stats(0, partials);
+    }
+
+    { // monitor array
+        value array = Array(size);
+        for variable i = 0; i < runs; i = i + 1 {
+            t = getTime();
+            for variable j = 0; j < subruns; j = j + 1 {
+                assert(sumMG(array) == result, "sumMG error\n");
+            }
+            partials[i] = getTime() - t;
+        }
+        print("\tARRAY MONITOR USING GET\n");
+        stats(base, partials);
+    }
+
+    { // monitor array method
+        value array = Array(size);
+        for variable i = 0; i < runs; i = i + 1 {
+            t = getTime();
+            for variable j = 0; j < subruns; j = j + 1 {
+                assert(array.sum() == result, "array.sum error\n");
+            }
+            partials[i] = getTime() - t;
+        }
+        print("\tMONITOR METHOD\n");
+        stats(base, partials);
+    }
+
+    { // unlocked monitor
+        value array = Array(size);
+        for variable i = 0; i < runs; i = i + 1 {
+            t = getTime();
+            for variable j = 0; j < subruns; j = j + 1 {
+                assert(sumUM(array) == result, "sumMG error\n");
+            }
+            partials[i] = getTime() - t;
+        }
+        print("\tUNLOCKED MONITOR\n");
+        stats(base, partials);
+    }
+}
+
+// define i32 @get-P(i8*, i32) {
+// entry:
+//   %proxy = bitcast i8* %0 to %Array-P*                                               ; preds = %entry
+//   %self-ptr1 = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 0
+//   %self-ptr2 = load i8*, i8** %self-ptr1
+//   %self = bitcast i8* %self-ptr2 to %Array*
+//   %t = getelementptr inbounds %Array, %Array* %self, i32 0, i32 2
+//   %t1 = load i32*, i32** %t
+//   %t2 = getelementptr i32, i32* %t1, i32 %1
+//   %t3 = load i32, i32* %t2
+//   ret i32 %t3
+// }

@@ -43,7 +43,7 @@ function calcMulti(thread, threadRectangles: Integer): Float {
     return area;
 }
 
-// barrier monitor
+// monitors
 
 monitor Barrier {
     variable queue = ConditionQueue();
@@ -60,8 +60,6 @@ monitor Barrier {
         broadcast queue;
     }
 }
-
-// area monitor
 
 monitor Area {
     variable area = 0.0;

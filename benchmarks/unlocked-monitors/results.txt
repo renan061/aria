@@ -1,0 +1,27 @@
+
+    REGULAR ARRAY
+
+    Avg: 0.511957 sec
+    Max: 0.609222 sec (+ 19.0%)
+    Min: 0.489738 sec (- 4.3%)
+
+    ARRAY MONITOR USING GET
+
+    Avg: 22.032302 sec
+    Max: 22.060677 sec (+ 0.1%)
+    Min: 22.015198 sec (- 0.1%)
+    => 43.04 slower
+
+    MONITOR METHOD
+
+    Avg: 0.491287 sec
+    Max: 0.508700 sec (+ 3.5%)
+    Min: 0.479230 sec (- 2.5%)
+    => 0.96 slower
+
+    UNLOCKED MONITOR
+
+    Avg: 2.283093 sec
+    Max: 2.307577 sec (+ 1.1%)
+    Min: 2.269949 sec (- 0.6%)
+    => 4.46 slower
