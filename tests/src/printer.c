@@ -27,7 +27,7 @@ static void print_ast_type(Type*);
 static void print_ast_block(Block*);
 static void print_ast_statement(Statement*);
 static void print_ast_capsa(Capsa*);
-static void print_ast_expression(Expression*);
+static void print_ast_expression(Expression*, bool);
 static void print_ast_function_call(FunctionCall*);
 
 void print_ast(AST* ast, bool print_types) {
@@ -54,7 +54,7 @@ static void print_ast_definition(Definition* definition) {
         }
         if (definition->capsa.expression) {
             printf(" = ");
-            print_ast_expression(definition->capsa.expression);
+            print_ast_expression(definition->capsa.expression, true);
         }
         break;
     }
@@ -228,7 +228,7 @@ static void print_ast_statement(Statement* statement) {
     case STATEMENT_ASSIGNMENT:
         print_ast_capsa(statement->assignment.capsa);
         printf(" = ");
-        print_ast_expression(statement->assignment.expression);
+        print_ast_expression(statement->assignment.expression, true);
         break;
     case STATEMENT_FUNCTION_CALL:
         print_ast_function_call(statement->function_call);
@@ -236,34 +236,34 @@ static void print_ast_statement(Statement* statement) {
         break;
     case STATEMENT_WAIT_FOR_IN:
         printf("wait for ");
-        print_ast_expression(statement->wait_for_in.condition);
+        print_ast_expression(statement->wait_for_in.condition, true);
         printf(" in ");
-        print_ast_expression(statement->wait_for_in.queue);
+        print_ast_expression(statement->wait_for_in.queue, true);
         break;
     case STATEMENT_SIGNAL:
         printf("signal ");
-        print_ast_expression(statement->signal);
+        print_ast_expression(statement->signal, true);
         break;
     case STATEMENT_BROADCAST:
         printf("broadcast ");
-        print_ast_expression(statement->broadcast);
+        print_ast_expression(statement->broadcast, true);
         break;
     case STATEMENT_RETURN:
         printf("return");
         if (statement->return_) {
             printf(" ");
-            print_ast_expression(statement->return_);
+            print_ast_expression(statement->return_, true);
         }
         break;
     case STATEMENT_IF:
         printf("if ");
-        print_ast_expression(statement->if_.expression);
+        print_ast_expression(statement->if_.expression, true);
         printf(" ");
         print_ast_block(statement->if_.block);
         break;
     case STATEMENT_IF_ELSE:
         printf("if ");
-        print_ast_expression(statement->if_else.expression);
+        print_ast_expression(statement->if_else.expression, true);
         printf(" ");
         print_ast_block(statement->if_else.if_block);
         printf(" else ");
@@ -271,9 +271,17 @@ static void print_ast_statement(Statement* statement) {
         break;
     case STATEMENT_WHILE:
         printf("while ");
-        print_ast_expression(statement->while_.expression);
+        print_ast_expression(statement->while_.expression, true);
         printf(" ");
         print_ast_block(statement->while_.block);
+        break;
+    case STATEMENT_NUMERIC_FOR:
+        printf("for ");
+        print_ast_definition(statement->numeric_for.v);
+        printf(" in ");
+        print_ast_expression(statement->numeric_for.range, false);
+        printf(" ");
+        print_ast_block(statement->numeric_for.block);
         break;
     case STATEMENT_FOR:
         printf("for\n");
@@ -281,7 +289,7 @@ static void print_ast_statement(Statement* statement) {
         print_ast_definition(statement->for_.initialization);
         printf("\n");
         identation();
-        print_ast_expression(statement->for_.condition);
+        print_ast_expression(statement->for_.condition, true);
         printf("\n");
         identation();
         print_ast_statement(statement->for_.increment);
@@ -308,7 +316,7 @@ static void print_ast_statement(Statement* statement) {
         printf("(");
         if (statement->spawn->arguments) {
             for (Expression* e = statement->spawn->arguments; e;) {
-                print_ast_expression(e);
+                print_ast_expression(e, true);
                 if ((e = e->next)) {
                     printf(", ");
                 }
@@ -337,7 +345,7 @@ static void print_ast_capsa(Capsa* capsa) {
         break;
     case CAPSA_ATTRIBUTE:
         printf("(");
-        print_ast_expression(capsa->attribute.structure);
+        print_ast_expression(capsa->attribute.structure, true);
         printf(".");
         print_ast_id(capsa->attribute.field);
         printtype(capsa->type);
@@ -345,9 +353,9 @@ static void print_ast_capsa(Capsa* capsa) {
         break;
     case CAPSA_INDEXED:
         printf("(");
-        print_ast_expression(capsa->indexed.array);
+        print_ast_expression(capsa->indexed.array, true);
         printf("[");
-        print_ast_expression(capsa->indexed.index);
+        print_ast_expression(capsa->indexed.index, true);
         printf("]");
         if (capsa->indexed.array->type) {
             printtype(capsa->indexed.array->type->array);
@@ -357,8 +365,10 @@ static void print_ast_capsa(Capsa* capsa) {
     }
 }
 
-static void print_ast_expression(Expression* expression) {
-    printf("(");
+static void print_ast_expression(Expression* expression, bool wrap) {
+    if (wrap) {
+        printf("(");
+    }
 
     switch (expression->tag) {
     case EXPRESSION_LITERAL_BOOLEAN:
@@ -380,7 +390,7 @@ static void print_ast_expression(Expression* expression) {
     case EXPRESSION_LITERAL_ARRAY:
         printf("%s[", expression->literal.immutable ? "Immutable " : "");
         for (Expression* e = expression->literal.array; e;) {
-            print_ast_expression(e);
+            print_ast_expression(e, true);
             if ((e = e->next)) {
                 printf(", ");
             }
@@ -397,36 +407,49 @@ static void print_ast_expression(Expression* expression) {
         break;
     case EXPRESSION_LIST_COMPREHENSION:
         printf("[");
-        print_ast_expression(expression->comprehension.e);
+        print_ast_expression(expression->comprehension.e, true);
         printf(" |\n");
         tabs++;
         identation();
         print_ast_definition(expression->comprehension.i);
         printf(" in\n");
         identation();
-        print_ast_expression(expression->comprehension.lower);
+        print_ast_expression(expression->comprehension.lower, true);
         printf("..");
-        print_ast_expression(expression->comprehension.upper);
+        print_ast_expression(expression->comprehension.upper, true);
         tabs--;
         printf("\n");
         identation();
         printf("]");
         break;
+    case EXPRESSION_RANGE:
+        printf("[");
+        print_ast_expression(expression->range.first, true);
+        if (expression->range.second) {
+            printf(", ");
+            print_ast_expression(expression->range.second, true);
+        }
+        printf(" ");
+        printtoken(expression->range.op);
+        printf(" ");
+        print_ast_expression(expression->range.last, true);
+        printf("]");
+        break;
     case EXPRESSION_UNARY:
         printtoken(expression->unary.token);
-        print_ast_expression(expression->unary.expression);
+        print_ast_expression(expression->unary.expression, true);
         printtype(expression->type);
         break;
     case EXPRESSION_BINARY:
-        print_ast_expression(expression->binary.left_expression);
+        print_ast_expression(expression->binary.left_expression, true);
         printf(" ");
         printtoken(expression->binary.token);
         printtype(expression->type);
         printf(" ");
-        print_ast_expression(expression->binary.right_expression);
+        print_ast_expression(expression->binary.right_expression, true);
         break;
     case EXPRESSION_CAST:
-        print_ast_expression(expression->cast);
+        print_ast_expression(expression->cast, true);
         printf(" as");
         bool before = should_print_types;
         should_print_types = true;
@@ -435,7 +458,9 @@ static void print_ast_expression(Expression* expression) {
         break;
     }
 
-    printf(")");
+    if (wrap) {
+        printf(")");
+    }
 }
 
 static void print_ast_function_call(FunctionCall* fc) {
@@ -444,7 +469,7 @@ static void print_ast_function_call(FunctionCall* fc) {
         print_ast_id((fc->id) ? fc->id : fc->fn->function.id);
         break;
     case FUNCTION_CALL_METHOD:
-        print_ast_expression(fc->obj);
+        print_ast_expression(fc->obj, true);
         printf(".");
         print_ast_id((fc->id) ? fc->id : fc->fn->function.id);
         break;
@@ -454,7 +479,7 @@ static void print_ast_function_call(FunctionCall* fc) {
 
     printf("(");
     for (Expression* e = fc->arguments; e;) {
-        print_ast_expression(e);
+        print_ast_expression(e, true);
         if ((e = e->next)) {
             printf(", ");
         }
@@ -476,14 +501,17 @@ static void identation(void) {
 
 static void printtoken(Token token) {
     switch (token) {
-    case TK_OR:     printf("or");   break;
-    case TK_AND:    printf("and");  break;
-    case TK_EQUAL:  printf("==");   break;
-    case TK_NEQUAL: printf("!=");   break;
-    case TK_LEQUAL: printf("<=");   break;
-    case TK_GEQUAL: printf(">=");   break;
-    case TK_NOT:    printf("not");  break;
-    default:        printf("%c", token);
+    case TK_OR:      printf("or");   break;
+    case TK_AND:     printf("and");  break;
+    case TK_EQUAL:   printf("==");   break;
+    case TK_NEQUAL:  printf("!=");   break;
+    case TK_RARROW:  printf("->");   break;
+    case TK_LARROW:  printf("<-");   break;
+    case TK_REARROW: printf("=>");   break;
+    case TK_LEQUAL:  printf("<=");   break;
+    case TK_GEQUAL:  printf(">=");   break;
+    case TK_NOT:     printf("not");  break;
+    default:         printf("%c", token);
     }
 }
 

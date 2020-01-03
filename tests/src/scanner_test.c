@@ -28,7 +28,9 @@ int main(int argc, char* argv[]) {
         case TK_SUB_ASG:        printf("TK_SUB_ASG");       break;
         case TK_MUL_ASG:        printf("TK_MUL_ASG");       break;
         case TK_DIV_ASG:        printf("TK_DIV_ASG");       break;
-        case TK_RANGE:          printf("TK_RANGE");         break;
+        case TK_RARROW:         printf("TK_RARROW");        break;
+        case TK_LARROW:         printf("TK_LARROW");        break;
+        case TK_REARROW:        printf("TK_REARROW");       break;
         // keywords
         case TK_ACQUIRE:        printf("TK_ACQUIRE");       break;
         case TK_AS:             printf("TK_AS");            break;

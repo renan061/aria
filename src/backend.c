@@ -34,6 +34,7 @@
 #define BB_ELSE  ("else")
 #define BB_COND  ("cond")
 #define BB_LOOP  ("loop")
+#define BB_INC   ("inc")
 #define BB_END   ("end")
 
 // primitive types
@@ -689,6 +690,7 @@ static void backend_stmt_return(IRState*, Statement*);
 static void backend_stmt_if(IRState*, Statement*);
 static void backend_stmt_if_else(IRState*, Statement*);
 static void backend_stmt_while(IRState*, Statement*);
+static void backend_stmt_numeric_for(IRState*, Statement*);
 static void backend_stmt_for(IRState*, Statement*);
 static void backend_stmt_spawn(IRState*, Statement*);
 static void backend_stmt_acquire_value(IRState*, Statement*);
@@ -707,6 +709,7 @@ static void backend_statement(IRState* irs, Statement* stmt) {
     case STATEMENT_IF:            backend_stmt_if(irs, stmt);            break;
     case STATEMENT_IF_ELSE:       backend_stmt_if_else(irs, stmt);       break;
     case STATEMENT_WHILE:         backend_stmt_while(irs, stmt);         break;
+    case STATEMENT_NUMERIC_FOR:   backend_stmt_numeric_for(irs, stmt);   break;
     case STATEMENT_FOR:           backend_stmt_for(irs, stmt);           break;
     case STATEMENT_SPAWN:         backend_stmt_spawn(irs, stmt);         break;
     case STATEMENT_ACQUIRE_VALUE: backend_stmt_acquire_value(irs, stmt); break;
@@ -821,6 +824,74 @@ static void backend_stmt_while(IRState* irs, Statement* stmt) {
         LLVMBuildBr(irs->B, bbcond);
         irsBB_end(irs);
     }
+    // end
+    irsBB_start(irs, bbend);
+}
+
+static void backend_stmt_numeric_for(IRState* irs, Statement* stmt) {
+    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+    LLVMBB bbinc  = LLVMAppendBasicBlock(irs->function, BB_INC);
+    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
+
+    Exp* first = stmt->numeric_for.range->range.first;
+    Exp* second = stmt->numeric_for.range->range.second;
+    Exp* last = stmt->numeric_for.range->range.last;
+
+    stmt->numeric_for.v->capsa.expression = first;
+    backend_definition(irs, stmt->numeric_for.v);
+    backend_expression(irs, last);
+
+    int predicates[2][4] = {
+        {LLVMIntSLT, LLVMIntSGT, LLVMIntSLE, LLVMIntSGE},
+        {LLVMRealOLT, LLVMRealOGT, LLVMRealOLE, LLVMRealOGE}
+    };
+    LLVMV ratios[2][4] = {
+        {ir_int(1), ir_int(-1), ir_int(1), ir_int(-1)},
+        {ir_float(1), ir_float(-1), ir_float(1), ir_float(-1)}
+    };
+    bool isfloat = first->type == __float; // i
+    int j = stmt->numeric_for.range->range.op == TK_RARROW  ? 0 :
+            stmt->numeric_for.range->range.op == TK_LARROW  ? 1 :
+            stmt->numeric_for.range->range.op == TK_REARROW ? 2 :
+            stmt->numeric_for.range->range.op == TK_LEQUAL  ? 3 :
+            (INVALID, -1) ;
+    int predicate = predicates[isfloat][j]; // LLVM(Int/Real)Predicate
+    LLVMV ratio = ratios[isfloat][j];
+    if (second) {
+        backend_expression(irs, second);
+        ratio = (isfloat)
+            ? LLVMBuildFSub(irs->B, second->V, first->V, LLVM_TMP)
+            : LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
+    }
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
+    // cond
+    irsBB_start(irs, bbcond);
+    Capsa* ptr = stmt->numeric_for.v->capsa.capsa;
+    LLVMV V;
+    V = LLVMBuildLoad(irs->B, ptr->V, LLVM_TMP);
+    V = (isfloat)
+        ? LLVMBuildFCmp(irs->B, predicate, V, last->V, LLVM_TMP)
+        : LLVMBuildICmp(irs->B, predicate, V, last->V, LLVM_TMP);
+    LLVMBuildCondBr(irs->B, V, bbloop, bbend);
+    irsBB_end(irs);
+    // loop
+    irsBB_start(irs, bbloop);
+    backend_block(irs, stmt->numeric_for.block);
+    if (irs->block) {
+        LLVMBuildBr(irs->B, bbinc);
+        irsBB_end(irs);
+    }
+    // inc
+    irsBB_start(irs, bbinc);
+    V = LLVMBuildLoad(irs->B, ptr->V, LLVM_TMP);
+    V = (isfloat)
+        ? LLVMBuildFAdd(irs->B, V, ratio, LLVM_TMP)
+        : LLVMBuildAdd(irs->B, V, ratio, LLVM_TMP);
+    LLVMBuildStore(irs->B, V, ptr->V);
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
     // end
     irsBB_start(irs, bbend);
 }

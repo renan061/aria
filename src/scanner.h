@@ -21,6 +21,8 @@ typedef enum ScannerNativeIndex {
 
 #define SCANNER_NATIVE_SIZE 8
 
+#define TK_LEARROW TK_LEQUAL
+
 extern const char* scanner_native[SCANNER_NATIVE_SIZE];
 
 // <setup> and <clean> should be called before starting to use the

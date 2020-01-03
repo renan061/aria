@@ -127,6 +127,53 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
+Numeric for
+-- Input
+function main {
+    for i in [0 -> 1] { a = 1; }
+    for i in [0 <- 1] { a = 1; }
+    for i in [0 => 1] { a = 1; }
+    for i in [0 <= 1] { a = 1; }
+
+    for i in [0, 1 -> 2] { a = 1; }
+    for i in [0, 1 <- 2] { a = 1; }
+    for i in [0, 1 => 2] { a = 1; }
+    for i in [0, 1 <= 2] { a = 1; }
+
+    for i in [-1, -2 <= -10] { a = 1; }
+}
+-- Output
+function main: Void {
+    for value i: ? in [(0) -> (1)] {
+        a = (1)
+    }
+    for value i: ? in [(0) <- (1)] {
+        a = (1)
+    }
+    for value i: ? in [(0) => (1)] {
+        a = (1)
+    }
+    for value i: ? in [(0) <= (1)] {
+        a = (1)
+    }
+    for value i: ? in [(0), (1) -> (2)] {
+        a = (1)
+    }
+    for value i: ? in [(0), (1) <- (2)] {
+        a = (1)
+    }
+    for value i: ? in [(0), (1) => (2)] {
+        a = (1)
+    }
+    for value i: ? in [(0), (1) <= (2)] {
+        a = (1)
+    }
+    for value i: ? in [(-(1)), (-(2)) <= (-(10))] {
+        a = (1)
+    }
+}
+--------------------------------------------------------------------------------
+-- Title
 For
 -- Input
 function main {

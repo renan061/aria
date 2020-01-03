@@ -102,6 +102,9 @@ string      "\""(\\.|[^\\"])*"\""
 "*="            return TOKEN(TK_MUL_ASG);
 "/="            return TOKEN(TK_DIV_ASG);
 "..."           return TOKEN(TK_RANGE);
+"->"            return TOKEN(TK_RARROW);
+"<-"            return TOKEN(TK_LARROW);
+"=>"            return TOKEN(TK_REARROW);
 
 "acquire"       return TOKEN(TK_ACQUIRE); // keywords
 "as"            return TOKEN(TK_AS);

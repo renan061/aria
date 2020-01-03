@@ -7,6 +7,7 @@
 
 %{
     #include <assert.h>
+    #include <stdbool.h>
     #include <stdlib.h>
 
     #include "ast.h"
@@ -25,6 +26,7 @@
     } while (0); \
 
     static void yyerror(const char* err);
+    static void parser_assert(int boolean);
 %}
 
 // semantic information
@@ -103,6 +105,7 @@
     expression_list0 expression_list1
     expression primary_expression literal
     list_comprehension_expression list_comprehension
+    iterable_expression range_expression
 %type <function_call>
     function_call method_call
 
@@ -110,7 +113,7 @@
 %left       <ival> TK_OR
 %left       <ival> TK_AND
 %nonassoc   <ival> TK_EQUAL TK_NEQUAL
-%nonassoc   <ival> '<' '>' TK_LEQUAL TK_GEQUAL
+%nonassoc   <ival> '<' '>' TK_LEQUAL TK_GEQUAL TK_LARROW TK_RARROW TK_REARROW
 %left       <ival> '+' '-'
 %left       <ival> '*' '/'
 %left       <ival> TK_NOT // precedence for unary minus
@@ -474,6 +477,10 @@ compound_statement
         {
             $$ = ast_statement_while($1, $2, $3);
         }
+    | TK_FOR TK_LOWER_ID TK_IN iterable_expression block
+        {
+            $$ = ast_stmt_numeric_for($1, $2, $4, $5);
+        }
     | TK_FOR variable_definition ';' expression ';' assignment block
         {
             $$ = ast_statement_for($1, $2, $4, $6, $7);
@@ -674,6 +681,48 @@ primary_expression
     | '(' expression ')'
         {
             $$ = $2;
+        }
+    ;
+
+iterable_expression
+    : '[' range_expression ']'
+        {
+            $$ = $2;
+        }
+    ;
+
+range_expression
+    : expression TK_LARROW expression
+        {
+            $$ = ast_expression_range($1->line, TK_LARROW, $1, NULL, $3);
+        }
+    | expression TK_RARROW expression
+        {
+            $$ = ast_expression_range($1->line, TK_RARROW, $1, NULL, $3);
+        }
+    | expression
+        {
+            Exp* exp = $1;
+            parser_assert(exp->tag == EXPRESSION_BINARY);
+            parser_assert(exp->binary.token == TK_LEQUAL);
+            Exp* first = exp->binary.left_expression;
+            Exp* last = exp->binary.right_expression;
+            $$ = ast_expression_range(exp->line, TK_LEQUAL, first, NULL, last);
+            free(exp);
+        }
+    | expression TK_REARROW expression
+        {
+            $$ = ast_expression_range($1->line, TK_REARROW, $1, NULL, $3);
+        }
+    | expression ',' range_expression
+        {
+            Exp* exp = $3;
+            Exp* first = $1;
+            Exp* second = exp->range.first;
+            Exp* last = exp->range.last;
+            Token op = exp->range.op;
+            $$ = ast_expression_range(exp->line, op, first, second, last);
+            free(exp);
         }
     ;
 
@@ -990,4 +1039,10 @@ parameter
 
 static void yyerror(const char* err) {
     parser_error(0, (char*)err); // TODO: line
+}
+
+static void parser_assert(int boolean) {
+    if (!boolean) {
+        yyerror("syntax error");
+    }
 }

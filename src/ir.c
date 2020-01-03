@@ -194,7 +194,7 @@ LLVMV ir_exit(LLVMB B) {
 }
 
 LLVMV ir_cmp(LLVMB B, LLVMIntPredicate iop, LLVMRealPredicate fop,
-    Expression* l, Expression* r) {
+    Exp* l, Exp* r) {
 
     assert(l->type == r->type);
     if (l->type == __boolean) {

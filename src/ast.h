@@ -77,6 +77,7 @@ typedef enum StatementTag {
     STATEMENT_IF,
     STATEMENT_IF_ELSE,
     STATEMENT_WHILE,
+    STATEMENT_NUMERIC_FOR,
     STATEMENT_FOR,
     STATEMENT_SPAWN,
     STATEMENT_ACQUIRE_VALUE,
@@ -98,9 +99,10 @@ typedef enum ExpressionTag {
     EXPRESSION_CAPSA,
     EXPRESSION_FUNCTION_CALL,
     EXPRESSION_LIST_COMPREHENSION,
+    EXPRESSION_RANGE,
+    EXPRESSION_CAST,
     EXPRESSION_UNARY,
     EXPRESSION_BINARY,
-    EXPRESSION_CAST
 } ExpressionTag;
 
 typedef enum FunctionCallTag {
@@ -124,6 +126,12 @@ typedef struct Statement Statement;
 typedef struct Capsa Capsa;
 typedef struct Expression Expression;
 typedef struct FunctionCall FunctionCall;
+
+// TODO: refactor
+typedef Definition Def;
+typedef Statement Stmt;
+typedef Expression Exp;
+typedef FunctionCall FC;
 
 struct AST {
     Definition* definitions;
@@ -246,6 +254,12 @@ struct Statement {
             Expression* expression;
             Block* block;
         } while_;
+        // StatementNumericFor
+        struct {
+            Def* v;
+            Exp* range;
+            Block* block;
+        } numeric_for;
         // StatementFor
         struct {
             Definition* initialization;
@@ -326,6 +340,13 @@ struct Expression {
             Expression* upper;
             bool immutable; // default false
         } comprehension;
+        // ExpressionRange
+        struct {
+            Token op;
+            Expression* first;
+            Expression* second;
+            Expression* last;
+        } range;
         // ExpressionUnary
         struct {
             Token token;
@@ -389,40 +410,40 @@ extern Block* ast_block(Line, Block*);
 extern Block* ast_block_definition(Definition*);
 extern Block* ast_block_statement(Statement*);
 
-extern Statement* ast_statement_assignment(Line, Token, Capsa*, Expression*);
-extern Statement* ast_statement_function_call(FunctionCall*);
-extern Statement* ast_statement_wait_for_in(Line, Expression*, Expression*);
-extern Statement* ast_statement_signal(Line, Expression*);
-extern Statement* ast_statement_broadcast(Line, Expression*);
-extern Statement* ast_statement_return(Line, Expression*);
-extern Statement* ast_statement_if(Line, Expression*, Block*);
-extern Statement* ast_statement_if_else(Line, Expression*, Block*, Block*);
-extern Statement* ast_statement_while(Line, Expression*, Block*);
-extern Statement* ast_statement_for(Line, Definition*, Expression*, Statement*,
-    Block*);
-extern Statement* ast_statement_spawn(Line, Block*);
-extern Statement* ast_statement_acquire_value(Line, Definition*, Block*);
-extern Statement* ast_statement_block(Block*);
+extern Stmt* ast_statement_assignment(Line, Token, Capsa*, Exp*);
+extern Stmt* ast_statement_function_call(FC*);
+extern Stmt* ast_statement_wait_for_in(Line, Exp*, Exp*);
+extern Stmt* ast_statement_signal(Line, Exp*);
+extern Stmt* ast_statement_broadcast(Line, Exp*);
+extern Stmt* ast_statement_return(Line, Exp*);
+extern Stmt* ast_statement_if(Line, Exp*, Block*);
+extern Stmt* ast_statement_if_else(Line, Exp*, Block*, Block*);
+extern Stmt* ast_statement_while(Line, Exp*, Block*);
+extern Stmt* ast_stmt_numeric_for(Line, Id*, Exp*, Block*);
+extern Stmt* ast_statement_for(Line, Def*, Exp*, Stmt*, Block*);
+extern Stmt* ast_statement_spawn(Line, Block*);
+extern Stmt* ast_statement_acquire_value(Line, Def*, Block*);
+extern Stmt* ast_statement_block(Block*);
 
 extern Capsa* ast_capsa_id(Id*);
 extern Capsa* ast_capsa_attribute(Expression*, Id*);
 extern Capsa* ast_capsa_indexed(Line, Expression*, Expression*);
 
-extern Expression* ast_expression_literal_boolean(Line, bool);
-extern Expression* ast_expression_literal_integer(Line, int);
-extern Expression* ast_expression_literal_float(Line, double);
-extern Expression* ast_expression_literal_string(Line, const char*);
-extern Expression* ast_expression_literal_array(Line, Expression*, bool);
-extern Expression* ast_expression_capsa(Capsa*);
-extern Expression* ast_expression_function_call(FunctionCall*);
-extern Expression* ast_expression_comprehension(Line, Expression*,
-    Id*, Expression*, Expression*);
-extern Expression* ast_expression_unary(Line, Token, Expression*);
-extern Expression* ast_expression_binary(Line, Token, Expression*, Expression*);
-extern Expression* ast_expression_cast(Line, Expression*, Type*);
+extern Exp* ast_expression_literal_boolean(Line, bool);
+extern Exp* ast_expression_literal_integer(Line, int);
+extern Exp* ast_expression_literal_float(Line, double);
+extern Exp* ast_expression_literal_string(Line, const char*);
+extern Exp* ast_expression_literal_array(Line, Exp*, bool);
+extern Exp* ast_expression_capsa(Capsa*);
+extern Exp* ast_expression_function_call(FC*);
+extern Exp* ast_expression_comprehension(Line, Exp*, Id*, Exp*, Exp*);
+extern Exp* ast_expression_range(Line, Token, Exp*, Exp*, Exp*);
+extern Exp* ast_expression_unary(Line, Token, Exp*);
+extern Exp* ast_expression_binary(Line, Token, Exp*, Exp*);
+extern Exp* ast_expression_cast(Line, Exp*, Type*);
 
-extern FunctionCall* ast_call(Line, Id*, Expression*);
-extern FunctionCall* ast_call_method(Line, Expression*, Id*, Expression*);
-extern FunctionCall* ast_call_constructor(Line, Type*, Expression*);
+extern FC* ast_call(Line, Id*, Exp*);
+extern FC* ast_call_method(Line, Exp*, Id*, Exp*);
+extern FC* ast_call_constructor(Line, Type*, Exp*);
 
 #endif

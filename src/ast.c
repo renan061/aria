@@ -16,7 +16,7 @@
 
 AST* ast = NULL;
 
-void ast_set(Definition* definitions) {
+void ast_set(Def* definitions) {
     MALLOC(ast, AST);
     ast->definitions = definitions;
 }
@@ -27,8 +27,8 @@ void ast_set(Definition* definitions) {
 //
 // ==================================================
 
-Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
-    Definition* d;
+Def* ast_declaration_function(Id* id, Def* parameters, Type* t) {
+    Def* d;
     MALLOC(d, Definition);
     d->tag = DECLARATION_FUNCTION;
     d->next = NULL;
@@ -43,8 +43,8 @@ Definition* ast_declaration_function(Id* id, Definition* parameters, Type* t) {
     return d;
 }
 
-Definition* ast_definition_capsa(Capsa* capsa, Expression* expression) {
-    Definition* definition;
+Def* ast_definition_capsa(Capsa* capsa, Exp* expression) {
+    Def* definition;
     MALLOC(definition, Definition);
     definition->tag = DEFINITION_CAPSA;
     definition->next = NULL;
@@ -54,15 +54,15 @@ Definition* ast_definition_capsa(Capsa* capsa, Expression* expression) {
     return definition;
 }
 
-Definition* ast_definition_function(Definition* d, Block* block) {
+Def* ast_definition_function(Def* d, Block* block) {
     assert(d->tag == DECLARATION_FUNCTION && block->tag == BLOCK);
     d->tag = DEFINITION_FUNCTION;
     d->function.block = block;
     return d;
 }
 
-Definition* ast_definition_constructor(Definition* parameters, Block* block) {
-    Definition* definition;
+Def* ast_definition_constructor(Def* parameters, Block* block) {
+    Def* definition;
     MALLOC(definition, Definition);
     assert(block->tag == BLOCK);
     definition->tag = DEFINITION_CONSTRUCTOR;
@@ -76,14 +76,14 @@ Definition* ast_definition_constructor(Definition* parameters, Block* block) {
     return definition;
 }
 
-Definition* ast_definition_type(Type* type) {
+Def* ast_definition_type(Type* type) {
     assert(
         type->tag == TYPE_ID ||
         type->tag == TYPE_INTERFACE ||
         type->tag == TYPE_STRUCTURE ||
         type->tag == TYPE_MONITOR
     );
-    Definition* definition;
+    Def* definition;
     MALLOC(definition, Definition);
     definition->tag = DEFINITION_TYPE;
     definition->next = NULL;
@@ -220,7 +220,7 @@ Type* ast_type_array(Type* type) {
     return arrayType;
 }
 
-Type* ast_type_structure(Id* id, TypeTag ttag, Definition* defs, Type* itype) {
+Type* ast_type_structure(Id* id, TypeTag ttag, Def* defs, Type* itype) {
     Type* type;
     MALLOC(type, Type);
     type->tag = ttag;
@@ -256,7 +256,7 @@ Block* ast_block(Line ln, Block* block) {
     return base;
 }
 
-Block* ast_block_definition(Definition* definition) {
+Block* ast_block_definition(Def* definition) {
     Block* block;
     MALLOC(block, Block);
     block->tag = BLOCK_DEFINITION;
@@ -266,7 +266,7 @@ Block* ast_block_definition(Definition* definition) {
     return block;
 }
 
-Block* ast_block_statement(Statement* statement) {
+Block* ast_block_statement(Stmt* statement) {
     Block* block;
     MALLOC(block, Block);
     block->tag = BLOCK_STATEMENT;
@@ -282,8 +282,16 @@ Block* ast_block_statement(Statement* statement) {
 //
 // ==================================================
 
-Statement* ast_statement_assignment(Line ln, Token t, Capsa* v, Expression* e) {
-    Statement* statement;
+static Stmt* stmtinit(StatementTag tag, Line ln) {
+    Stmt* stmt;
+    MALLOC(stmt, Stmt);
+    stmt->tag = tag;
+    stmt->line = ln;
+    return stmt;
+}
+
+Stmt* ast_statement_assignment(Line ln, Token t, Capsa* v, Exp* e) {
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_ASSIGNMENT;
     statement->line = ln;
@@ -308,7 +316,7 @@ Statement* ast_statement_assignment(Line ln, Token t, Capsa* v, Expression* e) {
         }
 
         Capsa* copy = v;  // TODO: copy function for Capsa
-        Expression* expression_capsa = ast_expression_capsa(copy);
+        Exp* expression_capsa = ast_expression_capsa(copy);
         e = ast_expression_binary(ln, op, expression_capsa, e);
         break;
     }
@@ -321,8 +329,8 @@ Statement* ast_statement_assignment(Line ln, Token t, Capsa* v, Expression* e) {
     return statement;
 }
 
-Statement* ast_statement_function_call(FunctionCall* function_call) {
-    Statement* statement;
+Stmt* ast_statement_function_call(FC* function_call) {
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_FUNCTION_CALL;
     statement->line = function_call->line;
@@ -330,8 +338,8 @@ Statement* ast_statement_function_call(FunctionCall* function_call) {
     return statement;
 }
 
-Statement* ast_statement_wait_for_in(Line ln, Expression* c, Expression* q) {
-    Statement* statement;
+Stmt* ast_statement_wait_for_in(Line ln, Exp* c, Exp* q) {
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_WAIT_FOR_IN;
     statement->line = ln;
@@ -340,8 +348,8 @@ Statement* ast_statement_wait_for_in(Line ln, Expression* c, Expression* q) {
     return statement;
 }
 
-Statement* ast_statement_signal(Line ln, Expression* expression) {
-    Statement* statement;
+Stmt* ast_statement_signal(Line ln, Exp* expression) {
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_SIGNAL;
     statement->line = ln;
@@ -349,8 +357,8 @@ Statement* ast_statement_signal(Line ln, Expression* expression) {
     return statement;
 }
 
-Statement* ast_statement_broadcast(Line ln, Expression* expression) {
-    Statement* statement;
+Stmt* ast_statement_broadcast(Line ln, Exp* expression) {
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_BROADCAST;
     statement->line = ln;
@@ -358,8 +366,8 @@ Statement* ast_statement_broadcast(Line ln, Expression* expression) {
     return statement;
 }
 
-Statement* ast_statement_return(Line ln, Expression* expression) {
-    Statement* statement;
+Stmt* ast_statement_return(Line ln, Exp* expression) {
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_RETURN;
     statement->line = ln;
@@ -367,9 +375,9 @@ Statement* ast_statement_return(Line ln, Expression* expression) {
     return statement;
 }
 
-Statement* ast_statement_if(Line ln, Expression* expression, Block* block) {
+Stmt* ast_statement_if(Line ln, Exp* expression, Block* block) {
     assert(block->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_IF;
     statement->line = ln;
@@ -379,9 +387,9 @@ Statement* ast_statement_if(Line ln, Expression* expression, Block* block) {
 }
 
 // c -> condition, i -> if_block, e -> else_block
-Statement* ast_statement_if_else(Line ln, Expression* c, Block* i, Block* e) {
+Stmt* ast_statement_if_else(Line ln, Exp* c, Block* i, Block* e) {
     assert(i->tag == BLOCK && e->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_IF_ELSE;
     statement->line = ln;
@@ -391,9 +399,9 @@ Statement* ast_statement_if_else(Line ln, Expression* c, Block* i, Block* e) {
     return statement;
 }
 
-Statement* ast_statement_while(Line ln, Expression* expression, Block* block) {
+Stmt* ast_statement_while(Line ln, Exp* expression, Block* block) {
     assert(block->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_WHILE;
     statement->line = ln;
@@ -402,14 +410,25 @@ Statement* ast_statement_while(Line ln, Expression* expression, Block* block) {
     return statement;
 }
 
-Statement* ast_statement_for(Line ln,
-    Definition* initialization,
-    Expression* condition,
-    Statement* increment,
+Stmt* ast_stmt_numeric_for(Line ln, Id* id, Exp* range, Block* block) {
+    assert(block->tag == BLOCK);
+    Stmt* stmt = stmtinit(STATEMENT_NUMERIC_FOR, ln);
+    Capsa* capsa = ast_capsa_id(id);
+    capsa->value = true;
+    stmt->numeric_for.v = ast_definition_capsa(capsa, NULL);
+    stmt->numeric_for.range = range;
+    stmt->numeric_for.block = block;
+    return stmt;
+}
+
+Stmt* ast_statement_for(Line ln,
+    Def* initialization,
+    Exp* condition,
+    Stmt* increment,
     Block* block) {
 
     assert(block->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_FOR;
     statement->line = ln;
@@ -420,9 +439,9 @@ Statement* ast_statement_for(Line ln,
     return statement;
 }
 
-Statement* ast_statement_spawn(Line ln, Block* block) {
+Stmt* ast_statement_spawn(Line ln, Block* block) {
     assert(block->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_SPAWN;
     statement->line = ln;
@@ -433,9 +452,9 @@ Statement* ast_statement_spawn(Line ln, Block* block) {
     return statement;
 }
 
-Statement* ast_statement_acquire_value(Line ln, Definition* v, Block* b) {
+Stmt* ast_statement_acquire_value(Line ln, Def* v, Block* b) {
     assert(b->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_ACQUIRE_VALUE;
     statement->line = ln;
@@ -444,9 +463,9 @@ Statement* ast_statement_acquire_value(Line ln, Definition* v, Block* b) {
     return statement;
 }
 
-Statement* ast_statement_block(Block* block) {
+Stmt* ast_statement_block(Block* block) {
     assert(block->tag == BLOCK);
-    Statement* statement;
+    Stmt* statement;
     MALLOC(statement, Statement);
     statement->tag = STATEMENT_BLOCK;
     statement->line = 0; // TODO
@@ -460,7 +479,7 @@ Statement* ast_statement_block(Block* block) {
 //
 // ==================================================
 
-static Capsa* capsadefaults() {
+static Capsa* capsa_init() {
     Capsa* capsa;
     MALLOC(capsa, Capsa);
     capsa->type = NULL;
@@ -472,15 +491,15 @@ static Capsa* capsadefaults() {
 }
 
 Capsa* ast_capsa_id(Id* id) {
-    Capsa* capsa = capsadefaults();
+    Capsa* capsa = capsa_init();
     capsa->tag = CAPSA_ID;
     capsa->line = id->line;
     capsa->id = id;
     return capsa;
 }
 
-Capsa* ast_capsa_attribute(Expression* expression, Id* id) {
-    Capsa* capsa = capsadefaults();
+Capsa* ast_capsa_attribute(Exp* expression, Id* id) {
+    Capsa* capsa = capsa_init();
     capsa->tag = CAPSA_ATTRIBUTE;
     capsa->line = id->line;
     capsa->attribute.structure = expression;
@@ -488,8 +507,8 @@ Capsa* ast_capsa_attribute(Expression* expression, Id* id) {
     return capsa;
 }
 
-Capsa* ast_capsa_indexed(Line ln, Expression* array, Expression* index) {
-    Capsa* capsa = capsadefaults();
+Capsa* ast_capsa_indexed(Line ln, Exp* array, Exp* index) {
+    Capsa* capsa = capsa_init();
     capsa->tag = CAPSA_INDEXED;
     capsa->line = ln;
     capsa->indexed.array = array;
@@ -503,167 +522,113 @@ Capsa* ast_capsa_indexed(Line ln, Expression* array, Expression* index) {
 //
 // ==================================================
 
-Expression* ast_expression_literal_boolean(Line ln, bool literal_boolean) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_LITERAL_BOOLEAN;
-    expression->line = ln;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->literal.immutable = true;
-    expression->literal.boolean = literal_boolean;
-    return expression;
-}
-
-Expression* ast_expression_literal_integer(Line ln, int literal_integer) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_LITERAL_INTEGER;
-    expression->line = ln;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->literal.immutable = true;
-    expression->literal.integer = literal_integer;
-    return expression;
-}
-
-Expression* ast_expression_literal_float(Line ln, double literal_float) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_LITERAL_FLOAT;
-    expression->line = ln;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->literal.immutable = true;
-    expression->literal.float_ = literal_float;
-    return expression;
-}
-
-Expression* ast_expression_literal_string(Line ln, const char* literal_string) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_LITERAL_STRING;
-    expression->line = ln;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->literal.immutable = true;
-    expression->literal.string = literal_string;
-    return expression;
-}
-
-Expression* ast_expression_literal_array(Line ln, Expression* xs, bool immut) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_LITERAL_ARRAY;
-    expression->line = ln;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->literal.immutable = immut;
-    expression->literal.array = xs;
-    return expression;
-}
-
-Expression* ast_expression_capsa(Capsa* capsa) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_CAPSA;
-    expression->line = capsa->line;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->capsa = capsa;
-    return expression;
-}
-
-Expression* ast_expression_function_call(FunctionCall* function_call) {
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_FUNCTION_CALL;
-    expression->line = function_call->line;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->function_call = function_call;
-    return expression;
-}
-
-Expression* ast_expression_comprehension(Line ln, Expression* e,
-    Id* i, Expression* lower, Expression* upper) {
-
-    Expression* exp;
-    MALLOC(exp, Expression);
-    exp->tag = EXPRESSION_LIST_COMPREHENSION;
+static Exp* exp_init(ExpressionTag tag, Line ln) {
+    Exp* exp;
+    MALLOC(exp, Exp);
+    exp->tag = tag;
     exp->line = ln;
     exp->previous = exp->next = NULL;
     exp->type = NULL;
     exp->V = NULL;
+    return exp;
+}
+
+Exp* ast_expression_literal_boolean(Line ln, bool boolean) {
+    Exp* exp = exp_init(EXPRESSION_LITERAL_BOOLEAN, ln);
+    exp->literal.immutable = true;
+    exp->literal.boolean = boolean;
+    return exp;
+}
+
+Exp* ast_expression_literal_integer(Line ln, int integer) {
+    Exp* exp = exp_init(EXPRESSION_LITERAL_INTEGER, ln);
+    exp->literal.immutable = true;
+    exp->literal.integer = integer;
+    return exp;
+}
+
+Exp* ast_expression_literal_float(Line ln, double float_) {
+    Exp* exp = exp_init(EXPRESSION_LITERAL_FLOAT, ln);
+    exp->literal.immutable = true;
+    exp->literal.float_ = float_;
+    return exp;
+}
+
+Exp* ast_expression_literal_string(Line ln, const char* string) {
+    Exp* exp = exp_init(EXPRESSION_LITERAL_STRING, ln);
+    exp->literal.immutable = true;
+    exp->literal.string = string;
+    return exp;
+}
+
+Exp* ast_expression_literal_array(Line ln, Exp* array, bool immutable) {
+    Exp* exp = exp_init(EXPRESSION_LITERAL_ARRAY, ln);
+    exp->literal.immutable = immutable;
+    exp->literal.array = array;
+    return exp;
+}
+
+Exp* ast_expression_capsa(Capsa* capsa) {
+    Exp* exp = exp_init(EXPRESSION_CAPSA, capsa->line);
+    exp->capsa = capsa;
+    return exp;
+}
+
+Exp* ast_expression_function_call(FC* fc) {
+    Exp* exp = exp_init(EXPRESSION_FUNCTION_CALL, fc->line);
+    exp->function_call = fc;
+    return exp;
+}
+
+Exp* ast_expression_comprehension(Line ln, Exp* e, Id* i, Exp* l, Exp* u) {
+    Exp* exp = exp_init(EXPRESSION_LIST_COMPREHENSION, ln);
     exp->comprehension.e = e;
     Capsa* capsa = ast_capsa_id(i);
     capsa->type = ast_type_integer();
     capsa->value = true;
-    exp->comprehension.i = ast_definition_capsa(capsa, lower);
-    exp->comprehension.lower = lower;
-    exp->comprehension.upper = upper;
+    exp->comprehension.i = ast_definition_capsa(capsa, l);
+    exp->comprehension.lower = l;
+    exp->comprehension.upper = u;
     exp->comprehension.immutable = false;
     return exp;
 }
 
-Expression* ast_expression_unary(Line ln, Token token, Expression* expression) {
-    Expression* unaryExpression;
-    MALLOC(unaryExpression, Expression);
-    unaryExpression->tag = EXPRESSION_UNARY;
-    unaryExpression->line = ln;
-    unaryExpression->previous = unaryExpression->next = NULL;
-    unaryExpression->type = NULL;
-    unaryExpression->V = NULL;
-    unaryExpression->unary.token = token;
-    unaryExpression->unary.expression = expression;
-    return unaryExpression;
+Exp* ast_expression_range(Line ln, Token op, Exp* f, Exp* s, Exp* l) {
+    Exp* exp = exp_init(EXPRESSION_RANGE, ln);
+    exp->range.op = op;
+    exp->range.first = f;
+    exp->range.second = s;
+    exp->range.last = l;
+    return exp;
 }
 
-Expression* ast_expression_binary(Line ln, Token t, Expression* l,
-    Expression* r) {
-
-    Expression* expression;
-    MALLOC(expression, Expression);
-    expression->tag = EXPRESSION_BINARY;
-    expression->line = ln;
-    expression->previous = expression->next = NULL;
-    expression->type = NULL;
-    expression->V = NULL;
-    expression->binary.token = t;
-    expression->binary.left_expression = l;
-    expression->binary.right_expression = r;
-    return expression;
+Exp* ast_expression_unary(Line ln, Token token, Exp* expression) {
+    Exp* exp = exp_init(EXPRESSION_UNARY, ln);
+    exp->unary.token = token;
+    exp->unary.expression = expression;
+    return exp;
 }
 
-Expression* ast_expression_cast(Line ln, Expression* expression, Type* type) {
-    Expression* castExpression;
-    MALLOC(castExpression, Expression);
-    castExpression->tag = EXPRESSION_CAST;
-    castExpression->line = ln;
-    castExpression->type = type;
-    castExpression->V = NULL;
-    castExpression->cast = expression;
+Exp* ast_expression_binary(Line ln, Token token, Exp* l, Exp* r) {
+    Exp* exp = exp_init(EXPRESSION_BINARY, ln);
+    exp->binary.token = token;
+    exp->binary.left_expression = l;
+    exp->binary.right_expression = r;
+    return exp;
+}
 
+Exp* ast_expression_cast(Line ln, Exp* cast, Type* type) {
+    Exp* exp = exp_init(EXPRESSION_CAST, ln);
+    exp->cast = cast;
+    exp->type = type;
     // rearranging the list (only for arguments)
-    castExpression->previous = expression->previous;
-    expression->previous = NULL;
-    castExpression->next = expression->next;
-    expression->next = NULL;
-    if (castExpression->previous) {
-        castExpression->previous->next = castExpression;
-    }
-    if (castExpression->next) {
-        castExpression->next->previous = castExpression;
-    }
-
-    return castExpression;
+    exp->previous = cast->previous;
+    cast->previous = NULL;
+    exp->next = cast->next;
+    cast->next = NULL;
+    if (exp->previous) { exp->previous->next = exp; }
+    if (exp->next)     { exp->next->previous = exp; }
+    return exp;
 }
 
 // ==================================================
@@ -672,8 +637,8 @@ Expression* ast_expression_cast(Line ln, Expression* expression, Type* type) {
 //
 // ==================================================
 
-FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
-    FunctionCall* function_call;
+FC* ast_call(Line ln, Id* id, Exp* arguments) {
+    FC* function_call;
     MALLOC(function_call, FunctionCall);
     function_call->tag = FUNCTION_CALL_BASIC;
     function_call->line = ln;
@@ -686,8 +651,8 @@ FunctionCall* ast_call(Line ln, Id* id, Expression* arguments) {
     return function_call;
 }
 
-FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
-    FunctionCall* function_call;
+FC* ast_call_method(Line ln, Exp* i, Id* id, Exp* a) {
+    FC* function_call;
     MALLOC(function_call, FunctionCall);
     function_call->tag = FUNCTION_CALL_METHOD;
     function_call->line = ln;
@@ -700,8 +665,8 @@ FunctionCall* ast_call_method(Line ln, Expression* i, Id* id, Expression* a) {
     return function_call;
 }
 
-FunctionCall* ast_call_constructor(Line ln, Type* type, Expression* arguments) {
-    FunctionCall* function_call;
+FC* ast_call_constructor(Line ln, Type* type, Exp* arguments) {
+    FC* function_call;
     MALLOC(function_call, FunctionCall);
     function_call->tag = FUNCTION_CALL_CONSTRUCTOR;
     function_call->line = ln;

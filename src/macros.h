@@ -10,7 +10,7 @@
 // marks unreachable code
 #define UNREACHABLE STMT(assert(0);)
 
-// expression (a if and only if b)
+// expression (a if-and-only-if b)
 #define IFF(a, b) (((a) && (b)) || (!(a) && !(b)))
 
 // -----------------------------------------------------------------------------

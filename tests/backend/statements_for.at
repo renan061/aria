@@ -1,28 +1,90 @@
 --------------------------------------------------------------------------------
 -- Title
-Simple "for" statement
+Numeric "for" (without <second>)
 -- Input
 function main {
-    for variable i = 0; i < 10; i = i + 1 {
-        print("%d", i);
+    for i in [0 -> 10] {
+        print("%d, ", i);
+    }
+    print("\n");
+    for i in [10 <- 0] {
+        print("%d, ", i);
+    }
+    print("\n");
+    for i in [0 => 10] {
+        print("%d, ", i);
+    }
+    print("\n");
+    for i in [10 <= 0] {
+        print("%d, ", i);
     }
     print("\n");
 }
 -- Output
-0123456789
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 
+10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 
+10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 
 --------------------------------------------------------------------------------
 -- Title
-Mixed "for" statement
+Numeric "for" (with <second>)
 -- Input
 function main {
-    variable i = 0;
-    for variable j = 10; j == 10; i = i - 1 {
-        print("%d.%d/", i, j);
-        if i == -10 {
-            j = 0;
-        }
+    for i in [0, 2 -> 10] {
+        print("%d, ", i);
+    }
+    print("\n");
+    for i in [10, 8 <- 0] {
+        print("%d, ", i);
+    }
+    print("\n");
+    for i in [0, 2 => 10] {
+        print("%d, ", i);
+    }
+    print("\n");
+    for i in [10, 8 <= 0] {
+        print("%d, ", i);
     }
     print("\n");
 }
 -- Output
-0.10/-1.10/-2.10/-3.10/-4.10/-5.10/-6.10/-7.10/-8.10/-9.10/-10.10/
+0, 2, 4, 6, 8, 
+10, 8, 6, 4, 2, 
+0, 2, 4, 6, 8, 10, 
+10, 8, 6, 4, 2, 0, 
+--------------------------------------------------------------------------------
+-- Title
+Numeric "for" (float increment)
+-- Input
+function main {
+    for i in [10, 8.5 <= 0] {
+        print("%.1f, ", i);
+    }
+    print("\n");
+}
+-- Output
+10.0, 8.5, 7.0, 5.5, 4.0, 2.5, 1.0, 
+--------------------------------------------------------------------------------
+-- Title
+Numeric "for" (with <return>)
+-- Input
+function main {
+    for i in [0 -> 10] {
+        return;
+    }
+}
+-- Output
+--------------------------------------------------------------------------------
+-- Title
+Numeric "for" (infinite loop)
+-- Input
+function main {
+    for i in [0, -1 -> 10] {
+        if (i == -10) {
+            print("infinite loop\n");
+            return;
+        }
+    }
+}
+-- Output
+infinite loop

@@ -818,6 +818,7 @@ static void sem_statement_return(SS*, Statement*);
 static void sem_statement_if(SS*, Statement*);
 static void sem_statement_if_else(SS*, Statement*);
 static void sem_statement_while(SS*, Statement*);
+static void sem_statement_numeric_for(SS*, Statement*);
 static void sem_statement_for(SS*, Statement*);
 static void sem_statement_spawn(SS*, Statement*);
 static void sem_statement_acquire_value(SS*, Statement*);
@@ -851,6 +852,9 @@ static void sem_statement(SS* ss, Statement* stmt) {
         break;
     case STATEMENT_WHILE:
         sem_statement_while(ss, stmt);
+        break;
+    case STATEMENT_NUMERIC_FOR:
+        sem_statement_numeric_for(ss, stmt);
         break;
     case STATEMENT_FOR:
         sem_statement_for(ss, stmt);
@@ -998,6 +1002,18 @@ static void sem_statement_while(SS* ss, Statement* stmt) {
     symtable_leave_scope(ss->table);
 }
 
+static void sem_statement_numeric_for(SS* ss, Statement* stmt) {
+    stmt->numeric_for.v->capsa.capsa->value = true;
+    symtable_enter_scope(ss->table);
+    sem_expression(ss, stmt->numeric_for.range);
+    sem_definition(ss, stmt->numeric_for.v);
+    Capsa* v = stmt->numeric_for.v->capsa.capsa;
+    v->type = stmt->numeric_for.range->range.first->type;
+    sem_block(ss, stmt->numeric_for.block);
+    symtable_leave_scope(ss->table);
+    stmt->numeric_for.v->capsa.capsa->value = false;
+}
+
 static void sem_statement_for(SS* ss, Statement* stmt) {
     symtable_enter_scope(ss->table);
     sem_definition(ss, stmt->for_.initialization);
@@ -1122,6 +1138,41 @@ static void sem_expression(SS* ss, Expression* exp) {
             );
         }
         break;
+    case EXPRESSION_RANGE: {
+        sem_expression(ss, exp->range.first);
+        if (!numerictype(exp->range.first->type)) {
+            goto ERROR_RANGE_NOT_NUMERIC;
+        }
+        bool isfloat = exp->range.first->type == __float;
+        if (exp->range.second) {
+            sem_expression(ss, exp->range.second);
+            if (!numerictype(exp->range.second->type)) {
+                goto ERROR_RANGE_NOT_NUMERIC;
+            }
+            isfloat = isfloat || (exp->range.second->type == __float);
+        }
+        sem_expression(ss, exp->range.last);
+        if (!numerictype(exp->range.last->type)) {
+            goto ERROR_RANGE_NOT_NUMERIC;
+        }
+        isfloat = isfloat || (exp->range.last->type == __float);
+        
+        if (isfloat) {
+            typecheck1(__float, &exp->range.first);
+            if (exp->range.second) {
+                typecheck1(__float, &exp->range.second);
+            }
+            typecheck1(__float, &exp->range.last);
+        }
+        
+        exp->type = NULL; // TODO
+        break;
+        ERROR_RANGE_NOT_NUMERIC: {
+            TODOERR(exp->line,
+                "elements of a range expression must have numeric types"
+            );
+        }
+    }
     case EXPRESSION_UNARY:
         sem_expression_unary(ss, exp);
         break;

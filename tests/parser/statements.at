@@ -96,6 +96,45 @@ function main {
 OK
 --------------------------------------------------------------------------------
 -- Title
+Numeric "for"
+-- Input
+function main {
+    for i in [1 -> 2] {}
+    for i in [1 <- 2] {}
+    for i in [1 => 2] {}
+    for i in [1 <= 2] {}
+
+    for i in [1, 2 -> 3] {}
+    for i in [1, 2 <- 3] {}
+    for i in [2, 2 => 3] {}
+    for i in [2, 2 <= 3] {}
+
+    for i in [0, -1 -> -2] {}
+}
+-- Output
+OK
+--------------------------------------------------------------------------------
+-- Title
+Numeric "for" (error)
+-- Input
+function main {
+    for i in [0 + 2] {}
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
+Numeric "for" (error inc)
+-- Input
+function main {
+    for i in [0, 4 >= 12] {}
+}
+-- Output
+line 0:
+    parser error: syntax error
+--------------------------------------------------------------------------------
+-- Title
 Invalid "for" initialization
 -- Input
 function main {

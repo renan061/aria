@@ -52,10 +52,9 @@ Member operators
 -- Title
 Range operators
 -- Input
-. ... . ....
+-> <- => <=
 -- Output
-.
-TK_RANGE
-.
-TK_RANGE
-.
+TK_RARROW
+TK_LARROW
+TK_REARROW
+TK_LEQUAL
