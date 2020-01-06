@@ -104,6 +104,25 @@ function main: Void {
 }
 --------------------------------------------------------------------------------
 -- Title
+List Comprehension
+-- Input
+function main {
+    a = [i for i in [0 -> 5]];
+    a = Immutable [i + 1 for i in [0 -> 5]];
+}
+-- Output
+function main: Void {
+    a = ([i
+        for value i: ?
+        in [(0) -> (5)]
+    )
+    a = (Immutable [(i) + (1)
+        for value i: ?
+        in [(0) -> (5)]
+    )
+}
+--------------------------------------------------------------------------------
+-- Title
 Type Cast
 -- Input
 function main {

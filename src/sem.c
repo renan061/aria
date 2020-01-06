@@ -118,13 +118,13 @@ static void err_spawn_unsafe(Line);
 
 // TODO: experimental
 typedef enum ErrorType {
-    ERR_EXPRESSION_MINUS = 0,
-    ERR_EXPRESSION_NOT,
-    ERR_EXPRESSION_LEFT,
-    ERR_EXPRESSION_RIGHT,
-    ERR_EXPRESSION_LEFT_EQUAL,
-    ERR_EXPRESSION_RIGHT_EQUAL,
-    ERR_EXPRESSION_TYPECHECK_EQUAL
+    ERR_EXP_MINUS = 0,
+    ERR_EXP_NOT,
+    ERR_EXP_LEFT,
+    ERR_EXP_RIGHT,
+    ERR_EXP_LEFT_EQUAL,
+    ERR_EXP_RIGHT_EQUAL,
+    ERR_EXP_TYPECHECK_EQUAL
 } ErrorType;
 static void err_expression(ErrorType, Expression*);
 
@@ -248,32 +248,16 @@ static ListValue armatch(ListValue, ListValue);
 
 static void sem_definition(SS* ss, Definition* def) {
     switch (def->tag) {
-    case DEFINITION_CAPSA:
-        sem_definition_capsa(ss, def);
-        break;
-    case DECLARATION_FUNCTION:
-        sem_declaration_function(ss, def);
-        break;
-    case DEFINITION_FUNCTION:
-        sem_definition_function(ss, def);
-        break;
-    case DEFINITION_METHOD:
-        sem_definition_method(ss, def);
-        break;
-    case DEFINITION_CONSTRUCTOR:
-        sem_definition_constructor(ss, def);
-        break;
+    case DEFINITION_CAPSA:       sem_definition_capsa(ss, def);       break;
+    case DECLARATION_FUNCTION:   sem_declaration_function(ss, def);   break;
+    case DEFINITION_FUNCTION:    sem_definition_function(ss, def);    break;
+    case DEFINITION_METHOD:      sem_definition_method(ss, def);      break;
+    case DEFINITION_CONSTRUCTOR: sem_definition_constructor(ss, def); break;
     case DEFINITION_TYPE:
         switch (def->type->tag) {
-        case TYPE_INTERFACE:
-            sem_definition_interface(ss, def);
-            break;
-        case TYPE_STRUCTURE:
-            sem_definition_structure(ss, def);
-            break;
-        case TYPE_MONITOR:
-            sem_definition_monitor(ss, def);
-            break;
+        case TYPE_INTERFACE: sem_definition_interface(ss, def); break;
+        case TYPE_STRUCTURE: sem_definition_structure(ss, def); break;
+        case TYPE_MONITOR:   sem_definition_monitor(ss, def);   break;
         default:
             UNREACHABLE;
         }
@@ -667,15 +651,9 @@ static void sem_capsa_indexed(SS*, Capsa**);
 
 static void sem_capsa(SS* ss, Capsa** capsa_pointer) {
     switch ((*capsa_pointer)->tag) {
-    case CAPSA_ID:
-        sem_capsa_id(ss, capsa_pointer);
-        break;
-    case CAPSA_ATTRIBUTE:
-        sem_capsa_attribute(ss, capsa_pointer);
-        break;
-    case CAPSA_INDEXED:
-        sem_capsa_indexed(ss, capsa_pointer);
-        break;
+    case CAPSA_ID:        sem_capsa_id(ss, capsa_pointer);        break;
+    case CAPSA_ATTRIBUTE: sem_capsa_attribute(ss, capsa_pointer); break;
+    case CAPSA_INDEXED:   sem_capsa_indexed(ss, capsa_pointer);   break;
     default:
         UNREACHABLE;
     }
@@ -826,48 +804,20 @@ static void sem_statement_block(SS*, Statement*);
 
 static void sem_statement(SS* ss, Statement* stmt) {
     switch (stmt->tag) {
-    case STATEMENT_ASSIGNMENT:
-        sem_statement_assignment(ss, stmt);
-        break;
-    case STATEMENT_FUNCTION_CALL:
-        sem_statement_function_call(ss, stmt);
-        break;
-    case STATEMENT_WAIT_FOR_IN:
-        sem_statement_wait_for_in(ss, stmt);
-        break;
-    case STATEMENT_SIGNAL:
-        sem_statement_signal(ss, stmt);
-        break;
-    case STATEMENT_BROADCAST:
-        sem_statement_broadcast(ss, stmt);
-        break;
-    case STATEMENT_RETURN:
-        sem_statement_return(ss, stmt);
-        break;
-    case STATEMENT_IF:
-        sem_statement_if(ss, stmt);
-        break;
-    case STATEMENT_IF_ELSE:
-        sem_statement_if_else(ss, stmt);
-        break;
-    case STATEMENT_WHILE:
-        sem_statement_while(ss, stmt);
-        break;
-    case STATEMENT_NUMERIC_FOR:
-        sem_statement_numeric_for(ss, stmt);
-        break;
-    case STATEMENT_FOR:
-        sem_statement_for(ss, stmt);
-        break;
-    case STATEMENT_SPAWN:
-        sem_statement_spawn(ss, stmt);
-        break;
-    case STATEMENT_ACQUIRE_VALUE:
-        sem_statement_acquire_value(ss, stmt);
-        break;
-    case STATEMENT_BLOCK:
-        sem_statement_block(ss, stmt);
-        break;
+    case STATEMENT_ASSIGNMENT:    sem_statement_assignment(ss, stmt);    break;
+    case STATEMENT_FUNCTION_CALL: sem_statement_function_call(ss, stmt); break;
+    case STATEMENT_WAIT_FOR_IN:   sem_statement_wait_for_in(ss, stmt);   break;
+    case STATEMENT_SIGNAL:        sem_statement_signal(ss, stmt);        break;
+    case STATEMENT_BROADCAST:     sem_statement_broadcast(ss, stmt);     break;
+    case STATEMENT_RETURN:        sem_statement_return(ss, stmt);        break;
+    case STATEMENT_IF:            sem_statement_if(ss, stmt);            break;
+    case STATEMENT_IF_ELSE:       sem_statement_if_else(ss, stmt);       break;
+    case STATEMENT_WHILE:         sem_statement_while(ss, stmt);         break;
+    case STATEMENT_NUMERIC_FOR:   sem_statement_numeric_for(ss, stmt);   break;
+    case STATEMENT_FOR:           sem_statement_for(ss, stmt);           break;
+    case STATEMENT_SPAWN:         sem_statement_spawn(ss, stmt);         break;
+    case STATEMENT_ACQUIRE_VALUE: sem_statement_acquire_value(ss, stmt); break;
+    case STATEMENT_BLOCK:         sem_statement_block(ss, stmt);         break;
     default:
         UNREACHABLE;
     }
@@ -1073,7 +1023,7 @@ static void sem_statement_block(SS* ss, Statement* stmt) {
 
 // ==================================================
 //
-//  Expression
+//  TODO
 //
 // ==================================================
 
@@ -1093,52 +1043,50 @@ static void semliteralarray(Expression*);
 
 static void sem_expression(SS* ss, Expression* exp) {
     switch (exp->tag) {
-    case EXPRESSION_LITERAL_BOOLEAN:
+    case EXP_LITERAL_BOOLEAN:
         exp->type = __boolean;
         break;
-    case EXPRESSION_LITERAL_INTEGER:
+    case EXP_LITERAL_INTEGER:
         exp->type = __integer;
         break;
-    case EXPRESSION_LITERAL_FLOAT:
+    case EXP_LITERAL_FLOAT:
         exp->type = __float;
         break;
-    case EXPRESSION_LITERAL_STRING:
+    case EXP_LITERAL_STRING:
         exp->type = __string;
         break;
-    case EXPRESSION_LITERAL_ARRAY:
+    case EXP_LITERAL_ARRAY:
         sem_expression_literal_array(ss, exp);
         break;
-    case EXPRESSION_CAPSA:
+    case EXP_CAPSA:
         sem_capsa(ss, &exp->capsa);
         exp->type = exp->capsa->type;
         break;
-    case EXPRESSION_FUNCTION_CALL:
+    case EXP_FUNCTION_CALL:
         sem_function_call(ss, exp->function_call);
         exp->type = exp->function_call->type;
         break;
-    case EXPRESSION_LIST_COMPREHENSION:
-        sem_expression(ss, exp->comprehension.lower);
-        typecheck1(__integer, &exp->comprehension.lower);
-        sem_expression(ss, exp->comprehension.upper);
-        typecheck1(__integer, &exp->comprehension.upper);
+    case EXP_LIST_COMPREHENSION: {
         symtable_enter_scope(ss->table);
-        sem_definition(ss, exp->comprehension.i);
+        sem_expression(ss, exp->comprehension.iterable);
+        sem_definition(ss, exp->comprehension.v);
+        Capsa* v = exp->comprehension.v->capsa.capsa;
+        v->type = exp->comprehension.iterable->range.first->type;
         sem_expression(ss, exp->comprehension.e);
         symtable_leave_scope(ss->table);
         if (exp->comprehension.e->type == __void) {
-            TODOERR(exp->line,
-                "invalid Void element in list comprehension"
-            );
+            TODOERR(exp->line, "invalid Void element in list comprehension");
         }
         exp->type = ast_type_array(exp->comprehension.e->type);
-        if ((exp->type->immutable = exp->comprehension.immutable) &&
-            !exp->type->array->immutable) {
+        exp->type->immutable = exp->comprehension.immutable;
+        if (exp->type->immutable && !exp->type->array->immutable) {
             TODOERR(exp->line,
                 "immutable list comprehension must have immutable elements"
             );
         }
         break;
-    case EXPRESSION_RANGE: {
+    }
+    case EXP_RANGE: {
         sem_expression(ss, exp->range.first);
         if (!numerictype(exp->range.first->type)) {
             goto ERROR_RANGE_NOT_NUMERIC;
@@ -1173,13 +1121,13 @@ static void sem_expression(SS* ss, Expression* exp) {
             );
         }
     }
-    case EXPRESSION_UNARY:
+    case EXP_UNARY:
         sem_expression_unary(ss, exp);
         break;
-    case EXPRESSION_BINARY:
+    case EXP_BINARY:
         sem_expression_binary(ss, exp);
         break;
-    case EXPRESSION_CAST:
+    case EXP_CAST:
         sem_expression(ss, exp->cast);
         linktype(ss->table, &exp->type);
         break;
@@ -1211,12 +1159,8 @@ static void sem_expression_literal_array(SS* ss, Expression* exp) {
 static void sem_expression_unary(SS* ss, Expression* exp) {
     sem_expression(ss, exp->unary.expression);
     switch (exp->unary.token) {
-    case '-':
-        sem_expression_unary_minus(ss, exp);
-        break;
-    case TK_NOT:
-        sem_expression_unary_not(ss, exp);
-        break;
+    case '-':    sem_expression_unary_minus(ss, exp); break;
+    case TK_NOT: sem_expression_unary_not(ss, exp);   break;
     default:
         UNREACHABLE;
     }
@@ -1245,39 +1189,39 @@ static void sem_expression_binary(SS* ss, Expression* exp) {
 
 static void sem_expression_unary_minus(SS* ss, Expression* exp) {
     if (!numerictype(exp->unary.expression->type)) {
-        err_expression(ERR_EXPRESSION_MINUS, exp);
+        err_expression(ERR_EXP_MINUS, exp);
     }
     exp->type = exp->unary.expression->type;
 }
 
 static void sem_expression_unary_not(SS* ss, Expression* exp) {
     if (!conditiontype(exp->unary.expression->type)) {
-        err_expression(ERR_EXPRESSION_NOT, exp);
+        err_expression(ERR_EXP_NOT, exp);
     }
     exp->type = __boolean;
 }
 
 static void sem_expression_binary_logic(SS* ss, Expression* exp) {
     if (!conditiontype(exp->binary.left_expression->type)) {
-        err_expression(ERR_EXPRESSION_LEFT, exp);
+        err_expression(ERR_EXP_LEFT, exp);
     }
     if (!conditiontype(exp->binary.right_expression->type)) {
-        err_expression(ERR_EXPRESSION_RIGHT, exp);
+        err_expression(ERR_EXP_RIGHT, exp);
     }
     exp->type = __boolean;
 }
 
 static void sem_expression_binary_equality(SS* ss, Expression* exp) {
     if (!equatabletype(exp->binary.left_expression->type)) {
-        err_expression(ERR_EXPRESSION_LEFT_EQUAL, exp);
+        err_expression(ERR_EXP_LEFT_EQUAL, exp);
     }
     if (!equatabletype(exp->binary.right_expression->type)) {
-        err_expression(ERR_EXPRESSION_RIGHT_EQUAL, exp);
+        err_expression(ERR_EXP_RIGHT_EQUAL, exp);
     }
     Expression** l = &exp->binary.left_expression;
     Expression** r = &exp->binary.right_expression;
     if (!typecheck2(l, r)) {
-        err_expression(ERR_EXPRESSION_TYPECHECK_EQUAL, exp);
+        err_expression(ERR_EXP_TYPECHECK_EQUAL, exp);
     }
     exp->type = __boolean;
 }
@@ -1289,10 +1233,10 @@ static void sem_expression_binary_inequality(SS* ss, Expression* exp) {
 
 static void sem_expression_binary_arithmetic(SS* ss, Expression* exp) {
     if (!numerictype(exp->binary.left_expression->type)) {
-        err_expression(ERR_EXPRESSION_LEFT, exp);
+        err_expression(ERR_EXP_LEFT, exp);
     }
     if (!numerictype(exp->binary.right_expression->type)) {
-        err_expression(ERR_EXPRESSION_RIGHT, exp);
+        err_expression(ERR_EXP_RIGHT, exp);
     }
     Expression** l = &exp->binary.left_expression;
     Expression** r = &exp->binary.right_expression;
@@ -1306,7 +1250,7 @@ static void semliteralarray(Expression* e) {
     if (e->type->tag != TYPE_ARRAY) {
         return;
     }
-    if (e->tag == EXPRESSION_LITERAL_ARRAY) {
+    if (e->tag == EXP_LITERAL_ARRAY) {
         if (!e->literal.immutable) {
             e->literal.immutable = true;
             e->type->immutable = true;
@@ -2099,35 +2043,35 @@ static void err_expression(ErrorType type, Expression* e) {
     const char* err = NULL;
 
     switch (type) {
-    case ERR_EXPRESSION_MINUS:
-    case ERR_EXPRESSION_NOT:
+    case ERR_EXP_MINUS:
+    case ERR_EXP_NOT:
         err = err1(errors[type], typestring(e->unary.expression->type));
         break;
-    case ERR_EXPRESSION_LEFT:
+    case ERR_EXP_LEFT:
         err = err2(errors[type],
             typestring(e->binary.left_expression->type),
             tokenstring(e->binary.token)
         );
         break;
-    case ERR_EXPRESSION_RIGHT:
+    case ERR_EXP_RIGHT:
         err = err2(errors[type],
             typestring(e->binary.right_expression->type),
             tokenstring(e->binary.token)
         );
         break;
-    case ERR_EXPRESSION_LEFT_EQUAL:
+    case ERR_EXP_LEFT_EQUAL:
         err = err2(errors[type],
             tokenstring(e->binary.token),
             typestring(e->binary.left_expression->type)
         );
         break;
-    case ERR_EXPRESSION_RIGHT_EQUAL:
+    case ERR_EXP_RIGHT_EQUAL:
         err = err2(errors[type],
             tokenstring(e->binary.token),
             typestring(e->binary.right_expression->type)
         );
         break;
-    case ERR_EXPRESSION_TYPECHECK_EQUAL:
+    case ERR_EXP_TYPECHECK_EQUAL:
         err = err3(errors[type], typestring(e->binary.left_expression->type),
             typestring(e->binary.right_expression->type),
             tokenstring(e->binary.token));

@@ -17,6 +17,10 @@
  *  - free and destroy the mutex one day
  */
 
+// auxiliary debug macros
+#define DUMPV(v) STMT(LLVMDumpValue(v); printf("\n");)
+#define DUMPT(t) STMT(LLVMTypeValue(t); printf("\n");)
+
 // string malloc that accounts for '\0'
 #define SMALLOC(str, len) MALLOC_ARRAY(str, char, (len + 1))
 
@@ -178,7 +182,8 @@ static void backend_definition(IRState* irs, Definition* d) {
         case TYPE_INTERFACE: backend_definition_interface(irs, d); break;
         case TYPE_STRUCTURE: backend_definition_structure(irs, d); break;
         case TYPE_MONITOR:   backend_definition_monitor(irs, d);   break;
-        default:             UNREACHABLE;
+        default:
+            UNREACHABLE;
         }
         break;
     default:
@@ -697,6 +702,7 @@ static void backend_stmt_acquire_value(IRState*, Statement*);
 static void backend_stmt_block(IRState*, Statement*);
 
 static void spawnfunction(IRState*, Definition*, LLVMT);
+static LLVMBB forin(IRState*, Def*, Exp*, LLVMBB, LLVMBB);
 
 static void backend_statement(IRState* irs, Statement* stmt) {
     switch (stmt->tag) {
@@ -829,53 +835,20 @@ static void backend_stmt_while(IRState* irs, Statement* stmt) {
 }
 
 static void backend_stmt_numeric_for(IRState* irs, Statement* stmt) {
-    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
     LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
-    LLVMBB bbinc  = LLVMAppendBasicBlock(irs->function, BB_INC);
     LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
 
-    Exp* first = stmt->numeric_for.range->range.first;
-    Exp* second = stmt->numeric_for.range->range.second;
-    Exp* last = stmt->numeric_for.range->range.last;
+    Def* v = stmt->numeric_for.v;
+    Exp* range = stmt->numeric_for.range;
 
-    stmt->numeric_for.v->capsa.expression = first;
-    backend_definition(irs, stmt->numeric_for.v);
-    backend_expression(irs, last);
-
-    int predicates[2][4] = {
-        {LLVMIntSLT, LLVMIntSGT, LLVMIntSLE, LLVMIntSGE},
-        {LLVMRealOLT, LLVMRealOGT, LLVMRealOLE, LLVMRealOGE}
-    };
-    LLVMV ratios[2][4] = {
-        {ir_int(1), ir_int(-1), ir_int(1), ir_int(-1)},
-        {ir_float(1), ir_float(-1), ir_float(1), ir_float(-1)}
-    };
-    bool isfloat = first->type == __float; // i
-    int j = stmt->numeric_for.range->range.op == TK_RARROW  ? 0 :
-            stmt->numeric_for.range->range.op == TK_LARROW  ? 1 :
-            stmt->numeric_for.range->range.op == TK_REARROW ? 2 :
-            stmt->numeric_for.range->range.op == TK_LEQUAL  ? 3 :
-            (INVALID, -1) ;
-    int predicate = predicates[isfloat][j]; // LLVM(Int/Real)Predicate
-    LLVMV ratio = ratios[isfloat][j];
-    if (second) {
-        backend_expression(irs, second);
-        ratio = (isfloat)
-            ? LLVMBuildFSub(irs->B, second->V, first->V, LLVM_TMP)
-            : LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
+    v->capsa.expression = range->range.first;
+    backend_definition(irs, v); // calls <backend_expression> for first
+    backend_expression(irs, range->range.last);
+    if (range->range.second) {
+        backend_expression(irs, range->range.second);
     }
-    LLVMBuildBr(irs->B, bbcond);
-    irsBB_end(irs);
-    // cond
-    irsBB_start(irs, bbcond);
-    Capsa* ptr = stmt->numeric_for.v->capsa.capsa;
-    LLVMV V;
-    V = LLVMBuildLoad(irs->B, ptr->V, LLVM_TMP);
-    V = (isfloat)
-        ? LLVMBuildFCmp(irs->B, predicate, V, last->V, LLVM_TMP)
-        : LLVMBuildICmp(irs->B, predicate, V, last->V, LLVM_TMP);
-    LLVMBuildCondBr(irs->B, V, bbloop, bbend);
-    irsBB_end(irs);
+    LLVMBB bbinc = forin(irs, v, range, bbloop, bbend);
+
     // loop
     irsBB_start(irs, bbloop);
     backend_block(irs, stmt->numeric_for.block);
@@ -883,15 +856,7 @@ static void backend_stmt_numeric_for(IRState* irs, Statement* stmt) {
         LLVMBuildBr(irs->B, bbinc);
         irsBB_end(irs);
     }
-    // inc
-    irsBB_start(irs, bbinc);
-    V = LLVMBuildLoad(irs->B, ptr->V, LLVM_TMP);
-    V = (isfloat)
-        ? LLVMBuildFAdd(irs->B, V, ratio, LLVM_TMP)
-        : LLVMBuildAdd(irs->B, V, ratio, LLVM_TMP);
-    LLVMBuildStore(irs->B, V, ptr->V);
-    LLVMBuildBr(irs->B, bbcond);
-    irsBB_end(irs);
+
     // end
     irsBB_start(irs, bbend);
 }
@@ -1029,306 +994,397 @@ static void spawnfunction(IRState* irs, Definition* spawn, LLVMT psT) {
     irsBB_end(irs);
 }
 
+// auxiliary - creates the loop for range expressions
+// (used by the "for" statement and list comprehension expressions)
+static LLVMBB forin(IRState* irs, Def* v, Exp* range, LLVMBB loop, LLVMBB end) {
+    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+    LLVMBB bbinc  = LLVMAppendBasicBlock(irs->function, BB_INC);
+
+    int predicates[2][4] = {
+        {LLVMIntSLT, LLVMIntSGT, LLVMIntSLE, LLVMIntSGE},
+        {LLVMRealOLT, LLVMRealOGT, LLVMRealOLE, LLVMRealOGE}
+    };
+    LLVMV ratios[2][4] = {
+        {ir_int(1), ir_int(-1), ir_int(1), ir_int(-1)},
+        {ir_float(1), ir_float(-1), ir_float(1), ir_float(-1)}
+    };
+    bool isfloat = range->range.first->type == __float; // i
+    int j = range->range.op == TK_RARROW  ? 0 :
+            range->range.op == TK_LARROW  ? 1 :
+            range->range.op == TK_REARROW ? 2 :
+            range->range.op == TK_LEQUAL  ? 3 :
+            (INVALID, -1);
+    int predicate = predicates[isfloat][j]; // LLVM(Int/Real)Predicate
+    LLVMV ratio = ratios[isfloat][j];
+    if (range->range.second) {
+        Exp* first = range->range.first;
+        Exp* second = range->range.second;
+        ratio = (isfloat)
+            ? LLVMBuildFSub(irs->B, second->V, first->V, LLVM_TMP)
+            : LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
+    }
+
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
+
+    // cond
+    irsBB_start(irs, bbcond);
+    LLVMV V;
+    V = LLVMBuildLoad(irs->B, v->capsa.capsa->V, LLVM_TMP);
+    V = (isfloat)
+        ? LLVMBuildFCmp(irs->B, predicate, V, range->range.last->V, LLVM_TMP)
+        : LLVMBuildICmp(irs->B, predicate, V, range->range.last->V, LLVM_TMP);
+    LLVMBuildCondBr(irs->B, V, loop, end);
+    irsBB_end(irs);
+
+    // inc
+    irsBB_start(irs, bbinc);
+    V = LLVMBuildLoad(irs->B, v->capsa.capsa->V, LLVM_TMP);
+    V = (isfloat)
+        ? LLVMBuildFAdd(irs->B, V, ratio, LLVM_TMP)
+        : LLVMBuildAdd(irs->B, V, ratio, LLVM_TMP);
+    LLVMBuildStore(irs->B, V, v->capsa.capsa->V);
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
+
+    return bbinc;
+}
+
 // ==================================================
 //
-//  TODO
+//  Capsa
 //
 // ==================================================
+
+static void backend_capsa_id(IRState*, Capsa*);
+static void backend_capsa_indexed(IRState*, Capsa*);
 
 static void backend_capsa(IRState* irs, Capsa* capsa) {
     switch (capsa->tag) {
-    case CAPSA_ID:
-        // V dealt with already, unless...
-        if (capsa->llvm_structure_index > -1) { // attributes
-            assert(irs->self);
-            capsa->V = LLVMBuildStructGEP(
-                irs->B, irs->self, capsa->llvm_structure_index, LLVM_TMP
-            );
-        }
-        break;
-    case CAPSA_INDEXED: {
-        backend_expression(irs, capsa->indexed.array);
-        backend_expression(irs, capsa->indexed.index);
-        LLVMV indices[1] = {capsa->indexed.index->V};
-        capsa->V = LLVMBuildGEP(
-            irs->B,
-            capsa->indexed.array->V,
-            indices,
-            1,
-            LLVM_TMP
-        );
-        break;
-    }
+    case CAPSA_ID:        backend_capsa_id(irs, capsa);      break;
+    case CAPSA_INDEXED:   backend_capsa_indexed(irs, capsa); break;
     default:
         UNREACHABLE;
     }
 }
 
-static void backend_expression(IRState* irs, Expression* expression) {
-    switch (expression->tag) {
-    case EXPRESSION_LITERAL_BOOLEAN:
-        expression->V = ir_bool(expression->literal.boolean);
-        break;
-    case EXPRESSION_LITERAL_INTEGER:
-        expression->V = ir_int(expression->literal.integer);
-        break;
-    case EXPRESSION_LITERAL_FLOAT:
-        expression->V = ir_float(expression->literal.float_);
-        break;
-    case EXPRESSION_LITERAL_STRING:
-        expression->V = LLVMBuildGlobalStringPtr(
-            irs->B, expression->literal.string, LLVM_GLOBAL_STRING
+static void backend_capsa_id(IRState* irs, Capsa* capsa) {
+    // V dealt with already, unless...
+    if (capsa->llvm_structure_index > -1) { // attributes
+        assert(irs->self);
+        capsa->V = LLVMBuildStructGEP(
+            irs->B, irs->self, capsa->llvm_structure_index, LLVM_TMP
         );
-        break;
-    case EXPRESSION_LITERAL_ARRAY: {
-        // evaluating the expressions inside the array
-        int n = 0;
-        for (Expression* e = expression->literal.array; e; e = e->next, n++) {
-            backend_expression(irs, e);
-        }
-        // allocating memory for the array
-        expression->V = LLVMBuildArrayMalloc(irs->B,
-            llvmtype(expression->type->array), ir_int(n), LLVM_TMP
-        );
-        // setting the values inside the array
-        n = 0;
-        LLVMV ptr, indices[1];
-        FOREACH(Expression, e, expression->literal.array) {
-            indices[0] = ir_int(n++);
-            ptr = LLVMBuildGEP(irs->B, expression->V, indices, 1, LLVM_TMP);
-            LLVMBuildStore(irs->B, e->V, ptr);
-        }
-        break;
-    }
-    case EXPRESSION_CAPSA:
-        backend_capsa(irs, expression->capsa);
-        // TODO: find better way to write this
-        if (expression->capsa->llvm_structure_index > -1) { // attributes
-            expression->V = LLVMBuildLoad(
-                irs->B, expression->capsa->V, LLVM_TMP
-            );
-        } else if (expression->capsa->value && !expression->capsa->global) {
-            // local values
-            expression->V = expression->capsa->V;
-        } else { // variables
-            expression->V = LLVMBuildLoad(
-                irs->B, expression->capsa->V, LLVM_TMP
-            );
-        }
-        break;
-    case EXPRESSION_FUNCTION_CALL:
-        expression->V = backend_function_call(irs, expression->function_call);
-        break;
-    case EXPRESSION_LIST_COMPREHENSION: {
-        backend_expression(irs, expression->comprehension.upper);
-        expression->comprehension.i->capsa.capsa->value = false;
-        backend_definition(irs, expression->comprehension.i);
-        LLVMV n = LLVMBuildSub(irs->B,
-            expression->comprehension.upper->V,
-            expression->comprehension.lower->V,
-            LLVM_TMP
-        );
-        expression->V = LLVMBuildArrayMalloc(irs->B,
-            llvmtype(expression->type->array), n, LLVM_TMP
-        );
-        LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
-        LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
-        LLVMBB bbend = LLVMAppendBasicBlock(irs->function, BB_END);
-        // loop header
-        LLVMV iptr = expression->comprehension.i->capsa.capsa->V;
-        LLVMV jptr = LLVMBuildAlloca(irs->B, irT_int, LLVM_TMP);
-        LLVMBuildStore(irs->B, ir_int(0), jptr);
-        LLVMBuildBr(irs->B, bbcond);
-        irsBB_end(irs);
-        // cond
-        irsBB_start(irs, bbcond);
-        LLVMV i = LLVMBuildLoad(irs->B, iptr, LLVM_TMP);
-        LLVMV j = LLVMBuildLoad(irs->B, jptr, LLVM_TMP);
-        LLVMV cmp = LLVMBuildICmp(irs->B, LLVMIntSLT, j, n, LLVM_TMP);
-        LLVMBuildCondBr(irs->B, cmp, bbloop, bbend);
-        irsBB_end(irs);
-        // loop
-        irsBB_start(irs, bbloop);
-        backend_expression(irs, expression->comprehension.e);
-        LLVMV indices[] = {j};
-        LLVMV ptr = LLVMBuildGEP(irs->B, expression->V, indices, 1, LLVM_TMP);
-        LLVMBuildStore(irs->B, expression->comprehension.e->V, ptr);
-        i = LLVMBuildAdd(irs->B, i, ir_int(1), LLVM_TMP);
-        j = LLVMBuildAdd(irs->B, j, ir_int(1), LLVM_TMP);
-        LLVMBuildStore(irs->B, i, iptr);
-        LLVMBuildStore(irs->B, j, jptr);
-        LLVMBuildBr(irs->B, bbcond);
-        irsBB_end(irs);
-        // end
-        irsBB_start(irs, bbend);
-        break;
-    }
-    case EXPRESSION_UNARY:
-        switch (expression->unary.token) {
-        case '-':
-            backend_expression(irs, expression->unary.expression);
-            if (expression->type == __integer) {
-                expression->V = LLVMBuildNeg(irs->B,
-                    expression->unary.expression->V, LLVM_TMP);
-            } else if (expression->type == __float) {
-                expression->V = LLVMBuildFNeg(irs->B,
-                    expression->unary.expression->V, LLVM_TMP);
-            } else {
-                UNREACHABLE;
-            }
-            break;
-        case TK_NOT:
-            goto CONDITION_EXPRESSION;
-        default:
-            UNREACHABLE;
-        }
-        break;
-    case EXPRESSION_BINARY:
-        switch (expression->binary.token) {
-        case TK_OR:
-        case TK_AND:
-        case TK_EQUAL:
-        case TK_NEQUAL:
-        case TK_LEQUAL:
-        case TK_GEQUAL:
-        case '<':
-        case '>':
-            goto CONDITION_EXPRESSION;
-
-        // TODO: refactor
-
-        // macro to be used by the [+, -, *, /] operations
-        #define BINARY_ARITHMETICS(e, s, ifunc, ffunc) \
-            if (e->type == __integer) { \
-                e->V = ifunc(s->B, \
-                    e->binary.left_expression->V, \
-                    e->binary.right_expression->V, LLVM_TMP); \
-            } else if (e->type == __float) { \
-                e->V = ffunc(s->B, \
-                    e->binary.left_expression->V, \
-                    e->binary.right_expression->V, LLVM_TMP); \
-            } else { \
-                UNREACHABLE; \
-            }
-        // end macro
-
-        case '+':
-            backend_expression(irs, expression->binary.left_expression);
-            backend_expression(irs, expression->binary.right_expression);
-            BINARY_ARITHMETICS(expression, irs, LLVMBuildAdd, LLVMBuildFAdd);
-            break;
-        case '-':
-            backend_expression(irs, expression->binary.left_expression);
-            backend_expression(irs, expression->binary.right_expression);
-            BINARY_ARITHMETICS(expression, irs, LLVMBuildSub, LLVMBuildFSub);
-            break;
-        case '*':
-            backend_expression(irs, expression->binary.left_expression);
-            backend_expression(irs, expression->binary.right_expression);
-            BINARY_ARITHMETICS(expression, irs, LLVMBuildMul, LLVMBuildFMul);
-            break;
-        case '/':
-            backend_expression(irs, expression->binary.left_expression);
-            backend_expression(irs, expression->binary.right_expression);
-            BINARY_ARITHMETICS(expression, irs, LLVMBuildSDiv, LLVMBuildFDiv);
-            break;
-
-        #undef BINARY_ARITHMETICS
-
-        default:
-            UNREACHABLE;
-        }
-        break;
-    case EXPRESSION_CAST: {
-        backend_expression(irs, expression->cast);
-        Type* from = expression->cast->type;
-        Type* to = expression->type;
-
-        if (from == __integer && to == __float) {
-            // Integer to Float
-            expression->V = LLVMBuildSIToFP(
-                irs->B,
-                expression->cast->V,
-                llvmtype(expression->type),
-                LLVM_TMP
-            );
-        } else if (from == __float && to == __integer) {
-            // Float to Integer
-            expression->V = LLVMBuildFPToSI(
-                irs->B,
-                expression->cast->V,
-                llvmtype(expression->type),
-                LLVM_TMP
-            );
-        } else if (from->tag == TYPE_MONITOR && to->tag == TYPE_INTERFACE) {
-            // Monitor to Interface
-            expression->V = expression->cast->V;
-        } else {
-            UNREACHABLE;
-        }
-        break;
-    }
-    default:
-        UNREACHABLE;
-    }
-
-    return;
-
-    CONDITION_EXPRESSION: { // expression ? true : false
-        LLVMBB
-            block_true  = LLVMAppendBasicBlock(irs->function, "a"),
-            block_false = LLVMAppendBasicBlock(irs->function, "b"),
-            block_phi   = LLVMAppendBasicBlock(irs->function, "phi")
-        ;
-
-        backend_condition(irs, expression, block_true, block_false);
-        irsBB_start(irs, block_true);
-        LLVMBuildBr(irs->B, block_phi);
-        irsBB_end(irs);
-        irsBB_start(irs, block_false);
-        LLVMBuildBr(irs->B, block_phi);
-        irsBB_end(irs);
-        irsBB_start(irs, block_phi);
-
-        LLVMV
-            phi = LLVMBuildPhi(irs->B, irT_bool, LLVM_TMP_PHI),
-            incoming_values[2] = {ir_bool(true), ir_bool(false)}
-        ;
-        LLVMBB incoming_blocks[2] = {block_true, block_false};
-        LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
-
-        expression->V = phi;
     }
 }
 
-static void backend_condition(IRState* irs, Expression* expression,
-    LLVMBB lt, LLVMBB lf) {
+static void backend_capsa_indexed(IRState* irs, Capsa* capsa) {
+    backend_expression(irs, capsa->indexed.array);
+    backend_expression(irs, capsa->indexed.index);
+    LLVMV indices[1] = {capsa->indexed.index->V};
+    capsa->V = LLVMBuildGEP(irs->B,
+        capsa->indexed.array->V, indices, 1, LLVM_TMP
+    );
+}
 
-    switch (expression->tag) {
-    case EXPRESSION_LITERAL_BOOLEAN:
-    case EXPRESSION_LITERAL_INTEGER:
-    case EXPRESSION_LITERAL_FLOAT:
-    case EXPRESSION_LITERAL_STRING:
-    case EXPRESSION_CAPSA:
-    case EXPRESSION_FUNCTION_CALL:
-        goto EXPRESSION_CONDITION;
-    case EXPRESSION_UNARY:
-        switch (expression->unary.token) {
+// ==================================================
+//
+//  Expression
+//
+// ==================================================
+
+static void backend_exp_literal_boolean(IRState*, Exp*);
+static void backend_exp_literal_integer(IRState*, Exp*);
+static void backend_exp_literal_float(IRState*, Exp*);
+static void backend_exp_literal_string(IRState*, Exp*);
+static void backend_exp_literal_array(IRState*, Exp*);
+static void backend_exp_capsa(IRState*, Exp*);
+static void backend_exp_fc(IRState*, Exp*);
+static void backend_exp_comprehension(IRState*, Exp*);
+static void backend_exp_unary(IRState*, Exp*);
+static void backend_exp_unary_minus(IRState*, Exp*);
+static void backend_exp_binary(IRState*, Exp*);
+static void backend_exp_cast(IRState*, Exp*);
+static void backend_exp_condition(IRState*, Exp*);
+
+// macro to be used by the [+, -, *, /] operations
+#define BINARY_ARITHMETICS(e, irs, ifunc, ffunc) STMT(\
+    if (e->type == __integer) { \
+        e->V = ifunc(irs->B, \
+            e->binary.left_expression->V, \
+            e->binary.right_expression->V, LLVM_TMP); \
+    } else if (e->type == __float) { \
+        e->V = ffunc(irs->B, \
+            e->binary.left_expression->V, \
+            e->binary.right_expression->V, LLVM_TMP); \
+    } else { \
+        UNREACHABLE; \
+    } \
+)
+// end macro
+
+static void backend_expression(IRState* irs, Exp* exp) {
+    switch (exp->tag) {
+    case EXP_LITERAL_BOOLEAN:    backend_exp_literal_boolean(irs, exp); break;
+    case EXP_LITERAL_INTEGER:    backend_exp_literal_integer(irs, exp); break;
+    case EXP_LITERAL_FLOAT:      backend_exp_literal_float(irs, exp);   break;
+    case EXP_LITERAL_STRING:     backend_exp_literal_string(irs, exp);  break;
+    case EXP_LITERAL_ARRAY:      backend_exp_literal_array(irs, exp);   break;
+    case EXP_CAPSA:              backend_exp_capsa(irs, exp);           break;
+    case EXP_FUNCTION_CALL:      backend_exp_fc(irs, exp);              break;
+    case EXP_LIST_COMPREHENSION: backend_exp_comprehension(irs, exp);   break;
+    case EXP_UNARY:              backend_exp_unary(irs, exp);           break;
+    case EXP_BINARY:             backend_exp_binary(irs, exp);          break;
+    case EXP_CAST:               backend_exp_cast(irs, exp);            break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+static void backend_exp_literal_boolean(IRState* irs, Exp* exp) {
+    exp->V = ir_bool(exp->literal.boolean);
+}
+
+static void backend_exp_literal_integer(IRState* irs, Exp* exp) {
+    exp->V = ir_int(exp->literal.integer);
+}
+
+static void backend_exp_literal_float(IRState* irs, Exp* exp) {
+    exp->V = ir_float(exp->literal.float_);
+}
+
+static void backend_exp_literal_string(IRState* irs, Exp* exp) {
+    exp->V = LLVMBuildGlobalStringPtr(
+        irs->B, exp->literal.string, LLVM_GLOBAL_STRING
+    );
+}
+
+static void backend_exp_literal_array(IRState* irs, Exp* exp) {
+    // evaluating the expressions inside the array
+    int n = 0;
+    for (Exp* e = exp->literal.array; e; e = e->next, n++) {
+        backend_expression(irs, e);
+    }
+    // allocating memory for the array
+    exp->V = LLVMBuildArrayMalloc(irs->B,
+        llvmtype(exp->type->array), ir_int(n), LLVM_TMP
+    );
+    // setting the values inside the array
+    n = 0;
+    LLVMV ptr, indices[1];
+    FOREACH(Exp, e, exp->literal.array) {
+        indices[0] = ir_int(n++);
+        ptr = LLVMBuildGEP(irs->B, exp->V, indices, 1, LLVM_TMP);
+        LLVMBuildStore(irs->B, e->V, ptr);
+    }
+}
+
+static void backend_exp_capsa(IRState* irs, Exp* exp) {
+    backend_capsa(irs, exp->capsa);
+    // TODO: find better way to write this
+    if (exp->capsa->llvm_structure_index > -1) { // attributes
+        exp->V = LLVMBuildLoad(irs->B, exp->capsa->V, LLVM_TMP);
+    } else if (exp->capsa->value && !exp->capsa->global) { // local values
+        exp->V = exp->capsa->V;
+    } else { // variables
+        exp->V = LLVMBuildLoad(irs->B, exp->capsa->V, LLVM_TMP);
+    }
+}
+
+static void backend_exp_fc(IRState* irs, Exp* exp) {
+    exp->V = backend_function_call(irs, exp->function_call);
+}
+
+static void backend_exp_comprehension(IRState* irs, Exp* exp) {
+    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
+
+    Def* v = exp->comprehension.v;
+    Exp* range = exp->comprehension.iterable;
+    v->capsa.capsa->value = false; // TODO
+
+    v->capsa.expression = range->range.first;
+    backend_definition(irs, v); // calls <backend_expression> for first
+    backend_expression(irs, range->range.last);
+    if (range->range.second) {
+        backend_expression(irs, range->range.second);
+    }
+    
+    Exp* first = range->range.first;
+    // Exp* second = range->range.second;
+    Exp* last = range->range.last;
+
+    LLVMV i /*, ratio*/;
+
+    // TODO: size <n> is (very) incorrect
+    if (first->type == __integer) {
+        LLVMT T = llvmtype(exp->type->array);
+        LLVMV n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
+        // if (second) {
+        //     ratio = LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
+        //     n = LLVMBuildSDiv(irs->B, n, ratio, LLVM_TMP);
+        // }
+        exp->V = LLVMBuildArrayMalloc(irs->B, T , n, LLVM_TMP);
+        i = LLVMBuildAlloca(irs->B, irT_int, LLVM_TMP);
+        LLVMBuildStore(irs->B, ir_int(0), i);
+    } else if (first->type == __float) {
+        // @llvm.fabs.f64(double %Val)
+        UNREACHABLE;
+    } else {
+        UNREACHABLE;
+    }
+
+    LLVMBB bbinc = forin(irs, v, range, bbloop, bbend);
+
+    // loop
+    irsBB_start(irs, bbloop);
+    backend_expression(irs, exp->comprehension.e);
+    LLVMV iloaded = LLVMBuildLoad(irs->B, i, LLVM_TMP);
+    LLVMV indices[] = {iloaded};
+    LLVMV elemptr = LLVMBuildGEP(irs->B, exp->V, indices, 1, LLVM_TMP);
+    LLVMBuildStore(irs->B, exp->comprehension.e->V, elemptr);
+    iloaded = LLVMBuildAdd(irs->B, iloaded, ir_int(1), LLVM_TMP);
+    LLVMBuildStore(irs->B, iloaded, i);
+    LLVMBuildBr(irs->B, bbinc);
+    irsBB_end(irs);
+
+    // end
+    irsBB_start(irs, bbend);
+}
+
+static void backend_exp_unary(IRState* irs, Exp* exp) {
+    switch (exp->unary.token) {
+    case '-':    backend_exp_unary_minus(irs, exp); break;
+    case TK_NOT: backend_exp_condition(irs, exp);   break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+static void backend_exp_unary_minus(IRState* irs, Exp* exp) {
+    backend_expression(irs, exp->unary.expression);
+    LLVMV V = exp->unary.expression->V;
+    exp->V = (exp->type == __integer) ? LLVMBuildNeg(irs->B, V, LLVM_TMP)  :
+             (exp->type == __float)   ? LLVMBuildFNeg(irs->B, V, LLVM_TMP) :
+             (INVALID, NULL);
+}
+
+static void backend_exp_binary(IRState* irs, Exp* exp) {
+    switch (exp->binary.token) {
+    case TK_OR:
+    case TK_AND:
+    case TK_EQUAL:
+    case TK_NEQUAL:
+    case TK_LEQUAL:
+    case TK_GEQUAL:
+    case '<':
+    case '>':
+        backend_exp_condition(irs, exp);
+        break;
+    case '+':
+        backend_expression(irs, exp->binary.left_expression);
+        backend_expression(irs, exp->binary.right_expression);
+        BINARY_ARITHMETICS(exp, irs, LLVMBuildAdd, LLVMBuildFAdd);
+        break;
+    case '-':
+        backend_expression(irs, exp->binary.left_expression);
+        backend_expression(irs, exp->binary.right_expression);
+        BINARY_ARITHMETICS(exp, irs, LLVMBuildSub, LLVMBuildFSub);
+        break;
+    case '*':
+        backend_expression(irs, exp->binary.left_expression);
+        backend_expression(irs, exp->binary.right_expression);
+        BINARY_ARITHMETICS(exp, irs, LLVMBuildMul, LLVMBuildFMul);
+        break;
+    case '/':
+        backend_expression(irs, exp->binary.left_expression);
+        backend_expression(irs, exp->binary.right_expression);
+        BINARY_ARITHMETICS(exp, irs, LLVMBuildSDiv, LLVMBuildFDiv);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+static void backend_exp_cast(IRState* irs, Exp* exp) {
+    backend_expression(irs, exp->cast);
+    Type* from = exp->cast->type;
+    Type* to = exp->type;
+    LLVMT T;
+
+    if (from == __integer && to == __float) {
+        // integer to float
+        T = llvmtype(exp->type);
+        exp->V = LLVMBuildSIToFP(irs->B, exp->cast->V, T, LLVM_TMP);
+    } else if (from == __float && to == __integer) {
+        // float to integer
+        T = llvmtype(exp->type);
+        exp->V = LLVMBuildFPToSI(irs->B, exp->cast->V, T, LLVM_TMP);
+    } else if (from->tag == TYPE_MONITOR && to->tag == TYPE_INTERFACE) {
+        // monitor to interface
+        exp->V = exp->cast->V;
+    } else {
+        UNREACHABLE;
+    }
+}
+
+static void backend_exp_condition(IRState* irs, Exp* exp) {
+    // expression ? true : false
+    LLVMBB bbtrue  = LLVMAppendBasicBlock(irs->function, "a");
+    LLVMBB bbfalse = LLVMAppendBasicBlock(irs->function, "b");
+    LLVMBB bbphi   = LLVMAppendBasicBlock(irs->function, "phi");
+
+    backend_condition(irs, exp, bbtrue, bbfalse);
+    irsBB_start(irs, bbtrue);
+    LLVMBuildBr(irs->B, bbphi);
+    irsBB_end(irs);
+    irsBB_start(irs, bbfalse);
+    LLVMBuildBr(irs->B, bbphi);
+    irsBB_end(irs);
+    irsBB_start(irs, bbphi);
+
+    LLVMV phi = LLVMBuildPhi(irs->B, irT_bool, LLVM_TMP_PHI);
+    LLVMV incomingV[2] = {ir_bool(true), ir_bool(false)};
+    LLVMBB incomingBB[2] = {bbtrue, bbfalse};
+    LLVMAddIncoming(phi, incomingV, incomingBB, 2);
+
+    exp->V = phi;
+}
+
+#undef BINARY_ARITHMETICS
+
+// ==================================================
+//
+//  Condition
+//
+// ==================================================
+
+static void backend_condition(IRState* irs, Exp* exp, LLVMBB lt, LLVMBB lf) {
+    switch (exp->tag) {
+    case EXP_LITERAL_BOOLEAN:
+    case EXP_LITERAL_INTEGER:
+    case EXP_LITERAL_FLOAT:
+    case EXP_LITERAL_STRING:
+    case EXP_CAPSA:
+    case EXP_FUNCTION_CALL:
+        goto EXP_CONDITION;
+    case EXP_UNARY:
+        switch (exp->unary.token) {
         case TK_NOT:
-            backend_condition(irs, expression->unary.expression, lf, lt);
+            backend_condition(irs, exp->unary.expression, lf, lt);
             break;
         case '-':
-            goto EXPRESSION_CONDITION;
+            goto EXP_CONDITION;
         default:
             UNREACHABLE;
         }
         break;
-    case EXPRESSION_BINARY: {
-        Expression* l = expression->binary.left_expression;
-        Expression* r = expression->binary.right_expression;
+    case EXP_BINARY: {
+        Exp* l = exp->binary.left_expression;
+        Exp* r = exp->binary.right_expression;
         LLVMBB label; // used by "or" and "and"
 
-        switch (expression->binary.token) {
+        switch (exp->binary.token) {
         case TK_OR:
             label = LLVMAppendBasicBlock(irs->function, "or");
             backend_condition(irs, l, lt, label);
@@ -1344,66 +1400,66 @@ static void backend_condition(IRState* irs, Expression* expression,
         case TK_EQUAL:
             backend_expression(irs, l);
             backend_expression(irs, r);
-            expression->V = ir_cmp(irs->B, LLVMIntEQ, LLVMRealOEQ, l, r);
-            LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+            exp->V = ir_cmp(irs->B, LLVMIntEQ, LLVMRealOEQ, l, r);
+            LLVMBuildCondBr(irs->B, exp->V, lt, lf);
             irsBB_end(irs);
             break;
         case TK_NEQUAL:
             backend_expression(irs, l);
             backend_expression(irs, r);
-            expression->V = ir_cmp(irs->B, LLVMIntNE, LLVMRealONE, l, r);
-            LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+            exp->V = ir_cmp(irs->B, LLVMIntNE, LLVMRealONE, l, r);
+            LLVMBuildCondBr(irs->B, exp->V, lt, lf);
             irsBB_end(irs);
             break;
         case TK_LEQUAL:
             backend_expression(irs, l);
             backend_expression(irs, r);
-            expression->V = ir_cmp(irs->B, LLVMIntSLE, LLVMRealOLE, l, r);
-            LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+            exp->V = ir_cmp(irs->B, LLVMIntSLE, LLVMRealOLE, l, r);
+            LLVMBuildCondBr(irs->B, exp->V, lt, lf);
             irsBB_end(irs);
             break;
         case TK_GEQUAL:
             backend_expression(irs, l);
             backend_expression(irs, r);
-            expression->V = ir_cmp(irs->B, LLVMIntSGE, LLVMRealOGE, l, r);
-            LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+            exp->V = ir_cmp(irs->B, LLVMIntSGE, LLVMRealOGE, l, r);
+            LLVMBuildCondBr(irs->B, exp->V, lt, lf);
             irsBB_end(irs);
             break;
         case '<':
             backend_expression(irs, l);
             backend_expression(irs, r);
-            expression->V = ir_cmp(irs->B, LLVMIntSLT, LLVMRealOLT, l, r);
-            LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+            exp->V = ir_cmp(irs->B, LLVMIntSLT, LLVMRealOLT, l, r);
+            LLVMBuildCondBr(irs->B, exp->V, lt, lf);
             irsBB_end(irs);
             break;
         case '>':
             backend_expression(irs, l);
             backend_expression(irs, r);
-            expression->V = ir_cmp(irs->B, LLVMIntSGT, LLVMRealOGT, l, r);
-            LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+            exp->V = ir_cmp(irs->B, LLVMIntSGT, LLVMRealOGT, l, r);
+            LLVMBuildCondBr(irs->B, exp->V, lt, lf);
             irsBB_end(irs);
             break;
         case '+':
         case '-':
         case '*':
         case '/':
-            goto EXPRESSION_CONDITION;
+            goto EXP_CONDITION;
         default:
             UNREACHABLE;
         }
         break;
     }
-    case EXPRESSION_CAST:
-        goto EXPRESSION_CONDITION;
+    case EXP_CAST:
+        goto EXP_CONDITION;
     default:
         UNREACHABLE;
     }
 
     return;
 
-    EXPRESSION_CONDITION: {
-        backend_expression(irs, expression);
-        LLVMBuildCondBr(irs->B, expression->V, lt, lf);
+    EXP_CONDITION: {
+        backend_expression(irs, exp);
+        LLVMBuildCondBr(irs->B, exp->V, lt, lf);
         irsBB_end(irs);
     }
 }

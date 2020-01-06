@@ -534,67 +534,65 @@ static Exp* exp_init(ExpressionTag tag, Line ln) {
 }
 
 Exp* ast_expression_literal_boolean(Line ln, bool boolean) {
-    Exp* exp = exp_init(EXPRESSION_LITERAL_BOOLEAN, ln);
+    Exp* exp = exp_init(EXP_LITERAL_BOOLEAN, ln);
     exp->literal.immutable = true;
     exp->literal.boolean = boolean;
     return exp;
 }
 
 Exp* ast_expression_literal_integer(Line ln, int integer) {
-    Exp* exp = exp_init(EXPRESSION_LITERAL_INTEGER, ln);
+    Exp* exp = exp_init(EXP_LITERAL_INTEGER, ln);
     exp->literal.immutable = true;
     exp->literal.integer = integer;
     return exp;
 }
 
 Exp* ast_expression_literal_float(Line ln, double float_) {
-    Exp* exp = exp_init(EXPRESSION_LITERAL_FLOAT, ln);
+    Exp* exp = exp_init(EXP_LITERAL_FLOAT, ln);
     exp->literal.immutable = true;
     exp->literal.float_ = float_;
     return exp;
 }
 
 Exp* ast_expression_literal_string(Line ln, const char* string) {
-    Exp* exp = exp_init(EXPRESSION_LITERAL_STRING, ln);
+    Exp* exp = exp_init(EXP_LITERAL_STRING, ln);
     exp->literal.immutable = true;
     exp->literal.string = string;
     return exp;
 }
 
 Exp* ast_expression_literal_array(Line ln, Exp* array, bool immutable) {
-    Exp* exp = exp_init(EXPRESSION_LITERAL_ARRAY, ln);
+    Exp* exp = exp_init(EXP_LITERAL_ARRAY, ln);
     exp->literal.immutable = immutable;
     exp->literal.array = array;
     return exp;
 }
 
 Exp* ast_expression_capsa(Capsa* capsa) {
-    Exp* exp = exp_init(EXPRESSION_CAPSA, capsa->line);
+    Exp* exp = exp_init(EXP_CAPSA, capsa->line);
     exp->capsa = capsa;
     return exp;
 }
 
 Exp* ast_expression_function_call(FC* fc) {
-    Exp* exp = exp_init(EXPRESSION_FUNCTION_CALL, fc->line);
+    Exp* exp = exp_init(EXP_FUNCTION_CALL, fc->line);
     exp->function_call = fc;
     return exp;
 }
 
-Exp* ast_expression_comprehension(Line ln, Exp* e, Id* i, Exp* l, Exp* u) {
-    Exp* exp = exp_init(EXPRESSION_LIST_COMPREHENSION, ln);
+Exp* ast_expression_comprehension(Line ln, Exp* e, Id* v, Exp* iterable) {
+    Exp* exp = exp_init(EXP_LIST_COMPREHENSION, ln);
     exp->comprehension.e = e;
-    Capsa* capsa = ast_capsa_id(i);
-    capsa->type = ast_type_integer();
+    Capsa* capsa = ast_capsa_id(v);
     capsa->value = true;
-    exp->comprehension.i = ast_definition_capsa(capsa, l);
-    exp->comprehension.lower = l;
-    exp->comprehension.upper = u;
+    exp->comprehension.v = ast_definition_capsa(capsa, NULL);
+    exp->comprehension.iterable = iterable;
     exp->comprehension.immutable = false;
     return exp;
 }
 
 Exp* ast_expression_range(Line ln, Token op, Exp* f, Exp* s, Exp* l) {
-    Exp* exp = exp_init(EXPRESSION_RANGE, ln);
+    Exp* exp = exp_init(EXP_RANGE, ln);
     exp->range.op = op;
     exp->range.first = f;
     exp->range.second = s;
@@ -603,14 +601,14 @@ Exp* ast_expression_range(Line ln, Token op, Exp* f, Exp* s, Exp* l) {
 }
 
 Exp* ast_expression_unary(Line ln, Token token, Exp* expression) {
-    Exp* exp = exp_init(EXPRESSION_UNARY, ln);
+    Exp* exp = exp_init(EXP_UNARY, ln);
     exp->unary.token = token;
     exp->unary.expression = expression;
     return exp;
 }
 
 Exp* ast_expression_binary(Line ln, Token token, Exp* l, Exp* r) {
-    Exp* exp = exp_init(EXPRESSION_BINARY, ln);
+    Exp* exp = exp_init(EXP_BINARY, ln);
     exp->binary.token = token;
     exp->binary.left_expression = l;
     exp->binary.right_expression = r;
@@ -618,7 +616,7 @@ Exp* ast_expression_binary(Line ln, Token token, Exp* l, Exp* r) {
 }
 
 Exp* ast_expression_cast(Line ln, Exp* cast, Type* type) {
-    Exp* exp = exp_init(EXPRESSION_CAST, ln);
+    Exp* exp = exp_init(EXP_CAST, ln);
     exp->cast = cast;
     exp->type = type;
     // rearranging the list (only for arguments)

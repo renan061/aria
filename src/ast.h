@@ -91,18 +91,18 @@ typedef enum CapsaTag {
 } CapsaTag;
 
 typedef enum ExpressionTag {
-    EXPRESSION_LITERAL_BOOLEAN,
-    EXPRESSION_LITERAL_INTEGER,
-    EXPRESSION_LITERAL_FLOAT,
-    EXPRESSION_LITERAL_STRING,
-    EXPRESSION_LITERAL_ARRAY,
-    EXPRESSION_CAPSA,
-    EXPRESSION_FUNCTION_CALL,
-    EXPRESSION_LIST_COMPREHENSION,
-    EXPRESSION_RANGE,
-    EXPRESSION_CAST,
-    EXPRESSION_UNARY,
-    EXPRESSION_BINARY,
+    EXP_LITERAL_BOOLEAN,
+    EXP_LITERAL_INTEGER,
+    EXP_LITERAL_FLOAT,
+    EXP_LITERAL_STRING,
+    EXP_LITERAL_ARRAY,
+    EXP_CAPSA,
+    EXP_FUNCTION_CALL,
+    EXP_LIST_COMPREHENSION,
+    EXP_RANGE,
+    EXP_CAST,
+    EXP_UNARY,
+    EXP_BINARY,
 } ExpressionTag;
 
 typedef enum FunctionCallTag {
@@ -335,9 +335,8 @@ struct Expression {
         // ExpressionListComprehension
         struct {
             Expression* e;
-            Definition* i;
-            Expression* lower;
-            Expression* upper;
+            Definition* v;
+            Expression* iterable;
             bool immutable; // default false
         } comprehension;
         // ExpressionRange
@@ -436,7 +435,7 @@ extern Exp* ast_expression_literal_string(Line, const char*);
 extern Exp* ast_expression_literal_array(Line, Exp*, bool);
 extern Exp* ast_expression_capsa(Capsa*);
 extern Exp* ast_expression_function_call(FC*);
-extern Exp* ast_expression_comprehension(Line, Exp*, Id*, Exp*, Exp*);
+extern Exp* ast_expression_comprehension(Line, Exp*, Id*, Exp*);
 extern Exp* ast_expression_range(Line, Token, Exp*, Exp*, Exp*);
 extern Exp* ast_expression_unary(Line, Token, Exp*);
 extern Exp* ast_expression_binary(Line, Token, Exp*, Exp*);

@@ -60,7 +60,7 @@
     TK_IN TK_SIGNAL TK_BROADCAST TK_RETURN TK_IF TK_ELSE TK_FOR TK_SPAWN TK_TRUE
     TK_FALSE TK_STRUCTURE TK_MONITOR TK_PRIVATE TK_INITIALIZER
     TK_DEF_ASG TK_ADD_ASG TK_SUB_ASG TK_MUL_ASG TK_DIV_ASG TK_INTERFACE
-    TK_ACQUIRE TK_RELEASE TK_RANGE
+    TK_ACQUIRE TK_RELEASE
 
 %token <literal> TK_INTEGER
 %token <literal> TK_FLOAT
@@ -703,7 +703,7 @@ range_expression
     | expression
         {
             Exp* exp = $1;
-            parser_assert(exp->tag == EXPRESSION_BINARY);
+            parser_assert(exp->tag == EXP_BINARY);
             parser_assert(exp->binary.token == TK_LEQUAL);
             Exp* first = exp->binary.left_expression;
             Exp* last = exp->binary.right_expression;
@@ -739,9 +739,9 @@ list_comprehension_expression
     ;
 
 list_comprehension
-    : '[' expression '|' TK_LOWER_ID TK_IN expression TK_RANGE expression ']'
+    : '[' expression TK_FOR TK_LOWER_ID TK_IN iterable_expression ']'
         {
-            $$ = ast_expression_comprehension($1, $2, $4, $6, $8);
+            $$ = ast_expression_comprehension($1, $2, $4, $6);
         }
     ;
 

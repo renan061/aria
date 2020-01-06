@@ -57,46 +57,26 @@ function main: Boolean {
 List comprehension expressions
 -- Input
 function main {
-    value array1 = [i | i in 0...10];
-    value array2 = Immutable [i | i in 0...10];
+    value array1 = Immutable [i for i in [0 -> 10]];
+    value array2 = [i / 2.0 for i in [0 -> 10]];
 }
 -- Output
 function main: Void {
-    value array1: [Integer] = ([(i: Integer) |
-        value i: Integer = (0: Integer) in
-        (0: Integer)..(10: Integer)
-    ])
-    value array2: Immutable [Integer] = ([(i: Integer) |
-        value i: Integer = (0: Integer) in
-        (0: Integer)..(10: Integer)
-    ])
+    value array1: Immutable [Integer] = (Immutable [i: Integer
+        for value i: Integer
+        in [(0: Integer) -> (10: Integer)]
+    )
+    value array2: [Float] = ([((i: Integer) as: Float) /: Float (2.000000: Float)
+        for value i: Integer
+        in [(0: Integer) -> (10: Integer)]
+    )
 }
---------------------------------------------------------------------------------
--- Title
-List comprehension expressions (lower type not Integer)
--- Input
-function main {
-    value array = [i | i in true...10];
-}
--- Output
-line 2:
-    semantic error: type error (expected 'Integer', got 'Boolean')
---------------------------------------------------------------------------------
--- Title
-List comprehension expressions (upper type not Integer)
--- Input
-function main {
-    value array = [i | i in 0...1.0];
-}
--- Output
-line 2:
-    semantic error: type error (expected 'Integer', got 'Float')
 --------------------------------------------------------------------------------
 -- Title
 List comprehension expressions (invalid element expression)
 -- Input
 function main {
-    value array = [main() | i in 0...1];
+    value array = [main() for i in [0 -> 1]];
 }
 -- Output
 line 2:
@@ -106,7 +86,7 @@ line 2:
 List comprehension expressions (not recursively immutable)
 -- Input
 function main {
-    value array = Immutable [[1] | i in 0...1];
+    value array = Immutable [[1] for i in [0 -> 1]];
 }
 -- Output
 line 2:

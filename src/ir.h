@@ -64,7 +64,7 @@ extern LLVMV ir_cmp(LLVMB, LLVMIntPredicate, LLVMRealPredicate,
 
 // -----------------------------------------------------------------------------
 
-typedef struct IRState {
+typedef struct IRState { // TODO: rename IRS
     LLVMM M;
     LLVMB B;
 

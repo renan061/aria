@@ -371,23 +371,23 @@ static void print_ast_expression(Expression* expression, bool wrap) {
     }
 
     switch (expression->tag) {
-    case EXPRESSION_LITERAL_BOOLEAN:
+    case EXP_LITERAL_BOOLEAN:
         printf("%s", (expression->literal.boolean) ? "true" : "false");
         printtype(expression->type);
         break;
-    case EXPRESSION_LITERAL_INTEGER:
+    case EXP_LITERAL_INTEGER:
         printf("%d", expression->literal.integer);
         printtype(expression->type);
         break;
-    case EXPRESSION_LITERAL_FLOAT:
+    case EXP_LITERAL_FLOAT:
         printf("%f", expression->literal.float_);
         printtype(expression->type);
         break;
-    case EXPRESSION_LITERAL_STRING:
+    case EXP_LITERAL_STRING:
         printf("\"%s\"", expression->literal.string);
         printtype(expression->type);
         break;
-    case EXPRESSION_LITERAL_ARRAY:
+    case EXP_LITERAL_ARRAY:
         printf("%s[", expression->literal.immutable ? "Immutable " : "");
         for (Expression* e = expression->literal.array; e;) {
             print_ast_expression(e, true);
@@ -398,31 +398,33 @@ static void print_ast_expression(Expression* expression, bool wrap) {
         printf("]");
         printtype(expression->type);
         break;
-    case EXPRESSION_CAPSA:
+    case EXP_CAPSA:
         print_ast_capsa(expression->capsa);
         break;
-    case EXPRESSION_FUNCTION_CALL:
+    case EXP_FUNCTION_CALL:
         print_ast_function_call(expression->function_call);
         printtype(expression->type);
         break;
-    case EXPRESSION_LIST_COMPREHENSION:
+    case EXP_LIST_COMPREHENSION:
+        if (expression->comprehension.immutable) {
+            printf("Immutable ");
+        }
         printf("[");
-        print_ast_expression(expression->comprehension.e, true);
-        printf(" |\n");
+        print_ast_expression(expression->comprehension.e, false);
+        printf("\n");
         tabs++;
         identation();
-        print_ast_definition(expression->comprehension.i);
-        printf(" in\n");
-        identation();
-        print_ast_expression(expression->comprehension.lower, true);
-        printf("..");
-        print_ast_expression(expression->comprehension.upper, true);
-        tabs--;
+        printf("for ");
+        print_ast_definition(expression->comprehension.v);
         printf("\n");
         identation();
-        printf("]");
+        printf("in ");
+        print_ast_expression(expression->comprehension.iterable, false);
+        printf("\n");
+        tabs--;
+        identation();
         break;
-    case EXPRESSION_RANGE:
+    case EXP_RANGE:
         printf("[");
         print_ast_expression(expression->range.first, true);
         if (expression->range.second) {
@@ -435,12 +437,12 @@ static void print_ast_expression(Expression* expression, bool wrap) {
         print_ast_expression(expression->range.last, true);
         printf("]");
         break;
-    case EXPRESSION_UNARY:
+    case EXP_UNARY:
         printtoken(expression->unary.token);
         print_ast_expression(expression->unary.expression, true);
         printtype(expression->type);
         break;
-    case EXPRESSION_BINARY:
+    case EXP_BINARY:
         print_ast_expression(expression->binary.left_expression, true);
         printf(" ");
         printtoken(expression->binary.token);
@@ -448,7 +450,7 @@ static void print_ast_expression(Expression* expression, bool wrap) {
         printf(" ");
         print_ast_expression(expression->binary.right_expression, true);
         break;
-    case EXPRESSION_CAST:
+    case EXP_CAST:
         print_ast_expression(expression->cast, true);
         printf(" as");
         bool before = should_print_types;
