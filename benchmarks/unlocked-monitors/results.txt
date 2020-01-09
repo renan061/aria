@@ -1,27 +1,56 @@
 
     REGULAR ARRAY
 
-    Avg: 0.511957 sec
-    Max: 0.609222 sec (+ 19.0%)
-    Min: 0.489738 sec (- 4.3%)
+	Avg: 0.328265 sec
+	Max: 0.330192 sec (+ 0.6%)
+	Min: 0.327781 sec (- 0.1%)
 
-    ARRAY MONITOR USING GET
+	ARRAY MONITOR USING GET
 
-    Avg: 22.032302 sec
-    Max: 22.060677 sec (+ 0.1%)
-    Min: 22.015198 sec (- 0.1%)
-    => 43.04 slower
+	Avg: 14.506944 sec
+	Max: 14.512929 sec (+ 0.0%)
+	Min: 14.500776 sec (- 0.0%)
+	=> 44.19 slower
 
-    MONITOR METHOD
+	MONITOR METHOD
 
-    Avg: 0.491287 sec
-    Max: 0.508700 sec (+ 3.5%)
-    Min: 0.479230 sec (- 2.5%)
-    => 0.96 slower
+	Avg: 0.327668 sec
+	Max: 0.327811 sec (+ 0.0%)
+	Min: 0.327446 sec (- 0.1%)
+	=> 1.00 slower
 
-    UNLOCKED MONITOR
+	UNLOCKED MONITOR
 
-    Avg: 2.283093 sec
-    Max: 2.307577 sec (+ 1.1%)
-    Min: 2.269949 sec (- 0.6%)
-    => 4.46 slower
+	Avg: 1.438748 sec
+	Max: 1.513871 sec (+ 5.2%)
+	Min: 1.428295 sec (- 0.7%)
+	=> 4.38 slower
+
+--------------------------------------------------------------------------------
+
+    REGULAR ARRAY
+
+	Avg: 0.328050 sec
+	Max: 0.329852 sec (+ 0.5%)
+	Min: 0.327629 sec (- 0.1%)
+
+	ARRAY MONITOR USING GET
+
+	Avg: 14.508329 sec
+	Max: 14.512730 sec (+ 0.0%)
+	Min: 14.505721 sec (- 0.0%)
+	=> 44.23 slower
+
+	MONITOR METHOD
+
+	Avg: 0.327798 sec
+	Max: 0.328351 sec (+ 0.2%)
+	Min: 0.327466 sec (- 0.1%)
+	=> 1.00 slower
+
+	UNLOCKED MONITOR (OPTIMIZED)
+
+	Avg: 0.327784 sec
+	Max: 0.329736 sec (+ 0.6%)
+	Min: 0.327330 sec (- 0.1%)
+	=> 1.00 slower
