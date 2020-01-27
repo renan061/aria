@@ -1,7 +1,7 @@
 
     Rectangles: 80000000
 	Runs: 10
-	Subruns: 10
+	Subruns: 100
 
 	SINGLE
 	Avg: 12.600698 sec

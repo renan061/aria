@@ -201,7 +201,7 @@ ok:                                               ; preds = %entry
   ret void
 }
 
-define i32 @get-R(i8*, i32) alwaysinline {
+define i32 @get-R(i8*, i32) {
 entry:
   %self = bitcast i8* %0 to %Array*
   %t = getelementptr inbounds %Array, %Array* %self, i32 0, i32 2
@@ -290,31 +290,34 @@ entry:
   store i32 0, i32* %x
   %i = alloca i32
   store i32 0, i32* %i
+  %t = load i32, i32* @size
   br label %cond
-
-cond:                                             ; preds = %loop, %entry
-  %t = load i32, i32* %i
-  %t1 = load i32, i32* @size
-  %t2 = icmp slt i32 %t, %t1
-  br i1 %t2, label %loop, label %end
 
 loop:                                             ; preds = %cond
-  %t3 = load i32, i32* %x
-  %t4 = getelementptr inbounds %Array, %Array* %self, i32 0, i32 2
-  %t5 = load i32*, i32** %t4
-  %t6 = load i32, i32* %i
-  %t7 = getelementptr i32, i32* %t5, i32 %t6
-  %t8 = load i32, i32* %t7
-  %t9 = add i32 %t3, %t8
-  store i32 %t9, i32* %x
-  %t10 = load i32, i32* %i
-  %t11 = add i32 %t10, 1
-  store i32 %t11, i32* %i
-  br label %cond
+  %t5 = load i32, i32* %x
+  %t6 = getelementptr inbounds %Array, %Array* %self, i32 0, i32 2
+  %t7 = load i32*, i32** %t6
+  %t8 = load i32, i32* %i
+  %t9 = getelementptr i32, i32* %t7, i32 %t8
+  %t10 = load i32, i32* %t9
+  %t11 = add i32 %t5, %t10
+  store i32 %t11, i32* %x
+  br label %inc
 
 end:                                              ; preds = %cond
   %t12 = load i32, i32* %x
   ret i32 %t12
+
+cond:                                             ; preds = %inc, %entry
+  %t1 = load i32, i32* %i
+  %t2 = icmp slt i32 %t1, %t
+  br i1 %t2, label %loop, label %end
+
+inc:                                              ; preds = %loop
+  %t3 = load i32, i32* %i
+  %t4 = add i32 %t3, 1
+  store i32 %t4, i32* %i
+  br label %cond
 }
 
 define i32 @sum-L(i8*) {
@@ -354,29 +357,32 @@ entry:
   store i32 0, i32* %x
   %i = alloca i32
   store i32 0, i32* %i
+  %t = load i32, i32* @size
   br label %cond
-
-cond:                                             ; preds = %loop, %entry
-  %t = load i32, i32* %i
-  %t1 = load i32, i32* @size
-  %t2 = icmp slt i32 %t, %t1
-  br i1 %t2, label %loop, label %end
 
 loop:                                             ; preds = %cond
-  %t3 = load i32, i32* %x
-  %t4 = load i32, i32* %i
-  %t5 = getelementptr i32, i32* %0, i32 %t4
-  %t6 = load i32, i32* %t5
-  %t7 = add i32 %t3, %t6
-  store i32 %t7, i32* %x
-  %t8 = load i32, i32* %i
-  %t9 = add i32 %t8, 1
-  store i32 %t9, i32* %i
-  br label %cond
+  %t5 = load i32, i32* %x
+  %t6 = load i32, i32* %i
+  %t7 = getelementptr i32, i32* %0, i32 %t6
+  %t8 = load i32, i32* %t7
+  %t9 = add i32 %t5, %t8
+  store i32 %t9, i32* %x
+  br label %inc
 
 end:                                              ; preds = %cond
   %t10 = load i32, i32* %x
   ret i32 %t10
+
+cond:                                             ; preds = %inc, %entry
+  %t1 = load i32, i32* %i
+  %t2 = icmp slt i32 %t1, %t
+  br i1 %t2, label %loop, label %end
+
+inc:                                              ; preds = %loop
+  %t3 = load i32, i32* %i
+  %t4 = add i32 %t3, 1
+  store i32 %t4, i32* %i
+  br label %cond
 }
 
 define i32 @sumMG(i8*) {
@@ -385,88 +391,83 @@ entry:
   store i32 0, i32* %x
   %i = alloca i32
   store i32 0, i32* %i
+  %t = load i32, i32* @size
   br label %cond
-
-cond:                                             ; preds = %loop, %entry
-  %t = load i32, i32* %i
-  %t1 = load i32, i32* @size
-  %t2 = icmp slt i32 %t, %t1
-  br i1 %t2, label %loop, label %end
 
 loop:                                             ; preds = %cond
-  %t3 = load i32, i32* %x
-  %t4 = load i32, i32* %i
-  %t5 = bitcast i8* %0 to %Array*
-  %t6 = getelementptr inbounds %Array, %Array* %t5, i32 0, i32 1
-  %vmt = load [5 x i8*]*, [5 x i8*]** %t6
-  %t7 = getelementptr [5 x i8*], [5 x i8*]* %vmt, i32 0, i32 2
-  %t8 = load i8*, i8** %t7
-  %t9 = bitcast i8* %t8 to i32 (i8*, i32)*
-  %1 = call i32 %t9(i8* %0, i32 %t4)
-  %t10 = add i32 %t3, %1
-  store i32 %t10, i32* %x
-  %t11 = load i32, i32* %i
-  %t12 = add i32 %t11, 1
-  store i32 %t12, i32* %i
-  br label %cond
+  %t5 = load i32, i32* %x
+  %t6 = load i32, i32* %i
+  %t7 = bitcast i8* %0 to %Array*
+  %t8 = getelementptr inbounds %Array, %Array* %t7, i32 0, i32 1
+  %vmt = load [5 x i8*]*, [5 x i8*]** %t8
+  %t9 = getelementptr [5 x i8*], [5 x i8*]* %vmt, i32 0, i32 2
+  %t10 = load i8*, i8** %t9
+  %t11 = bitcast i8* %t10 to i32 (i8*, i32)*
+  %1 = call i32 %t11(i8* %0, i32 %t6)
+  %t12 = add i32 %t5, %1
+  store i32 %t12, i32* %x
+  br label %inc
 
 end:                                              ; preds = %cond
   %t13 = load i32, i32* %x
   ret i32 %t13
+
+cond:                                             ; preds = %inc, %entry
+  %t1 = load i32, i32* %i
+  %t2 = icmp slt i32 %t1, %t
+  br i1 %t2, label %loop, label %end
+
+inc:                                              ; preds = %loop
+  %t3 = load i32, i32* %i
+  %t4 = add i32 %t3, 1
+  store i32 %t4, i32* %i
+  br label %cond
 }
 
 define i32 @sumUM(i8*) {
 entry:
   %x = alloca i32
   store i32 0, i32* %x
-  %t = bitcast i8* %0 to %Array*
 
+  %t = bitcast i8* %0 to %Array*
   ; %t1 = getelementptr inbounds %Array, %Array* %t, i32 0, i32 1
   ; %vmt = load [5 x i8*]*, [5 x i8*]** %t1
   ; %t2 = getelementptr [5 x i8*], [5 x i8*]* %vmt, i32 0, i32 0
   ; %t3 = load i8*, i8** %t2
   ; %t4 = bitcast i8* %t3 to i8* (i8*)*
   ; %1 = call i8* %t4(i8* %0)
-  ; %malloccall = tail call i8* @malloc(i32 ptrtoint (%Array-P* getelementptr (%Array-P, %Array-P* null, i32 1) to i32))
-  ; %proxy = bitcast i8* %malloccall to %Array-P*
-  ; %obj = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 0
+  %malloccall = tail call i8* @malloc(i32 ptrtoint (%Array-P* getelementptr (%Array-P, %Array-P* null, i32 1) to i32))
+  %proxy = bitcast i8* %malloccall to %Array-P*
+  %obj = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 0
   ; store i8* %1, i8** %obj
-  ; %vmt5 = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 1
-  ; store [5 x i8*]* @Array-vmt-P, [5 x i8*]** %vmt5
+  store i8* %0, i8** %obj
+  %vmt5 = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 1
+  store [5 x i8*]* @Array-vmt-R, [5 x i8*]** %vmt5
   ; %ok = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 2
   ; store i1 true, i1* %ok
-  ; %proxy6 = bitcast %Array-P* %proxy to i8*
+  %proxy6 = bitcast %Array-P* %proxy to i8*
   ; %obj7 = bitcast i8* %1 to %Array*
   ; %mutex-ptr = getelementptr inbounds %Array, %Array* %obj7, i32 0, i32 0
   ; %mutex = load i8*, i8** %mutex-ptr
   ; %t8 = call i32 @pthread_mutex_lock(i8* %mutex)
-
   %i = alloca i32
   store i32 0, i32* %i
+  %t9 = load i32, i32* @size
   br label %cond
-
-cond:                                             ; preds = %loop, %entry
-  %t9 = load i32, i32* %i
-  %t10 = load i32, i32* @size
-  %t11 = icmp slt i32 %t9, %t10
-  br i1 %t11, label %loop, label %end
 
 loop:                                             ; preds = %cond
-  %t12 = load i32, i32* %x
-  %t13 = load i32, i32* %i
-  ; %t14 = bitcast i8* %proxy6 to %Array*
-  ; %t15 = getelementptr inbounds %Array, %Array* %t, i32 0, i32 1
-  ; %vmt16 = load [5 x i8*]*, [5 x i8*]** %t15
-  ; %t17 = getelementptr [5 x i8*], [5 x i8*]* %vmt16, i32 0, i32 2
-  ; %t18 = load i8*, i8** %t17
-  ; %t19 = bitcast i8* %t18 to i32 (i8*, i32)*
-  %1 = call i32 @get-R(i8* %0, i32 %t13)
-  %t20 = add i32 %t12, %1
-  store i32 %t20, i32* %x
-  %t21 = load i32, i32* %i
-  %t22 = add i32 %t21, 1
-  store i32 %t22, i32* %i
-  br label %cond
+  %t14 = load i32, i32* %x
+  %t15 = load i32, i32* %i
+  %t16 = bitcast i8* %proxy6 to %Array*
+  %t17 = getelementptr inbounds %Array, %Array* %t16, i32 0, i32 1
+  %vmt18 = load [5 x i8*]*, [5 x i8*]** %t17
+  %t19 = getelementptr [5 x i8*], [5 x i8*]* %vmt18, i32 0, i32 2
+  %t20 = load i8*, i8** %t19
+  %t21 = bitcast i8* %t20 to i32 (i8*, i32)*
+  %1 = call i32 %t21(i8* %0, i32 %t15)
+  %t22 = add i32 %t14, %1
+  store i32 %t22, i32* %x
+  br label %inc
 
 end:                                              ; preds = %cond
   ; store i1 false, i1* %ok
@@ -478,9 +479,19 @@ end:                                              ; preds = %cond
   ; %t28 = load i8*, i8** %t27
   ; %t29 = bitcast i8* %t28 to void (i8*)*
   ; call void %t29(i8* %0)
-
   %t30 = load i32, i32* %x
   ret i32 %t30
+
+cond:                                             ; preds = %inc, %entry
+  %t10 = load i32, i32* %i
+  %t11 = icmp slt i32 %t10, %t9
+  br i1 %t11, label %loop, label %end
+
+inc:                                              ; preds = %loop
+  %t12 = load i32, i32* %i
+  %t13 = add i32 %t12, 1
+  store i32 %t13, i32* %i
+  br label %cond
 }
 
 define double @stats(double, double*) {
@@ -496,27 +507,22 @@ entry:
   store double %t1, double* %max
   %i = alloca i32
   store i32 0, i32* %i
+  %t2 = load i32, i32* @runs
   br label %cond
 
-cond:                                             ; preds = %end17, %entry
-  %t2 = load i32, i32* %i
-  %t3 = load i32, i32* @runs
-  %t4 = icmp slt i32 %t2, %t3
-  br i1 %t4, label %loop, label %end
-
 loop:                                             ; preds = %cond
-  %t5 = load i32, i32* %i
-  %t6 = getelementptr double, double* %1, i32 %t5
-  %t7 = load double, double* %t6
-  store double %t7, double* %x
-  %t8 = load double, double* %avg
-  %t9 = load double, double* %x
-  %t10 = fadd double %t8, %t9
-  store double %t10, double* %avg
-  %t12 = load double, double* %x
-  %t13 = load double, double* %min
-  %t14 = fcmp olt double %t12, %t13
-  br i1 %t14, label %if, label %end11
+  %t7 = load i32, i32* %i
+  %t8 = getelementptr double, double* %1, i32 %t7
+  %t9 = load double, double* %t8
+  store double %t9, double* %x
+  %t10 = load double, double* %avg
+  %t11 = load double, double* %x
+  %t12 = fadd double %t10, %t11
+  store double %t12, double* %avg
+  %t14 = load double, double* %x
+  %t15 = load double, double* %min
+  %t16 = fcmp olt double %t14, %t15
+  br i1 %t16, label %if, label %end13
 
 end:                                              ; preds = %cond
   %t24 = load double, double* %avg
@@ -544,27 +550,35 @@ end:                                              ; preds = %cond
   %t43 = fcmp one double %0, 0.000000e+00
   br i1 %t43, label %if41, label %end42
 
-if:                                               ; preds = %loop
-  %t15 = load double, double* %x
-  store double %t15, double* %min
-  br label %end11
+cond:                                             ; preds = %inc, %entry
+  %t3 = load i32, i32* %i
+  %t4 = icmp slt i32 %t3, %t2
+  br i1 %t4, label %loop, label %end
 
-end11:                                            ; preds = %if, %loop
-  %t18 = load double, double* %x
-  %t19 = load double, double* %max
-  %t20 = fcmp ogt double %t18, %t19
-  br i1 %t20, label %if16, label %end17
-
-if16:                                             ; preds = %end11
-  %t21 = load double, double* %x
-  store double %t21, double* %max
-  br label %end17
-
-end17:                                            ; preds = %if16, %end11
-  %t22 = load i32, i32* %i
-  %t23 = add i32 %t22, 1
-  store i32 %t23, i32* %i
+inc:                                              ; preds = %end19
+  %t5 = load i32, i32* %i
+  %t6 = add i32 %t5, 1
+  store i32 %t6, i32* %i
   br label %cond
+
+if:                                               ; preds = %loop
+  %t17 = load double, double* %x
+  store double %t17, double* %min
+  br label %end13
+
+end13:                                            ; preds = %if, %loop
+  %t20 = load double, double* %x
+  %t21 = load double, double* %max
+  %t22 = fcmp ogt double %t20, %t21
+  br i1 %t22, label %if18, label %end19
+
+if18:                                             ; preds = %end13
+  %t23 = load double, double* %x
+  store double %t23, double* %max
+  br label %end19
+
+end19:                                            ; preds = %if18, %end13
+  br label %inc
 
 if41:                                             ; preds = %end
   %t44 = load double, double* %avg
@@ -617,9 +631,10 @@ loop:                                             ; preds = %cond
   br label %inc
 
 end:                                              ; preds = %cond
-  %i20 = alloca i32
-  store i32 0, i32* %i20
-  br label %cond17
+  %i19 = alloca i32
+  store i32 0, i32* %i19
+  %t20 = load i32, i32* @runs
+  br label %cond21
 
 cond:                                             ; preds = %inc, %entry
   %t9 = load i32, i32* %i
@@ -632,330 +647,353 @@ inc:                                              ; preds = %loop
   store i32 %t12, i32* %i
   br label %cond
 
-cond17:                                           ; preds = %end35, %end
-  %t21 = load i32, i32* %i20
-  %t22 = load i32, i32* @runs
-  %t23 = icmp slt i32 %t21, %t22
-  br i1 %t23, label %loop18, label %end19
-
-loop18:                                           ; preds = %cond17
-  %t24 = alloca %struct_timespec
-  %1 = call i32 @clock_gettime(i32 0, %struct_timespec* %t24)
-  %t25 = getelementptr inbounds %struct_timespec, %struct_timespec* %t24, i32 0, i32 0
-  %t26 = load i64, i64* %t25
-  %t27 = getelementptr inbounds %struct_timespec, %struct_timespec* %t24, i32 0, i32 1
-  %t28 = load i64, i64* %t27
-  %t29 = sitofp i64 %t28 to double
-  %t30 = fdiv double %t29, 1.000000e+09
-  %t31 = sitofp i64 %t26 to double
-  %t32 = fadd double %t31, %t30
-  store double %t32, double* %t2
+loop17:                                           ; preds = %cond21
+  %t27 = alloca %struct_timespec
+  %1 = call i32 @clock_gettime(i32 0, %struct_timespec* %t27)
+  %t28 = getelementptr inbounds %struct_timespec, %struct_timespec* %t27, i32 0, i32 0
+  %t29 = load i64, i64* %t28
+  %t30 = getelementptr inbounds %struct_timespec, %struct_timespec* %t27, i32 0, i32 1
+  %t31 = load i64, i64* %t30
+  %t32 = sitofp i64 %t31 to double
+  %t33 = fdiv double %t32, 1.000000e+09
+  %t34 = sitofp i64 %t29 to double
+  %t35 = fadd double %t34, %t33
+  store double %t35, double* %t2
   %j = alloca i32
   store i32 0, i32* %j
-  br label %cond33
+  %t38 = load i32, i32* @subruns
+  br label %cond39
 
-end19:                                            ; preds = %cond17
+end18:                                            ; preds = %cond21
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @String.12, i32 0, i32 0))
-  %t60 = load double*, double** %partials
-  %3 = call double @stats(double 0.000000e+00, double* %t60)
+  %t62 = load double*, double** %partials
+  %3 = call double @stats(double 0.000000e+00, double* %t62)
   store double %3, double* %base
-  %t61 = load i32, i32* @size
-  %4 = call i8* @Array(i32 %t61)
-  %i65 = alloca i32
-  store i32 0, i32* %i65
-  br label %cond62
+  %t63 = load i32, i32* @size
+  %4 = call i8* @Array(i32 %t63)
+  %i66 = alloca i32
+  store i32 0, i32* %i66
+  %t67 = load i32, i32* @runs
+  br label %cond68
 
-cond33:                                           ; preds = %phi, %loop18
-  %t36 = load i32, i32* %j
-  %t37 = load i32, i32* @subruns
-  %t38 = icmp slt i32 %t36, %t37
-  br i1 %t38, label %loop34, label %end35
+cond21:                                           ; preds = %inc22, %end
+  %t23 = load i32, i32* %i19
+  %t24 = icmp slt i32 %t23, %t20
+  br i1 %t24, label %loop17, label %end18
 
-loop34:                                           ; preds = %cond33
+inc22:                                            ; preds = %end37
+  %t25 = load i32, i32* %i19
+  %t26 = add i32 %t25, 1
+  store i32 %t26, i32* %i19
+  br label %cond21
+
+loop36:                                           ; preds = %cond39
   %5 = call i32 @sumR(i32* %t7)
-  %t39 = load i32, i32* @result
-  %t40 = icmp eq i32 %5, %t39
-  br i1 %t40, label %a, label %b
+  %t45 = load i32, i32* @result
+  %t46 = icmp eq i32 %5, %t45
+  br i1 %t46, label %a, label %b
 
-end35:                                            ; preds = %cond33
-  %t44 = load double*, double** %partials
-  %t45 = load i32, i32* %i20
-  %t46 = getelementptr double, double* %t44, i32 %t45
-  %t47 = alloca %struct_timespec
-  %6 = call i32 @clock_gettime(i32 0, %struct_timespec* %t47)
-  %t48 = getelementptr inbounds %struct_timespec, %struct_timespec* %t47, i32 0, i32 0
-  %t49 = load i64, i64* %t48
-  %t50 = getelementptr inbounds %struct_timespec, %struct_timespec* %t47, i32 0, i32 1
-  %t51 = load i64, i64* %t50
-  %t52 = sitofp i64 %t51 to double
-  %t53 = fdiv double %t52, 1.000000e+09
-  %t54 = sitofp i64 %t49 to double
-  %t55 = fadd double %t54, %t53
-  %t56 = load double, double* %t2
-  %t57 = fsub double %t55, %t56
-  store double %t57, double* %t46
-  %t58 = load i32, i32* %i20
-  %t59 = add i32 %t58, 1
-  store i32 %t59, i32* %i20
-  br label %cond17
+end37:                                            ; preds = %cond39
+  %t48 = load double*, double** %partials
+  %t49 = load i32, i32* %i19
+  %t50 = getelementptr double, double* %t48, i32 %t49
+  %t51 = alloca %struct_timespec
+  %6 = call i32 @clock_gettime(i32 0, %struct_timespec* %t51)
+  %t52 = getelementptr inbounds %struct_timespec, %struct_timespec* %t51, i32 0, i32 0
+  %t53 = load i64, i64* %t52
+  %t54 = getelementptr inbounds %struct_timespec, %struct_timespec* %t51, i32 0, i32 1
+  %t55 = load i64, i64* %t54
+  %t56 = sitofp i64 %t55 to double
+  %t57 = fdiv double %t56, 1.000000e+09
+  %t58 = sitofp i64 %t53 to double
+  %t59 = fadd double %t58, %t57
+  %t60 = load double, double* %t2
+  %t61 = fsub double %t59, %t60
+  store double %t61, double* %t50
+  br label %inc22
 
-a:                                                ; preds = %loop34
+cond39:                                           ; preds = %inc40, %loop17
+  %t41 = load i32, i32* %j
+  %t42 = icmp slt i32 %t41, %t38
+  br i1 %t42, label %loop36, label %end37
+
+inc40:                                            ; preds = %phi
+  %t43 = load i32, i32* %j
+  %t44 = add i32 %t43, 1
+  store i32 %t44, i32* %j
+  br label %cond39
+
+a:                                                ; preds = %loop36
   br label %phi
 
-b:                                                ; preds = %loop34
+b:                                                ; preds = %loop36
   br label %phi
 
 phi:                                              ; preds = %b, %a
-  %phi41 = phi i1 [ true, %a ], [ false, %b ]
-  call void @assert(i1 %phi41, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @String.11, i32 0, i32 0))
-  %t42 = load i32, i32* %j
-  %t43 = add i32 %t42, 1
-  store i32 %t43, i32* %j
-  br label %cond33
+  %phi47 = phi i1 [ true, %a ], [ false, %b ]
+  call void @assert(i1 %phi47, i8* getelementptr inbounds ([12 x i8], [12 x i8]* @String.11, i32 0, i32 0))
+  br label %inc40
 
-cond62:                                           ; preds = %end80, %end19
-  %t66 = load i32, i32* %i65
-  %t67 = load i32, i32* @runs
-  %t68 = icmp slt i32 %t66, %t67
-  br i1 %t68, label %loop63, label %end64
+loop64:                                           ; preds = %cond68
+  %t74 = alloca %struct_timespec
+  %7 = call i32 @clock_gettime(i32 0, %struct_timespec* %t74)
+  %t75 = getelementptr inbounds %struct_timespec, %struct_timespec* %t74, i32 0, i32 0
+  %t76 = load i64, i64* %t75
+  %t77 = getelementptr inbounds %struct_timespec, %struct_timespec* %t74, i32 0, i32 1
+  %t78 = load i64, i64* %t77
+  %t79 = sitofp i64 %t78 to double
+  %t80 = fdiv double %t79, 1.000000e+09
+  %t81 = sitofp i64 %t76 to double
+  %t82 = fadd double %t81, %t80
+  store double %t82, double* %t2
+  %j85 = alloca i32
+  store i32 0, i32* %j85
+  %t86 = load i32, i32* @subruns
+  br label %cond87
 
-loop63:                                           ; preds = %cond62
-  %t69 = alloca %struct_timespec
-  %7 = call i32 @clock_gettime(i32 0, %struct_timespec* %t69)
-  %t70 = getelementptr inbounds %struct_timespec, %struct_timespec* %t69, i32 0, i32 0
-  %t71 = load i64, i64* %t70
-  %t72 = getelementptr inbounds %struct_timespec, %struct_timespec* %t69, i32 0, i32 1
-  %t73 = load i64, i64* %t72
-  %t74 = sitofp i64 %t73 to double
-  %t75 = fdiv double %t74, 1.000000e+09
-  %t76 = sitofp i64 %t71 to double
-  %t77 = fadd double %t76, %t75
-  store double %t77, double* %t2
-  %j81 = alloca i32
-  store i32 0, i32* %j81
-  br label %cond78
-
-end64:                                            ; preds = %cond62
+end65:                                            ; preds = %cond68
   %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([26 x i8], [26 x i8]* @String.14, i32 0, i32 0))
-  %t109 = load double, double* %base
-  %t110 = load double*, double** %partials
-  %9 = call double @stats(double %t109, double* %t110)
-  %t111 = load i32, i32* @size
-  %10 = call i8* @Array(i32 %t111)
-  %i115 = alloca i32
-  store i32 0, i32* %i115
-  br label %cond112
+  %t113 = load double, double* %base
+  %t114 = load double*, double** %partials
+  %9 = call double @stats(double %t113, double* %t114)
+  %t115 = load i32, i32* @size
+  %10 = call i8* @Array(i32 %t115)
+  %i118 = alloca i32
+  store i32 0, i32* %i118
+  %t119 = load i32, i32* @runs
+  br label %cond120
 
-cond78:                                           ; preds = %phi87, %loop63
-  %t82 = load i32, i32* %j81
-  %t83 = load i32, i32* @subruns
-  %t84 = icmp slt i32 %t82, %t83
-  br i1 %t84, label %loop79, label %end80
+cond68:                                           ; preds = %inc69, %end18
+  %t70 = load i32, i32* %i66
+  %t71 = icmp slt i32 %t70, %t67
+  br i1 %t71, label %loop64, label %end65
 
-loop79:                                           ; preds = %cond78
+inc69:                                            ; preds = %end84
+  %t72 = load i32, i32* %i66
+  %t73 = add i32 %t72, 1
+  store i32 %t73, i32* %i66
+  br label %cond68
+
+loop83:                                           ; preds = %cond87
   %11 = call i32 @sumMG(i8* %4)
-  %t88 = load i32, i32* @result
-  %t89 = icmp eq i32 %11, %t88
-  br i1 %t89, label %a85, label %b86
+  %t96 = load i32, i32* @result
+  %t97 = icmp eq i32 %11, %t96
+  br i1 %t97, label %a93, label %b94
 
-end80:                                            ; preds = %cond78
-  %t93 = load double*, double** %partials
-  %t94 = load i32, i32* %i65
-  %t95 = getelementptr double, double* %t93, i32 %t94
-  %t96 = alloca %struct_timespec
-  %12 = call i32 @clock_gettime(i32 0, %struct_timespec* %t96)
-  %t97 = getelementptr inbounds %struct_timespec, %struct_timespec* %t96, i32 0, i32 0
-  %t98 = load i64, i64* %t97
-  %t99 = getelementptr inbounds %struct_timespec, %struct_timespec* %t96, i32 0, i32 1
-  %t100 = load i64, i64* %t99
-  %t101 = sitofp i64 %t100 to double
-  %t102 = fdiv double %t101, 1.000000e+09
-  %t103 = sitofp i64 %t98 to double
-  %t104 = fadd double %t103, %t102
-  %t105 = load double, double* %t2
-  %t106 = fsub double %t104, %t105
-  store double %t106, double* %t95
-  %t107 = load i32, i32* %i65
-  %t108 = add i32 %t107, 1
-  store i32 %t108, i32* %i65
-  br label %cond62
+end84:                                            ; preds = %cond87
+  %t99 = load double*, double** %partials
+  %t100 = load i32, i32* %i66
+  %t101 = getelementptr double, double* %t99, i32 %t100
+  %t102 = alloca %struct_timespec
+  %12 = call i32 @clock_gettime(i32 0, %struct_timespec* %t102)
+  %t103 = getelementptr inbounds %struct_timespec, %struct_timespec* %t102, i32 0, i32 0
+  %t104 = load i64, i64* %t103
+  %t105 = getelementptr inbounds %struct_timespec, %struct_timespec* %t102, i32 0, i32 1
+  %t106 = load i64, i64* %t105
+  %t107 = sitofp i64 %t106 to double
+  %t108 = fdiv double %t107, 1.000000e+09
+  %t109 = sitofp i64 %t104 to double
+  %t110 = fadd double %t109, %t108
+  %t111 = load double, double* %t2
+  %t112 = fsub double %t110, %t111
+  store double %t112, double* %t101
+  br label %inc69
 
-a85:                                              ; preds = %loop79
-  br label %phi87
+cond87:                                           ; preds = %inc88, %loop64
+  %t89 = load i32, i32* %j85
+  %t90 = icmp slt i32 %t89, %t86
+  br i1 %t90, label %loop83, label %end84
 
-b86:                                              ; preds = %loop79
-  br label %phi87
-
-phi87:                                            ; preds = %b86, %a85
-  %phi90 = phi i1 [ true, %a85 ], [ false, %b86 ]
-  call void @assert(i1 %phi90, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @String.13, i32 0, i32 0))
-  %t91 = load i32, i32* %j81
+inc88:                                            ; preds = %phi95
+  %t91 = load i32, i32* %j85
   %t92 = add i32 %t91, 1
-  store i32 %t92, i32* %j81
-  br label %cond78
+  store i32 %t92, i32* %j85
+  br label %cond87
 
-cond112:                                          ; preds = %end130, %end64
-  %t116 = load i32, i32* %i115
-  %t117 = load i32, i32* @runs
-  %t118 = icmp slt i32 %t116, %t117
-  br i1 %t118, label %loop113, label %end114
+a93:                                              ; preds = %loop83
+  br label %phi95
 
-loop113:                                          ; preds = %cond112
-  %t119 = alloca %struct_timespec
-  %13 = call i32 @clock_gettime(i32 0, %struct_timespec* %t119)
-  %t120 = getelementptr inbounds %struct_timespec, %struct_timespec* %t119, i32 0, i32 0
-  %t121 = load i64, i64* %t120
-  %t122 = getelementptr inbounds %struct_timespec, %struct_timespec* %t119, i32 0, i32 1
-  %t123 = load i64, i64* %t122
-  %t124 = sitofp i64 %t123 to double
-  %t125 = fdiv double %t124, 1.000000e+09
-  %t126 = sitofp i64 %t121 to double
-  %t127 = fadd double %t126, %t125
-  store double %t127, double* %t2
-  %j131 = alloca i32
-  store i32 0, i32* %j131
-  br label %cond128
+b94:                                              ; preds = %loop83
+  br label %phi95
 
-end114:                                           ; preds = %cond112
+phi95:                                            ; preds = %b94, %a93
+  %phi98 = phi i1 [ true, %a93 ], [ false, %b94 ]
+  call void @assert(i1 %phi98, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @String.13, i32 0, i32 0))
+  br label %inc88
+
+loop116:                                          ; preds = %cond120
+  %t126 = alloca %struct_timespec
+  %13 = call i32 @clock_gettime(i32 0, %struct_timespec* %t126)
+  %t127 = getelementptr inbounds %struct_timespec, %struct_timespec* %t126, i32 0, i32 0
+  %t128 = load i64, i64* %t127
+  %t129 = getelementptr inbounds %struct_timespec, %struct_timespec* %t126, i32 0, i32 1
+  %t130 = load i64, i64* %t129
+  %t131 = sitofp i64 %t130 to double
+  %t132 = fdiv double %t131, 1.000000e+09
+  %t133 = sitofp i64 %t128 to double
+  %t134 = fadd double %t133, %t132
+  store double %t134, double* %t2
+  %j137 = alloca i32
+  store i32 0, i32* %j137
+  %t138 = load i32, i32* @subruns
+  br label %cond139
+
+end117:                                           ; preds = %cond120
   %14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @String.16, i32 0, i32 0))
-  %t164 = load double, double* %base
-  %t165 = load double*, double** %partials
-  %15 = call double @stats(double %t164, double* %t165)
-  %t166 = load i32, i32* @size
-  %16 = call i8* @Array(i32 %t166)
-  %i170 = alloca i32
-  store i32 0, i32* %i170
-  br label %cond167
+  %t170 = load double, double* %base
+  %t171 = load double*, double** %partials
+  %15 = call double @stats(double %t170, double* %t171)
+  %t172 = load i32, i32* @size
+  %16 = call i8* @Array(i32 %t172)
+  %i175 = alloca i32
+  store i32 0, i32* %i175
+  %t176 = load i32, i32* @runs
+  br label %cond177
 
-cond128:                                          ; preds = %phi137, %loop113
-  %t132 = load i32, i32* %j131
-  %t133 = load i32, i32* @subruns
-  %t134 = icmp slt i32 %t132, %t133
-  br i1 %t134, label %loop129, label %end130
+cond120:                                          ; preds = %inc121, %end65
+  %t122 = load i32, i32* %i118
+  %t123 = icmp slt i32 %t122, %t119
+  br i1 %t123, label %loop116, label %end117
 
-loop129:                                          ; preds = %cond128
-  %t138 = bitcast i8* %10 to %Array*
-  %t139 = getelementptr inbounds %Array, %Array* %t138, i32 0, i32 1
-  %vmt = load [5 x i8*]*, [5 x i8*]** %t139
-  %t140 = getelementptr [5 x i8*], [5 x i8*]* %vmt, i32 0, i32 4
-  %t141 = load i8*, i8** %t140
-  %t142 = bitcast i8* %t141 to i32 (i8*)*
-  %17 = call i32 %t142(i8* %10)
-  %t143 = load i32, i32* @result
-  %t144 = icmp eq i32 %17, %t143
-  br i1 %t144, label %a135, label %b136
+inc121:                                           ; preds = %end136
+  %t124 = load i32, i32* %i118
+  %t125 = add i32 %t124, 1
+  store i32 %t125, i32* %i118
+  br label %cond120
 
-end130:                                           ; preds = %cond128
-  %t148 = load double*, double** %partials
-  %t149 = load i32, i32* %i115
-  %t150 = getelementptr double, double* %t148, i32 %t149
-  %t151 = alloca %struct_timespec
-  %18 = call i32 @clock_gettime(i32 0, %struct_timespec* %t151)
-  %t152 = getelementptr inbounds %struct_timespec, %struct_timespec* %t151, i32 0, i32 0
-  %t153 = load i64, i64* %t152
-  %t154 = getelementptr inbounds %struct_timespec, %struct_timespec* %t151, i32 0, i32 1
-  %t155 = load i64, i64* %t154
-  %t156 = sitofp i64 %t155 to double
-  %t157 = fdiv double %t156, 1.000000e+09
-  %t158 = sitofp i64 %t153 to double
-  %t159 = fadd double %t158, %t157
-  %t160 = load double, double* %t2
-  %t161 = fsub double %t159, %t160
-  store double %t161, double* %t150
-  %t162 = load i32, i32* %i115
-  %t163 = add i32 %t162, 1
-  store i32 %t163, i32* %i115
-  br label %cond112
+loop135:                                          ; preds = %cond139
+  %t148 = bitcast i8* %10 to %Array*
+  %t149 = getelementptr inbounds %Array, %Array* %t148, i32 0, i32 1
+  %vmt = load [5 x i8*]*, [5 x i8*]** %t149
+  %t150 = getelementptr [5 x i8*], [5 x i8*]* %vmt, i32 0, i32 4
+  %t151 = load i8*, i8** %t150
+  %t152 = bitcast i8* %t151 to i32 (i8*)*
+  %17 = call i32 %t152(i8* %10)
+  %t153 = load i32, i32* @result
+  %t154 = icmp eq i32 %17, %t153
+  br i1 %t154, label %a145, label %b146
 
-a135:                                             ; preds = %loop129
-  br label %phi137
+end136:                                           ; preds = %cond139
+  %t156 = load double*, double** %partials
+  %t157 = load i32, i32* %i118
+  %t158 = getelementptr double, double* %t156, i32 %t157
+  %t159 = alloca %struct_timespec
+  %18 = call i32 @clock_gettime(i32 0, %struct_timespec* %t159)
+  %t160 = getelementptr inbounds %struct_timespec, %struct_timespec* %t159, i32 0, i32 0
+  %t161 = load i64, i64* %t160
+  %t162 = getelementptr inbounds %struct_timespec, %struct_timespec* %t159, i32 0, i32 1
+  %t163 = load i64, i64* %t162
+  %t164 = sitofp i64 %t163 to double
+  %t165 = fdiv double %t164, 1.000000e+09
+  %t166 = sitofp i64 %t161 to double
+  %t167 = fadd double %t166, %t165
+  %t168 = load double, double* %t2
+  %t169 = fsub double %t167, %t168
+  store double %t169, double* %t158
+  br label %inc121
 
-b136:                                             ; preds = %loop129
-  br label %phi137
+cond139:                                          ; preds = %inc140, %loop116
+  %t141 = load i32, i32* %j137
+  %t142 = icmp slt i32 %t141, %t138
+  br i1 %t142, label %loop135, label %end136
 
-phi137:                                           ; preds = %b136, %a135
-  %phi145 = phi i1 [ true, %a135 ], [ false, %b136 ]
-  call void @assert(i1 %phi145, i8* getelementptr inbounds ([17 x i8], [17 x i8]* @String.15, i32 0, i32 0))
-  %t146 = load i32, i32* %j131
-  %t147 = add i32 %t146, 1
-  store i32 %t147, i32* %j131
-  br label %cond128
+inc140:                                           ; preds = %phi147
+  %t143 = load i32, i32* %j137
+  %t144 = add i32 %t143, 1
+  store i32 %t144, i32* %j137
+  br label %cond139
 
-cond167:                                          ; preds = %end185, %end114
-  %t171 = load i32, i32* %i170
-  %t172 = load i32, i32* @runs
-  %t173 = icmp slt i32 %t171, %t172
-  br i1 %t173, label %loop168, label %end169
+a145:                                             ; preds = %loop135
+  br label %phi147
 
-loop168:                                          ; preds = %cond167
-  %t174 = alloca %struct_timespec
-  %19 = call i32 @clock_gettime(i32 0, %struct_timespec* %t174)
-  %t175 = getelementptr inbounds %struct_timespec, %struct_timespec* %t174, i32 0, i32 0
-  %t176 = load i64, i64* %t175
-  %t177 = getelementptr inbounds %struct_timespec, %struct_timespec* %t174, i32 0, i32 1
-  %t178 = load i64, i64* %t177
-  %t179 = sitofp i64 %t178 to double
-  %t180 = fdiv double %t179, 1.000000e+09
-  %t181 = sitofp i64 %t176 to double
-  %t182 = fadd double %t181, %t180
-  store double %t182, double* %t2
-  %j186 = alloca i32
-  store i32 0, i32* %j186
-  br label %cond183
+b146:                                             ; preds = %loop135
+  br label %phi147
 
-end169:                                           ; preds = %cond167
+phi147:                                           ; preds = %b146, %a145
+  %phi155 = phi i1 [ true, %a145 ], [ false, %b146 ]
+  call void @assert(i1 %phi155, i8* getelementptr inbounds ([17 x i8], [17 x i8]* @String.15, i32 0, i32 0))
+  br label %inc140
+
+loop173:                                          ; preds = %cond177
+  %t183 = alloca %struct_timespec
+  %19 = call i32 @clock_gettime(i32 0, %struct_timespec* %t183)
+  %t184 = getelementptr inbounds %struct_timespec, %struct_timespec* %t183, i32 0, i32 0
+  %t185 = load i64, i64* %t184
+  %t186 = getelementptr inbounds %struct_timespec, %struct_timespec* %t183, i32 0, i32 1
+  %t187 = load i64, i64* %t186
+  %t188 = sitofp i64 %t187 to double
+  %t189 = fdiv double %t188, 1.000000e+09
+  %t190 = sitofp i64 %t185 to double
+  %t191 = fadd double %t190, %t189
+  store double %t191, double* %t2
+  %j194 = alloca i32
+  store i32 0, i32* %j194
+  %t195 = load i32, i32* @subruns
+  br label %cond196
+
+end174:                                           ; preds = %cond177
   %20 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @String.18, i32 0, i32 0))
-  %t214 = load double, double* %base
-  %t215 = load double*, double** %partials
-  %21 = call double @stats(double %t214, double* %t215)
+  %t222 = load double, double* %base
+  %t223 = load double*, double** %partials
+  %21 = call double @stats(double %t222, double* %t223)
   call void @pthread_exit(i8* null)
   ret void
 
-cond183:                                          ; preds = %phi192, %loop168
-  %t187 = load i32, i32* %j186
-  %t188 = load i32, i32* @subruns
-  %t189 = icmp slt i32 %t187, %t188
-  br i1 %t189, label %loop184, label %end185
+cond177:                                          ; preds = %inc178, %end117
+  %t179 = load i32, i32* %i175
+  %t180 = icmp slt i32 %t179, %t176
+  br i1 %t180, label %loop173, label %end174
 
-loop184:                                          ; preds = %cond183
+inc178:                                           ; preds = %end193
+  %t181 = load i32, i32* %i175
+  %t182 = add i32 %t181, 1
+  store i32 %t182, i32* %i175
+  br label %cond177
+
+loop192:                                          ; preds = %cond196
   %22 = call i32 @sumUM(i8* %16)
-  %t193 = load i32, i32* @result
-  %t194 = icmp eq i32 %22, %t193
-  br i1 %t194, label %a190, label %b191
+  %t205 = load i32, i32* @result
+  %t206 = icmp eq i32 %22, %t205
+  br i1 %t206, label %a202, label %b203
 
-end185:                                           ; preds = %cond183
-  %t198 = load double*, double** %partials
-  %t199 = load i32, i32* %i170
-  %t200 = getelementptr double, double* %t198, i32 %t199
-  %t201 = alloca %struct_timespec
-  %23 = call i32 @clock_gettime(i32 0, %struct_timespec* %t201)
-  %t202 = getelementptr inbounds %struct_timespec, %struct_timespec* %t201, i32 0, i32 0
-  %t203 = load i64, i64* %t202
-  %t204 = getelementptr inbounds %struct_timespec, %struct_timespec* %t201, i32 0, i32 1
-  %t205 = load i64, i64* %t204
-  %t206 = sitofp i64 %t205 to double
-  %t207 = fdiv double %t206, 1.000000e+09
-  %t208 = sitofp i64 %t203 to double
-  %t209 = fadd double %t208, %t207
-  %t210 = load double, double* %t2
-  %t211 = fsub double %t209, %t210
-  store double %t211, double* %t200
-  %t212 = load i32, i32* %i170
-  %t213 = add i32 %t212, 1
-  store i32 %t213, i32* %i170
-  br label %cond167
+end193:                                           ; preds = %cond196
+  %t208 = load double*, double** %partials
+  %t209 = load i32, i32* %i175
+  %t210 = getelementptr double, double* %t208, i32 %t209
+  %t211 = alloca %struct_timespec
+  %23 = call i32 @clock_gettime(i32 0, %struct_timespec* %t211)
+  %t212 = getelementptr inbounds %struct_timespec, %struct_timespec* %t211, i32 0, i32 0
+  %t213 = load i64, i64* %t212
+  %t214 = getelementptr inbounds %struct_timespec, %struct_timespec* %t211, i32 0, i32 1
+  %t215 = load i64, i64* %t214
+  %t216 = sitofp i64 %t215 to double
+  %t217 = fdiv double %t216, 1.000000e+09
+  %t218 = sitofp i64 %t213 to double
+  %t219 = fadd double %t218, %t217
+  %t220 = load double, double* %t2
+  %t221 = fsub double %t219, %t220
+  store double %t221, double* %t210
+  br label %inc178
 
-a190:                                             ; preds = %loop184
-  br label %phi192
+cond196:                                          ; preds = %inc197, %loop173
+  %t198 = load i32, i32* %j194
+  %t199 = icmp slt i32 %t198, %t195
+  br i1 %t199, label %loop192, label %end193
 
-b191:                                             ; preds = %loop184
-  br label %phi192
+inc197:                                           ; preds = %phi204
+  %t200 = load i32, i32* %j194
+  %t201 = add i32 %t200, 1
+  store i32 %t201, i32* %j194
+  br label %cond196
 
-phi192:                                           ; preds = %b191, %a190
-  %phi195 = phi i1 [ true, %a190 ], [ false, %b191 ]
-  call void @assert(i1 %phi195, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @String.17, i32 0, i32 0))
-  %t196 = load i32, i32* %j186
-  %t197 = add i32 %t196, 1
-  store i32 %t197, i32* %j186
-  br label %cond183
+a202:                                             ; preds = %loop192
+  br label %phi204
+
+b203:                                             ; preds = %loop192
+  br label %phi204
+
+phi204:                                           ; preds = %b203, %a202
+  %phi207 = phi i1 [ true, %a202 ], [ false, %b203 ]
+  call void @assert(i1 %phi207, i8* getelementptr inbounds ([13 x i8], [13 x i8]* @String.17, i32 0, i32 0))
+  br label %inc197
 }
