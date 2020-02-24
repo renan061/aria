@@ -114,6 +114,7 @@ string      "\""(\\.|[^\\"])*"\""
 "function"      return TOKEN(TK_FUNCTION);
 "if"            return TOKEN(TK_IF);
 "Immutable"     return TOKEN(TK_IMMUTABLE);
+"Immut"         return TOKEN(TK_IMMUTABLE);
 "in"            return TOKEN(TK_IN);
 "initializer"   return TOKEN(TK_INITIALIZER);
 "interface"     return TOKEN(TK_INTERFACE);
@@ -126,7 +127,9 @@ string      "\""(\\.|[^\\"])*"\""
 "structure"     return TOKEN(TK_STRUCTURE);
 "true"          return TOKEN(TK_TRUE);
 "value"         return TOKEN(TK_VALUE);
+"val"           return TOKEN(TK_VALUE);
 "variable"      return TOKEN(TK_VARIABLE);
+"var"           return TOKEN(TK_VARIABLE);
 "wait"          return TOKEN(TK_WAIT);
 "while"         return TOKEN(TK_WHILE);
 

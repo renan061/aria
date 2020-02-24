@@ -7,6 +7,10 @@
 
 #include "ast.h"
 
+// auxiliary debug macros
+#define DUMPV(v) STMT(LLVMDumpValue(v); printf("\n");)
+#define DUMPT(t) STMT(LLVMTypeValue(t); printf("\n");)
+
 // global string names
 #define LLVM_GLOBAL_STRING "String"
 
@@ -20,6 +24,11 @@
 #define LLVM_TMP_PROXY  ("proxy")
 #define LLVM_TMP_OK     ("ok")
 #define LLVM_TMP_RETURN ("ret")
+
+// runtime errors
+#define RERR                "runtime error: "
+#define RERR_COMP_SIZE RERR "comprehension length must be greater than zero\n"
+#define RERR_RANGE_R   RERR "invalid step value for range\n"
 
 // -----------------------------------------------------------------------------
 
@@ -46,21 +55,6 @@ extern     LLVMV    ir_zeroptr    ;
 #define /* LLVMV */ ir_bool(b)    (LLVMConstInt(irT_bool, b, false))
 #define /* LLVMV */ ir_int(i)     (LLVMConstInt(irT_int, i, true))
 #define /* LLVMv */ ir_float(f)   (LLVMConstReal(irT_float, f))
-
-// -----------------------------------------------------------------------------
-
-// native functions
-extern LLVMV ir_printf(LLVMB, LLVMV*, int);
-extern LLVMV ir_rand(LLVMB);
-extern LLVMV ir_srand(LLVMB, LLVMV);
-extern LLVMV ir_getTime(LLVMB);
-extern LLVMV ir_assert(LLVMB, LLVMV*);
-
-// auxiliary functions
-extern LLVMV ir_malloc(LLVMB, size_t);
-extern LLVMV ir_exit(LLVMB B);
-extern LLVMV ir_cmp(LLVMB, LLVMIntPredicate, LLVMRealPredicate,
-    Expression*, Expression*);
 
 // -----------------------------------------------------------------------------
 
@@ -94,6 +88,23 @@ extern void     irs_destroy(IRState*);
 extern void     irs_return(IRState*, LLVMV);
 extern void     irsBB_start(IRState*, LLVMBB);
 extern void     irsBB_end(IRState*);
+
+// -----------------------------------------------------------------------------
+
+// aria functions
+extern LLVMV ir_printf(LLVMB, LLVMV*, int);
+extern LLVMV ir_rand(LLVMB);
+extern LLVMV ir_srand(LLVMB, LLVMV);
+extern LLVMV ir_getTime(LLVMB);
+extern LLVMV ir_assert(LLVMB, LLVMV*);
+extern LLVMV ir_malloc(LLVMB, size_t);
+extern LLVMV ir_exit(LLVMB);
+
+// auxiliary functions used by the compiler
+extern void  ir_runtime_err(LLVMB, const char*);
+extern LLVMV ir_cmp(LLVMB, LLVMIntPredicate, LLVMRealPredicate, Exp*, Exp*);
+extern LLVMV ir_iabs(IRState*, LLVMV);
+extern LLVMV ir_fabs(IRState*, LLVMV);
 
 // -----------------------------------------------------------------------------
 

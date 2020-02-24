@@ -10,6 +10,7 @@
 #include "alloc.h"
 #include "ir.h"
 #include "macros.h"
+#include "parser.h"
 
 // -----------------------------------------------------------------------------
 
@@ -193,6 +194,14 @@ LLVMV ir_exit(LLVMB B) {
     return LLVMBuildCall(B, irV_exit, args, 1, LLVM_TMP_NONE);
 }
 
+void ir_runtime_err(LLVMB B, const char* msg) {
+    LLVMV V = LLVMBuildGlobalString(B, msg, "errmsg");
+    LLVMV err[] = {LLVMBuildBitCast(B, V, irT_pvoid, "errmsg")};
+    ir_printf(B, err, 1);
+    ir_exit(B);
+    LLVMBuildUnreachable(B);
+}
+
 LLVMV ir_cmp(LLVMB B, LLVMIntPredicate iop, LLVMRealPredicate fop,
     Exp* l, Exp* r) {
 
@@ -206,6 +215,33 @@ LLVMV ir_cmp(LLVMB B, LLVMIntPredicate iop, LLVMRealPredicate fop,
     } else {
         UNREACHABLE;
     }
+}
+
+LLVMV ir_iabs(IRState* irs, LLVMV p) {
+    LLVMBB P = irs->block;
+    LLVMBB A = LLVMAppendBasicBlock(irs->function, "iabs1");
+    LLVMBB B = LLVMAppendBasicBlock(irs->function, "iabs2");
+    // previous
+    LLVMV cmp = LLVMBuildICmp(irs->B, LLVMIntSLT, p, ir_int(0), LLVM_TMP);
+    LLVMBuildCondBr(irs->B, cmp, A, B);
+    irsBB_end(irs);
+    // abs1
+    irsBB_start(irs, A);
+    LLVMV b = LLVMBuildMul(irs->B, p, ir_int(-1), LLVM_TMP);
+    LLVMBuildBr(irs->B, B);
+    irsBB_end(irs);
+    // abs2
+    irsBB_start(irs, B);
+    LLVMV V = LLVMBuildPhi(irs->B, irT_int, LLVM_TMP);
+    LLVMV incomingV[] = {p, b};
+    LLVMBB incomingBB[] = {P, A};
+    LLVMAddIncoming(V, incomingV, incomingBB, 2);
+    return V;
+}
+
+LLVMV ir_fabs(IRState* irs, LLVMV p) {
+    // TODO: LLVMRealOLT
+    return NULL;
 }
 
 // ==================================================

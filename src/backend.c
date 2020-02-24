@@ -17,10 +17,6 @@
  *  - free and destroy the mutex one day
  */
 
-// auxiliary debug macros
-#define DUMPV(v) STMT(LLVMDumpValue(v); printf("\n");)
-#define DUMPT(t) STMT(LLVMTypeValue(t); printf("\n");)
-
 // string malloc that accounts for '\0'
 #define SMALLOC(str, len) MALLOC_ARRAY(str, char, (len + 1))
 
@@ -1101,11 +1097,16 @@ static void backend_exp_literal_array(IRState*, Exp*);
 static void backend_exp_capsa(IRState*, Exp*);
 static void backend_exp_fc(IRState*, Exp*);
 static void backend_exp_comprehension(IRState*, Exp*);
+static void backend_exp_range(IRState*, Exp*);
 static void backend_exp_unary(IRState*, Exp*);
 static void backend_exp_unary_minus(IRState*, Exp*);
 static void backend_exp_binary(IRState*, Exp*);
 static void backend_exp_cast(IRState*, Exp*);
 static void backend_exp_condition(IRState*, Exp*);
+
+static LLVMV range_r(IRState*, Token, Exp*, Exp*);
+static LLVMV range_n(IRState*, Token, Exp*, Exp*, LLVMV);
+static LLVMV range_v(LLVMB, LLVMV, LLVMV);
 
 // macro to be used by the [+, -, *, /] operations
 #define BINARY_ARITHMETICS(e, irs, ifunc, ffunc) STMT(\
@@ -1132,7 +1133,8 @@ static void backend_expression(IRState* irs, Exp* exp) {
     case EXP_LITERAL_ARRAY:      backend_exp_literal_array(irs, exp);   break;
     case EXP_CAPSA:              backend_exp_capsa(irs, exp);           break;
     case EXP_FUNCTION_CALL:      backend_exp_fc(irs, exp);              break;
-    case EXP_LIST_COMPREHENSION: backend_exp_comprehension(irs, exp);   break;
+    case EXP_COMPREHENSION:      backend_exp_comprehension(irs, exp);   break;
+    case EXP_RANGE:              backend_exp_range(irs, exp);           break;
     case EXP_UNARY:              backend_exp_unary(irs, exp);           break;
     case EXP_BINARY:             backend_exp_binary(irs, exp);          break;
     case EXP_CAST:               backend_exp_cast(irs, exp);            break;
@@ -1195,61 +1197,129 @@ static void backend_exp_fc(IRState* irs, Exp* exp) {
     exp->V = backend_function_call(irs, exp->function_call);
 }
 
+// TODO
+static LLVMV ir_num_range1(IRState* irs, Token op, Exp* first, Exp* last) {
+    LLVMV r, n;
+
+    switch (op) {
+    case TK_RARROW:
+        n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
+        r = ir_int(1);
+        break;
+    case TK_REARROW:
+        n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
+        n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
+        r = ir_int(1);
+        break;
+    case TK_LARROW:
+        n = LLVMBuildSub(irs->B, first->V, last->V, LLVM_TMP);
+        r = ir_int(-1);
+        break;
+    case TK_LEARROW:
+        n = LLVMBuildSub(irs->B, first->V, last->V, LLVM_TMP);
+        n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
+        r = ir_int(-1);
+        break;
+    default:
+        UNREACHABLE;
+    }
+
+    LLVMBB bberr = LLVMAppendBasicBlock(irs->function, "size-err");
+    LLVMBB bbok = LLVMAppendBasicBlock(irs->function, "size-ok");
+
+    LLVMV sizeok = LLVMBuildICmp(irs->B, LLVMIntSGT, n, ir_int(0), "sizeok");
+    LLVMBuildCondBr(irs->B, sizeok, bbok, bberr);
+    irsBB_end(irs);
+    // size-err
+    irsBB_start(irs, bberr);
+    ir_runtime_err(irs->B, RERR_COMP_SIZE);
+    irsBB_end(irs);
+    // size-ok
+    irsBB_start(irs, bbok);
+    return range_v(irs->B, r, n);
+}
+
 static void backend_exp_comprehension(IRState* irs, Exp* exp) {
-    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
-    LLVMBB bbend  = LLVMAppendBasicBlock(irs->function, BB_END);
-
-    Def* v = exp->comprehension.v;
+    // TODO
+    // evaluates the range expression
     Exp* range = exp->comprehension.iterable;
-    v->capsa.capsa->value = false; // TODO
+    backend_exp_range(irs, range);
+    LLVMV r = LLVMBuildExtractValue(irs->B, range->V, 0, "r");
+    LLVMV n = LLVMBuildExtractValue(irs->B, range->V, 1, "n");
 
-    v->capsa.expression = range->range.first;
-    backend_definition(irs, v); // calls <backend_expression> for first
-    backend_expression(irs, range->range.last);
-    if (range->range.second) {
-        backend_expression(irs, range->range.second);
-    }
-    
+    // TODO
+    // evaluates the definition
+    Def* def = exp->comprehension.v;
+    Capsa* capsa = def->capsa.capsa;
     Exp* first = range->range.first;
-    // Exp* second = range->range.second;
-    Exp* last = range->range.last;
+    capsa->value = false;
+    backend_definition(irs, def);
+    def->capsa.expression = first;
+    LLVMBuildStore(irs->B, first->V, capsa->V);
 
-    LLVMV i /*, ratio*/;
+    // allocates the array
+    LLVMT T = llvmtype(exp->type->array);
+    exp->V = LLVMBuildArrayMalloc(irs->B, T, n, LLVM_TMP);
 
-    // TODO: size <n> is (very) incorrect
-    if (first->type == __integer) {
-        LLVMT T = llvmtype(exp->type->array);
-        LLVMV n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
-        // if (second) {
-        //     ratio = LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
-        //     n = LLVMBuildSDiv(irs->B, n, ratio, LLVM_TMP);
-        // }
-        exp->V = LLVMBuildArrayMalloc(irs->B, T , n, LLVM_TMP);
-        i = LLVMBuildAlloca(irs->B, irT_int, LLVM_TMP);
-        LLVMBuildStore(irs->B, ir_int(0), i);
-    } else if (first->type == __float) {
-        // @llvm.fabs.f64(double %Val)
-        UNREACHABLE;
-    } else {
-        UNREACHABLE;
-    }
+    LLVMBB bbcond = LLVMAppendBasicBlock(irs->function, BB_COND);
+    LLVMBB bbloop = LLVMAppendBasicBlock(irs->function, BB_LOOP);
+    LLVMBB bbinc = LLVMAppendBasicBlock(irs->function, BB_INC);
+    LLVMBB bbend = LLVMAppendBasicBlock(irs->function, BB_END);
 
-    LLVMBB bbinc = forin(irs, v, range, bbloop, bbend);
+    // ends the previous block
+    LLVMBB bbprev = irs->block;
+    irsBB_end(irs);
+    LLVMBuildBr(irs->B, bbcond);
 
+    // cond (1)
+    irsBB_start(irs, bbcond);
+    LLVMV iphi = LLVMBuildPhi(irs->B, irT_int, LLVM_TMP);
+    irsBB_end(irs);
+    // inc
+    irsBB_start(irs, bbinc);
+    LLVMV i2 = LLVMBuildAdd(irs->B, iphi, ir_int(1), LLVM_TMP);
+    LLVMV V = LLVMBuildLoad(irs->B, capsa->V, LLVM_TMP);
+    V = LLVMBuildAdd(irs->B, V, r, LLVM_TMP);
+    LLVMBuildStore(irs->B, V, capsa->V);
+    LLVMBuildBr(irs->B, bbcond);
+    irsBB_end(irs);
+    // cond (2)
+    irsBB_start(irs, bbcond);
+    LLVMV incomingV[2] = {ir_int(0), i2};
+    LLVMBB incomingBB[2] = {bbprev, bbinc};
+    LLVMAddIncoming(iphi, incomingV, incomingBB, 2);
+    LLVMV cond = LLVMBuildICmp(irs->B, LLVMIntSLT, iphi, n, LLVM_TMP);
+    LLVMBuildCondBr(irs->B, cond, bbloop, bbend);
+    irsBB_end(irs);
     // loop
     irsBB_start(irs, bbloop);
     backend_expression(irs, exp->comprehension.e);
-    LLVMV iloaded = LLVMBuildLoad(irs->B, i, LLVM_TMP);
-    LLVMV indices[] = {iloaded};
-    LLVMV elemptr = LLVMBuildGEP(irs->B, exp->V, indices, 1, LLVM_TMP);
-    LLVMBuildStore(irs->B, exp->comprehension.e->V, elemptr);
-    iloaded = LLVMBuildAdd(irs->B, iloaded, ir_int(1), LLVM_TMP);
-    LLVMBuildStore(irs->B, iloaded, i);
+    LLVMV indices[] = {iphi};
+    LLVMV ptr = LLVMBuildGEP(irs->B, exp->V, indices, 1, LLVM_TMP);
+    LLVMBuildStore(irs->B, exp->comprehension.e->V, ptr);
     LLVMBuildBr(irs->B, bbinc);
     irsBB_end(irs);
-
     // end
     irsBB_start(irs, bbend);
+}
+
+static void backend_exp_range(IRState* irs, Exp* exp) {
+    Token op = exp->range.op;
+    Exp* first = exp->range.first;
+    Exp* second = exp->range.second;
+    Exp* last = exp->range.last;
+
+    backend_expression(irs, first);
+    backend_expression(irs, last);
+    if (!second) {
+        exp->V = ir_num_range1(irs, op, first, last);
+        return;
+    }
+    backend_expression(irs, second);
+
+    LLVMV r = range_r(irs, op, first, second);
+    LLVMV n = range_n(irs, op, first, last, r);
+    exp->V = range_v(irs->B, r, n);
 }
 
 static void backend_exp_unary(IRState* irs, Exp* exp) {
@@ -1352,6 +1422,68 @@ static void backend_exp_condition(IRState* irs, Exp* exp) {
 }
 
 #undef BINARY_ARITHMETICS
+
+// -----------------------------------------------------------------------------
+
+static LLVMV range_r(IRState* irs, Token op, Exp* first, Exp* second) {
+    LLVMBB bbrerr = LLVMAppendBasicBlock(irs->function, "r-err");
+    LLVMBB bbrok = LLVMAppendBasicBlock(irs->function, "r-ok");
+    LLVMV r = LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
+    LLVMIntPredicate predicate = (op == TK_RARROW || op == TK_REARROW)
+        ? LLVMIntSGT
+        : LLVMIntSLT
+        ;
+    LLVMV rok = LLVMBuildICmp(irs->B, predicate, r, ir_int(0), "rok");
+    LLVMBuildCondBr(irs->B, rok, bbrok, bbrerr);
+    irsBB_end(irs);
+    // r-err
+    irsBB_start(irs, bbrerr);
+    ir_runtime_err(irs->B, RERR_RANGE_R);
+    irsBB_end(irs);
+    // r-ok
+    irsBB_start(irs, bbrok);
+    return r;
+}
+
+static LLVMV range_n(IRState* irs, Token op, Exp* first, Exp* last, LLVMV r) {
+    LLVMV n, n1;
+    n1 = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
+    n1 = LLVMBuildSDiv(irs->B, n1, r, "nA");
+
+    if (op == TK_RARROW || op == TK_REARROW) {
+        LLVMBB bbprev = irs->block;
+        LLVMBB bbhasrem = LLVMAppendBasicBlock(irs->function, "has-rem");
+        LLVMBB bbnorem = LLVMAppendBasicBlock(irs->function, "no-rem");
+
+        LLVMV rem = LLVMBuildSRem(irs->B, n1, r, "rem");
+        LLVMV has = LLVMBuildICmp(irs->B, LLVMIntNE, rem, ir_int(0), "has");
+        LLVMBuildCondBr(irs->B, has, bbhasrem, bbnorem);
+        irsBB_end(irs);
+        // has-rem
+        irsBB_start(irs, bbhasrem);
+        LLVMV n2 = LLVMBuildAdd(irs->B, n1, ir_int(1), "nB");
+        LLVMBuildBr(irs->B, bbnorem);
+        irsBB_end(irs);
+        // no-rem
+        irsBB_start(irs, bbnorem);
+        n = LLVMBuildPhi(irs->B, irT_int, "n");
+        LLVMV incomingV[] = {n1, n2};
+        LLVMBB incomingBB[] = {bbprev, bbhasrem};
+        LLVMAddIncoming(n, incomingV, incomingBB, 2);
+    } else {
+        n = LLVMBuildAdd(irs->B, n1, ir_int(1), "n");
+    }
+
+    return n;
+}
+
+static LLVMV range_v(LLVMB B, LLVMV r, LLVMV n) {
+    LLVMT Ts[] = {irT_int, irT_int};
+    LLVMV V = LLVMGetUndef(LLVMStructType(Ts, 2, false));
+    V = LLVMBuildInsertValue(B, V, r, 0, LLVM_TMP);
+    V = LLVMBuildInsertValue(B, V, n, 1, LLVM_TMP);
+    return V;
+}
 
 // ==================================================
 //

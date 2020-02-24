@@ -405,7 +405,7 @@ static void print_ast_expression(Expression* expression, bool wrap) {
         print_ast_function_call(expression->function_call);
         printtype(expression->type);
         break;
-    case EXP_LIST_COMPREHENSION:
+    case EXP_COMPREHENSION:
         if (expression->comprehension.immutable) {
             printf("Immutable ");
         }

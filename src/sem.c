@@ -1066,7 +1066,7 @@ static void sem_expression(SS* ss, Expression* exp) {
         sem_function_call(ss, exp->function_call);
         exp->type = exp->function_call->type;
         break;
-    case EXP_LIST_COMPREHENSION: {
+    case EXP_COMPREHENSION: {
         symtable_enter_scope(ss->table);
         sem_expression(ss, exp->comprehension.iterable);
         sem_definition(ss, exp->comprehension.v);

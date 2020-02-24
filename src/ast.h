@@ -98,7 +98,7 @@ typedef enum ExpressionTag {
     EXP_LITERAL_ARRAY,
     EXP_CAPSA,
     EXP_FUNCTION_CALL,
-    EXP_LIST_COMPREHENSION,
+    EXP_COMPREHENSION,
     EXP_RANGE,
     EXP_CAST,
     EXP_UNARY,

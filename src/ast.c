@@ -581,7 +581,7 @@ Exp* ast_expression_function_call(FC* fc) {
 }
 
 Exp* ast_expression_comprehension(Line ln, Exp* e, Id* v, Exp* iterable) {
-    Exp* exp = exp_init(EXP_LIST_COMPREHENSION, ln);
+    Exp* exp = exp_init(EXP_COMPREHENSION, ln);
     exp->comprehension.e = e;
     Capsa* capsa = ast_capsa_id(v);
     capsa->value = true;
