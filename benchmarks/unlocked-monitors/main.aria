@@ -16,7 +16,7 @@ monitor Array {
     variable array: [Integer];
 
     initializer(size: Integer) {
-        array = [i | i in 0...size];
+        array = [i for i in [0 -> size]];
     }
 
     function get(i: Integer): Integer {
@@ -29,7 +29,7 @@ monitor Array {
 
     function sum: Integer {
         variable x = 0;
-        for variable i = 0; i < size; i = i + 1 {
+        for i in [0 -> size] {
             x = x + array[i];
         }
         return x;
@@ -41,7 +41,7 @@ monitor Array {
 // regular
 function sumR(array: Immutable [Integer]): Integer {
     variable x = 0;
-    for variable i = 0; i < size; i = i + 1 {
+    for i in [0 -> size] {
         x = x + array[i];
     }
     // print("%d\n", x);
@@ -51,7 +51,7 @@ function sumR(array: Immutable [Integer]): Integer {
 // monitor get
 function sumMG(array: Array): Integer {
     variable x = 0;
-    for variable i = 0; i < size; i = i + 1 {
+    for i in [0 -> size] {
         x = x + array.get(i);
     }
     return x;
@@ -61,7 +61,7 @@ function sumMG(array: Array): Integer {
 function sumUM(array: Array): Integer {
     variable x = 0;
     acquire value m = array.unlocked() {
-        for variable i = 0; i < size; i = i + 1 {
+        for i in [0 -> size] {
             x = x + m.get(i);
         }
     }
@@ -73,7 +73,7 @@ function stats(base: Float, partials: [Float]): Float {
     variable avg = 0.0;
     variable min = maxFloat;
     variable max = minFloat;
-    for variable i = 0; i < runs; i = i + 1 {
+    for i in [0 -> runs] {
         x = partials[i];
         avg = avg + x;
         if x < min { min = x; }
@@ -106,10 +106,10 @@ function main {
     print("\n");
 
     { // regular array
-        value array = Immutable [i | i in 0...size];
-        for variable i = 0; i < runs; i = i + 1 {
+        value array = Immutable [i for i in [0 -> size]];
+        for i in [0 -> runs] {
             t = getTime();
-            for variable j = 0; j < subruns; j = j + 1 {
+            for j in [0 -> subruns] {
                 assert(sumR(array) == result, "sumR error\n");
             }
             partials[i] = getTime() - t;
@@ -120,9 +120,9 @@ function main {
 
     { // monitor array
         value array = Array(size);
-        for variable i = 0; i < runs; i = i + 1 {
+        for i in [0 -> runs] {
             t = getTime();
-            for variable j = 0; j < subruns; j = j + 1 {
+            for j in [0 -> subruns] {
                 assert(sumMG(array) == result, "sumMG error\n");
             }
             partials[i] = getTime() - t;
@@ -133,9 +133,9 @@ function main {
 
     { // monitor array method
         value array = Array(size);
-        for variable i = 0; i < runs; i = i + 1 {
+        for i in [0 -> runs] {
             t = getTime();
-            for variable j = 0; j < subruns; j = j + 1 {
+            for j in [0 -> subruns] {
                 assert(array.sum() == result, "array.sum error\n");
             }
             partials[i] = getTime() - t;
@@ -146,9 +146,9 @@ function main {
 
     { // unlocked monitor
         value array = Array(size);
-        for variable i = 0; i < runs; i = i + 1 {
+        for i in [0 -> runs] {
             t = getTime();
-            for variable j = 0; j < subruns; j = j + 1 {
+            for j in [0 -> subruns] {
                 assert(sumUM(array) == result, "sumMG error\n");
             }
             partials[i] = getTime() - t;
@@ -157,16 +157,3 @@ function main {
         stats(base, partials);
     }
 }
-
-// define i32 @get-P(i8*, i32) {
-// entry:
-//   %proxy = bitcast i8* %0 to %Array-P*                                               ; preds = %entry
-//   %self-ptr1 = getelementptr inbounds %Array-P, %Array-P* %proxy, i32 0, i32 0
-//   %self-ptr2 = load i8*, i8** %self-ptr1
-//   %self = bitcast i8* %self-ptr2 to %Array*
-//   %t = getelementptr inbounds %Array, %Array* %self, i32 0, i32 2
-//   %t1 = load i32*, i32** %t
-//   %t2 = getelementptr i32, i32* %t1, i32 %1
-//   %t3 = load i32, i32* %t2
-//   ret i32 %t3
-// }
