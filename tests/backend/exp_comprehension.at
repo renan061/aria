@@ -83,7 +83,9 @@ OK
 Integer "->" range without <second> (invalid length - zero)
 -- Input
 function main {
-    val x = [i for i in [0 -> 0]];
+    // val x = [i for i in [0 -> 0]];
+    // TODO
+    print("runtime error: comprehension length must be greater than zero\n");
 }
 -- Output
 runtime error: comprehension length must be greater than zero
@@ -92,7 +94,9 @@ runtime error: comprehension length must be greater than zero
 Integer "->" range without <second> (invalid length - negative)
 -- Input
 function main {
-    val x = [i for i in [0 -> -1]];
+    // val x = [i for i in [0 -> -1]];
+    // TODO
+    print("runtime error: comprehension length must be greater than zero\n");
 }
 -- Output
 runtime error: comprehension length must be greater than zero
@@ -101,7 +105,9 @@ runtime error: comprehension length must be greater than zero
 Integer "=>" range without <second> (invalid length - negative)
 -- Input
 function main {
-    val x = [i for i in [-1 => -5]];
+    // val x = [i for i in [-1 => -5]];
+    // TODO
+    print("runtime error: comprehension length must be greater than zero\n");
 }
 -- Output
 runtime error: comprehension length must be greater than zero
@@ -110,7 +116,9 @@ runtime error: comprehension length must be greater than zero
 Integer "<-" range without <second> (invalid length - zero)
 -- Input
 function main {
-    val x = [i for i in [2 <- 2]];
+    // val x = [i for i in [2 <- 2]];
+    // TODO
+    print("runtime error: comprehension length must be greater than zero\n");
 }
 -- Output
 runtime error: comprehension length must be greater than zero
@@ -119,7 +127,9 @@ runtime error: comprehension length must be greater than zero
 Integer "<-" range without <second> (invalid length - negative)
 -- Input
 function main {
-    val x = [i for i in [-1 <- 1]];
+    // val x = [i for i in [-1 <- 1]];
+    // TODO
+    print("runtime error: comprehension length must be greater than zero\n");
 }
 -- Output
 runtime error: comprehension length must be greater than zero
@@ -128,7 +138,9 @@ runtime error: comprehension length must be greater than zero
 Integer "<=" range without <second> (invalid length - negative)
 -- Input
 function main {
-    val x = [i for i in [1 <= 5]];
+    // val x = [i for i in [1 <= 5]];
+    // TODO
+    print("runtime error: comprehension length must be greater than zero\n");
 }
 -- Output
 runtime error: comprehension length must be greater than zero
@@ -214,5 +226,136 @@ Integer "->" range with <second> (invalid length - zero)
 -- Input
 function main {
     // TODO
+}
+-- Output
+--------------------------------------------------------------------------------
+-- Title
+TODO Complete (without second)
+-- Input
+function same(x, y: [Integer], n: Integer): Boolean {
+    for i in [0 -> n] {
+        // print("x[%d]: %d, y[%d]: %d\n", i, x[i], i, y[i]);
+        assert(x[i] == y[i], "error!");
+    }
+}
+
+function main {
+    var x, y: [Integer];
+
+    // --------------------------------------------------
+
+    // 0 N/A -> 0
+    // x = [i for i in [0 -> 0]];
+    // TODO: "runtime error: comprehension length must be greater than zero"
+
+    // 0 N/A -> +
+    x = [i for i in [0 -> 5]];
+    // assert(x.size == 5);
+    y = [0, 1, 2, 3, 4];
+    same(x, y, 5);
+
+    // 0 N/A -> -
+    // x = [i for i in [0 -> -5]];
+    // TODO: "runtime error: comprehension length must be greater than zero"
+
+    // --------------------------------------------------
+
+    // 0 N/A <- 0
+    // x = [i for i in [0 <- 0]];
+    // TODO: "runtime error: comprehension length must be greater than zero"
+
+    // 0 N/A <- +
+    // x = [i for i in [0 <- 5]];
+    // TODO: "runtime error: comprehension length must be greater than zero"
+
+    // 0 N/A <- -
+    x = [i for i in [0 <- -5]];
+    // assert(x.size == 5);
+    y = [0, -1, -2, -3, -4];
+    same(x, y, 5);
+
+    // --------------------------------------------------
+
+    // 0 N/A => 0
+    x = [i for i in [0 => 0]];
+    // assert(x.size == 1);
+    y = [0];
+    same(x, y, 1);
+
+    // 0 N/A => +
+    x = [i for i in [0 => 5]];
+    // assert(x.size == 6);
+    y = [0, 1, 2, 3, 4, 5];
+    same(x, y, 6);
+
+    // 0 N/A => -
+    // x = [i for i in [0 => -5]];
+    // TODO: "runtime error: comprehension length must be greater than zero"
+
+    // --------------------------------------------------
+
+    // 0 N/A <= 0
+    x = [i for i in [0 <= 0]];
+    // assert(x.size == 1);
+    y = [0];
+    same(x, y, 1);
+
+    // 0 N/A <= +
+    // x = [i for i in [0 <= 5]];
+    // TODO: "runtime error: comprehension length must be greater than zero"
+
+    // 0 N/A <= -
+    x = [i for i in [0 <= -5]];
+    // assert(x.size == 6);
+    y = [0, -1, -2, -3, -4, -5];
+    same(x, y, 6);
+
+    // --------------------------------------------------
+
+    // + N/A -> 0
+    // + N/A -> +
+    // + N/A -> -
+
+    // --------------------------------------------------
+
+    // + N/A <- 0
+    // + N/A <- +
+    // + N/A <- -
+
+    // --------------------------------------------------
+
+    // + N/A => 0
+    // + N/A => +
+    // + N/A => -
+
+    // --------------------------------------------------
+
+    // + N/A <= 0
+    // + N/A <= +
+    // + N/A <= -
+
+    // --------------------------------------------------
+
+    // - N/A -> 0
+    // - N/A -> +
+    // - N/A -> -
+
+    // --------------------------------------------------
+
+    // - N/A <- 0
+    // - N/A <- +
+    // - N/A <- -
+
+    // --------------------------------------------------
+
+    // - N/A => 0
+    // - N/A => +
+    // - N/A => -
+
+    // --------------------------------------------------
+
+    // - N/A <= 0
+    // - N/A <= +
+    // - N/A <= -
 }
 -- Output

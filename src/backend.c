@@ -469,10 +469,10 @@ static const char* fname(Definition* fn, int kind) {
 
     strcat(s, fn->function.id->name);
     char* name = concat(s,
-          kind == 0 ? "-R"
-        : kind == 1 ? "-L"
-        : kind == 2 ? "-P"
-        : (INVALID  , "-error")
+        kind == 0 ? "-R" :
+        kind == 1 ? "-L" :
+        kind == 2 ? "-P" :
+        (INVALID  , "-error")
     );
     free(s);
 
@@ -1105,8 +1105,8 @@ static void backend_exp_cast(IRState*, Exp*);
 static void backend_exp_condition(IRState*, Exp*);
 
 static LLVMV range_r(IRState*, Token, Exp*, Exp*);
-static LLVMV range_n(IRState*, Token, Exp*, Exp*, LLVMV);
-static LLVMV range_v(LLVMB, LLVMV, LLVMV);
+static LLVMV range_n(IRState*, Token, Exp*, Exp*, Exp*, LLVMV);
+static LLVMV range_v(LLVMB, LLVMV, LLVMV, Exp*);
 
 // macro to be used by the [+, -, *, /] operations
 #define BINARY_ARITHMETICS(e, irs, ifunc, ffunc) STMT(\
@@ -1198,56 +1198,54 @@ static void backend_exp_fc(IRState* irs, Exp* exp) {
 }
 
 // TODO
-static LLVMV ir_num_range1(IRState* irs, Token op, Exp* first, Exp* last) {
-    LLVMV r, n;
+// static LLVMV ir_num_range1(IRState* irs, Token op, Exp* first, Exp* last) {
+//     LLVMV r, n;
 
-    switch (op) {
-    case TK_RARROW:
-        n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
-        r = ir_int(1);
-        break;
-    case TK_REARROW:
-        n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
-        n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
-        r = ir_int(1);
-        break;
-    case TK_LARROW:
-        n = LLVMBuildSub(irs->B, first->V, last->V, LLVM_TMP);
-        r = ir_int(-1);
-        break;
-    case TK_LEARROW:
-        n = LLVMBuildSub(irs->B, first->V, last->V, LLVM_TMP);
-        n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
-        r = ir_int(-1);
-        break;
-    default:
-        UNREACHABLE;
-    }
+//     switch (op) {
+//     case TK_RARROW:
+//         n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
+//         r = ir_int(1);
+//         break;
+//     case TK_REARROW:
+//         n = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
+//         n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
+//         r = ir_int(1);
+//         break;
+//     case TK_LARROW:
+//         n = LLVMBuildSub(irs->B, first->V, last->V, LLVM_TMP);
+//         r = ir_int(-1);
+//         break;
+//     case TK_LEARROW:
+//         n = LLVMBuildSub(irs->B, first->V, last->V, LLVM_TMP);
+//         n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
+//         r = ir_int(-1);
+//         break;
+//     default:
+//         UNREACHABLE;
+//     }
 
-    LLVMBB bberr = LLVMAppendBasicBlock(irs->function, "size-err");
-    LLVMBB bbok = LLVMAppendBasicBlock(irs->function, "size-ok");
+//     LLVMBB bberr = LLVMAppendBasicBlock(irs->function, "size-err");
+//     LLVMBB bbok = LLVMAppendBasicBlock(irs->function, "size-ok");
 
-    LLVMV sizeok = LLVMBuildICmp(irs->B, LLVMIntSGT, n, ir_int(0), "sizeok");
-    LLVMBuildCondBr(irs->B, sizeok, bbok, bberr);
-    irsBB_end(irs);
-    // size-err
-    irsBB_start(irs, bberr);
-    ir_runtime_err(irs->B, RERR_COMP_SIZE);
-    irsBB_end(irs);
-    // size-ok
-    irsBB_start(irs, bbok);
-    return range_v(irs->B, r, n);
-}
+//     LLVMV sizeok = LLVMBuildICmp(irs->B, LLVMIntSGT, n, ir_int(0), "sizeok");
+//     LLVMBuildCondBr(irs->B, sizeok, bbok, bberr);
+//     irsBB_end(irs);
+//     // size-err
+//     irsBB_start(irs, bberr);
+//     ir_runtime_err(irs->B, RERR_COMP_SIZE);
+//     irsBB_end(irs);
+//     // size-ok
+//     irsBB_start(irs, bbok);
+//     return range_v(irs->B, r, n, first);
+// }
 
 static void backend_exp_comprehension(IRState* irs, Exp* exp) {
-    // TODO
     // evaluates the range expression
     Exp* range = exp->comprehension.iterable;
     backend_exp_range(irs, range);
     LLVMV r = LLVMBuildExtractValue(irs->B, range->V, 0, "r");
     LLVMV n = LLVMBuildExtractValue(irs->B, range->V, 1, "n");
 
-    // TODO
     // evaluates the definition
     Def* def = exp->comprehension.v;
     Capsa* capsa = def->capsa.capsa;
@@ -1311,15 +1309,18 @@ static void backend_exp_range(IRState* irs, Exp* exp) {
 
     backend_expression(irs, first);
     backend_expression(irs, last);
-    if (!second) {
-        exp->V = ir_num_range1(irs, op, first, last);
-        return;
+    // if (!second) {
+    //     exp->V = ir_num_range1(irs, op, first, last);
+    //     return;
+    // }
+    // backend_expression(irs, second);
+    if (second) {
+        backend_expression(irs, second);
     }
-    backend_expression(irs, second);
 
     LLVMV r = range_r(irs, op, first, second);
-    LLVMV n = range_n(irs, op, first, last, r);
-    exp->V = range_v(irs->B, r, n);
+    LLVMV n = range_n(irs, op, first, second, last, r);
+    exp->V = range_v(irs->B, r, n, first);
 }
 
 static void backend_exp_unary(IRState* irs, Exp* exp) {
@@ -1425,7 +1426,14 @@ static void backend_exp_condition(IRState* irs, Exp* exp) {
 
 // -----------------------------------------------------------------------------
 
+// auxiliary - calculates the ratio
 static LLVMV range_r(IRState* irs, Token op, Exp* first, Exp* second) {
+    if (!second) {
+        return (op == TK_LARROW  || op == TK_RARROW)  ? ir_int(1)  :
+               (op == TK_LEARROW || op == TK_REARROW) ? ir_int(-1) :
+               (INVALID, NULL);
+    }
+
     LLVMBB bbrerr = LLVMAppendBasicBlock(irs->function, "r-err");
     LLVMBB bbrok = LLVMAppendBasicBlock(irs->function, "r-ok");
     LLVMV r = LLVMBuildSub(irs->B, second->V, first->V, LLVM_TMP);
@@ -1445,43 +1453,63 @@ static LLVMV range_r(IRState* irs, Token op, Exp* first, Exp* second) {
     return r;
 }
 
-static LLVMV range_n(IRState* irs, Token op, Exp* first, Exp* last, LLVMV r) {
-    LLVMV n, n1;
-    n1 = LLVMBuildSub(irs->B, last->V, first->V, LLVM_TMP);
-    n1 = LLVMBuildSDiv(irs->B, n1, r, "nA");
-
-    if (op == TK_RARROW || op == TK_REARROW) {
-        LLVMBB bbprev = irs->block;
-        LLVMBB bbhasrem = LLVMAppendBasicBlock(irs->function, "has-rem");
-        LLVMBB bbnorem = LLVMAppendBasicBlock(irs->function, "no-rem");
-
-        LLVMV rem = LLVMBuildSRem(irs->B, n1, r, "rem");
-        LLVMV has = LLVMBuildICmp(irs->B, LLVMIntNE, rem, ir_int(0), "has");
-        LLVMBuildCondBr(irs->B, has, bbhasrem, bbnorem);
-        irsBB_end(irs);
-        // has-rem
-        irsBB_start(irs, bbhasrem);
-        LLVMV n2 = LLVMBuildAdd(irs->B, n1, ir_int(1), "nB");
-        LLVMBuildBr(irs->B, bbnorem);
-        irsBB_end(irs);
-        // no-rem
-        irsBB_start(irs, bbnorem);
-        n = LLVMBuildPhi(irs->B, irT_int, "n");
-        LLVMV incomingV[] = {n1, n2};
-        LLVMBB incomingBB[] = {bbprev, bbhasrem};
-        LLVMAddIncoming(n, incomingV, incomingBB, 2);
+// auxiliary - calculates the number of elements
+// f => first, s => second, l => last
+static LLVMV range_n(IRState* irs, Token op, Exp* f, Exp* s, Exp* l, LLVMV r) {
+    // sub = an - a1
+    // n = (sub / r) + 1
+    LLVMV sub, n;
+    sub = LLVMBuildSub(irs->B, l->V, f->V, "n");
+    if (s) {
+        n = LLVMBuildSDiv(irs->B, sub, r, "n");
+        n = LLVMBuildAdd(irs->B, n, ir_int(1), "n");
     } else {
-        n = LLVMBuildAdd(irs->B, n1, ir_int(1), "n");
+        n = sub;
+        if (op == TK_RARROW || op == TK_LARROW) {
+            n = LLVMBuildAdd(irs->B, n, ir_int(1), LLVM_TMP);
+        }
+    }
+
+    // when -> or <-
+    // if (sub % r != 0) { n -= 1 }
+    if (s && (op == TK_RARROW || op == TK_LARROW)) {
+        LLVMBB bbprev = irs->block;
+        LLVMBB bbnorem = LLVMAppendBasicBlock(irs->function, "no-rem");
+        LLVMBB bbcont = LLVMAppendBasicBlock(irs->function, "cont");
+
+        LLVMV rem = LLVMBuildSRem(irs->B, sub, r, "rem");
+        LLVMV norem = LLVMBuildICmp(irs->B, LLVMIntEQ, rem, ir_int(0), "norem");
+        LLVMBuildCondBr(irs->B, norem, bbnorem, bbcont);
+        irsBB_end(irs);
+        // norem
+        irsBB_start(irs, bbnorem);
+        LLVMV n1 = n;
+        LLVMV n2 = LLVMBuildSub(irs->B, n, ir_int(1), "n");
+        LLVMBuildBr(irs->B, bbcont);
+        irsBB_end(irs);
+        // cont
+        irsBB_start(irs, bbcont);
+        LLVMV n = LLVMBuildPhi(irs->B, irT_int, "n");
+        LLVMV incomingV[] = {n1, n2};
+        LLVMBB incomingBB[] = {bbprev, bbnorem};
+        LLVMAddIncoming(n, incomingV, incomingBB, 2);
     }
 
     return n;
 }
 
-static LLVMV range_v(LLVMB B, LLVMV r, LLVMV n) {
-    LLVMT Ts[] = {irT_int, irT_int};
-    LLVMV V = LLVMGetUndef(LLVMStructType(Ts, 2, false));
+// auxiliary - returns the structure with the range's values (r, n, first)
+static LLVMV range_v(LLVMB B, LLVMV r, LLVMV n, Exp* first) {
+    LLVMT T[3];
+    T[1] = irT_int;
+    T[0] = T[2] = (first->type == __integer) ? irT_int   :
+                  (first->type == __float)   ? irT_float :
+                  (INVALID, NULL);
+
+    LLVMV V = LLVMGetUndef(LLVMStructType(T, 3, false));
     V = LLVMBuildInsertValue(B, V, r, 0, LLVM_TMP);
     V = LLVMBuildInsertValue(B, V, n, 1, LLVM_TMP);
+    V = LLVMBuildInsertValue(B, V, first->V, 2, LLVM_TMP);
     return V;
 }
 
